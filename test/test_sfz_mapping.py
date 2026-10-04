@@ -1,7 +1,9 @@
 from typing import Literal
 
 import pytest
+from pytest_regressions.data_regression import DataRegressionFixture
 from ufor.events import ControlChange, Release, Trigger
+from ufor.instrument_trace import VoiceRetirement
 from ufor.interface import ScoreReference
 from ufor.samples import trace
 from ufor.samples.enums import ChokeMode, VoiceOverflow
@@ -12,6 +14,193 @@ from ufor.time import Rate, Timebase
 
 from safaz import compiler, exporter, parser
 from safaz.model import SfzCompileResult, SfzMidiBindingRequest
+
+
+def test_initial_controllers_select_per_part_until_overridden(
+    data_regression: DataRegressionFixture,
+) -> None:
+    result = _compile(
+        '#define $initial 100\n'
+        '<control> set_cc74=$initial set_cc40=127\n'
+        '<region> sample=sample.wav key=60 locc74=100 hicc74=100',
+        midi_binding=SfzMidiBindingRequest(
+            instrument=ScoreReference(path='instrument.toml'),
+            part='main',
+            repeated_key_release='newest',
+        ),
+    )
+    assert result.complete
+    assert result.instrument is not None
+    assert result.binding is not None
+    prepared = trace.prepare(
+        result.instrument.body,
+        [
+            Trigger(tick=0, ordinal=0, part='main', trigger_id='first', key=60),
+            ControlChange(
+                tick=1, ordinal=1, part='main', scope='part', control='cc-74', value=0
+            ),
+            Trigger(tick=2, ordinal=2, part='main', trigger_id='second', key=60),
+            Trigger(tick=3, ordinal=3, part='other', trigger_id='third', key=60),
+        ],
+        seed=1,
+    )
+    data_regression.check(
+        {
+            'controls': {
+                n: c.model_dump(mode='json')
+                for n, c in result.instrument.body.settings.controls.items()
+            },
+            'binding': result.binding.body.model_dump(mode='json'),
+            'starts': [
+                {'tick': a.tick, 'part': a.part, 'template': a.template}
+                for a in prepared.actions
+                if isinstance(a, trace.VoiceStart)
+            ],
+        }
+    )
+
+
+def test_initial_sustain_delays_note_release_until_pedal_release() -> None:
+    result = _compile(
+        '<control> set_cc64=127 <region> sample=sample.wav key=60',
+        midi_binding=SfzMidiBindingRequest(
+            instrument=ScoreReference(path='instrument.toml'),
+            part='main',
+            repeated_key_release='newest',
+        ),
+    )
+    assert result.complete
+    assert result.instrument is not None
+    prepared = trace.prepare(
+        result.instrument.body,
+        [
+            Trigger(tick=0, ordinal=0, part='main', trigger_id='note', key=60),
+            Release(tick=1, ordinal=1, part='main', trigger_id='note'),
+            ControlChange(
+                tick=2, ordinal=2, part='main', scope='part', control='sustain', value=0
+            ),
+        ],
+        seed=1,
+    )
+    starts = [a for a in prepared.actions if isinstance(a, trace.VoiceStart)]
+    assert len(starts) == 1
+    assert starts[0].template == 'region-1'
+    retirements = [a for a in prepared.actions if isinstance(a, VoiceRetirement)]
+    assert len(retirements) == 1
+    assert retirements[0].tick == 2
+
+
+@pytest.mark.parametrize('mixed_channels', [False, True])
+def test_initial_controller_preserves_default_when_binding_is_unavailable(
+    mixed_channels: bool,
+) -> None:
+    request = (
+        SfzMidiBindingRequest(
+            instrument=ScoreReference(path='instrument.toml'),
+            part='main',
+            repeated_key_release='newest',
+        )
+        if mixed_channels
+        else None
+    )
+    result = _compile(
+        '<control> set_cc74=100\n'
+        '<region> sample=sample.wav lochan=1 hichan=1\n'
+        + ('<region> sample=sample.wav lochan=2 hichan=2' if mixed_channels else ''),
+        midi_binding=request,
+    )
+    assert not result.complete
+    assert result.binding is None
+    assert result.instrument is not None
+    assert result.instrument.body.settings.controls['cc-74'].default == 100 / 127
+    feature = result.unimplemented[0]
+    assert feature.location.opcode == 'set_cc74'
+    assert feature.location.line == 1
+    assert feature.location.column == 11
+    assert 'binding' in feature.reason
+    assert not exporter.write(result.instrument).complete
+
+
+@pytest.mark.parametrize('value', ['-1', '128', '1.5', 'nan'])
+def test_initial_controller_rejects_invalid_value(value: str) -> None:
+    with pytest.raises(ValueError, match='set_cc74'):
+        _compile(f'<control> set_cc74={value} <region> sample=sample.wav')
+
+
+@pytest.mark.parametrize('number', [0, 127])
+@pytest.mark.parametrize('value', [0, 127])
+def test_initial_controller_accepts_bounds_without_region_conditions(
+    number: int,
+    value: int,
+) -> None:
+    result = _compile(
+        f'<control> set_cc{number}={value} <region> sample=sample.wav',
+        midi_binding=SfzMidiBindingRequest(
+            instrument=ScoreReference(path='instrument.toml'),
+            part='main',
+            repeated_key_release='newest',
+        ),
+    )
+    assert result.complete
+    assert result.instrument is not None
+    assert result.binding is not None
+    control = f'cc-{number}'
+    assert result.instrument.body.settings.controls[control].default == value / 127
+    assert any(
+        c.number == number and c.control == control
+        for c in result.binding.body.midi[0].controllers
+    )
+    assert not exporter.write(result.instrument).complete
+
+
+def test_initial_controller_rejects_invalid_controller_number() -> None:
+    with pytest.raises(ValueError, match='set_cc128'):
+        _compile('<control> set_cc128=1 <region> sample=sample.wav')
+
+
+@pytest.mark.parametrize('header', ['global', 'master', 'group', 'region'])
+def test_initial_controller_outside_control_header_is_diagnosed(header: str) -> None:
+    text = f'<{header}> set_cc74=100 '
+    text += 'sample=sample.wav' if header == 'region' else '<region> sample=sample.wav'
+    result = _compile(text)
+    assert result.instrument is not None
+    assert 'cc-74' not in result.instrument.body.settings.controls
+    assert len(result.unimplemented) == 1
+    assert result.unimplemented[0].location.header == header
+    assert result.unimplemented[0].reason == 'SFZ set_ccN requires <control>'
+
+
+@pytest.mark.parametrize('second', [100, 101])
+@pytest.mark.parametrize('condition', ['', 'locc74=100'])
+def test_repeated_initial_controller_declarations_preserve_only_agreed_values(
+    second: int,
+    condition: str,
+) -> None:
+    result = _compile(
+        '<control> set_cc74=100\n'
+        f'<region> sample=sample.wav {condition}\n'
+        f'<control> set_cc74={second}\n'
+        f'<region> sample=sample.wav {condition}',
+        midi_binding=SfzMidiBindingRequest(
+            instrument=ScoreReference(path='instrument.toml'),
+            part='main',
+            repeated_key_release='newest',
+        ),
+    )
+    assert result.instrument is not None
+    assert result.binding is not None
+    assert any(c.number == 74 for c in result.binding.body.midi[0].controllers)
+    default = result.instrument.body.settings.controls['cc-74'].default
+    if second == 100:
+        assert result.complete
+        assert default == 100 / 127
+    else:
+        assert not result.complete
+        assert default == 0
+        assert len(result.unimplemented) == 2
+        assert result.unimplemented[0].location.line == 1
+        assert result.unimplemented[1].location.line == 3
+        assert all('conflict' in i.reason for i in result.unimplemented)
 
 
 def test_sfz_sticky_keyswitches_select_regions_and_clear_on_unmapped_key() -> None:

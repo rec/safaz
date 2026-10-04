@@ -126,6 +126,12 @@ def support_table() -> str:
         'the choice. Conflicting limits, legato values, and limits that may '
         'reject simultaneous layers remain diagnosed.',
         '',
+        '`set_ccN` imports under `<control>` as a named-control default, '
+        'including sustain for CC 64. It remains classified as '
+        '`controller_binding`: without an explicit MIDI binding request or '
+        'a shared channel range, the default is retained with a diagnostic. '
+        'Conflicting initial values remain diagnosed. Export is unsupported.',
+        '',
         '| Kind | Name | Version | Classification |',
         '| --- | --- | --- | --- |',
     ]
@@ -260,6 +266,7 @@ AMBIGUOUS_OPCODES = {'polyphony', 'seq_length', 'seq_position'}
 CONDITIONAL_BINDING_OPCODES = {'lochan', 'hichan'}
 AMP_VELOCITY_CURVE = re.compile(r'amp_velcurve_(\d+)')
 CONTROLLER_CONDITION = re.compile(r'(lo|hi)cc(\d+)')
+INITIAL_CONTROLLER = re.compile(r'set_cc(\d+)')
 STANDARD_OPCODES: dict[str, tuple[str, str]] = {
     '#define': ('SFZ v2', 'Instrument Settings'),
     'amp_attack': ('SFZ v2', 'Modulation/Envelope Generators'),

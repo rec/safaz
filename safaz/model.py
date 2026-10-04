@@ -84,6 +84,7 @@ class SlotMetadata(base.Model):
 
 class SfzSource(base.Model):
     regions: list[ParsedRegion]
+    control_opcodes: list[ParsedOpcode]
     instrument_metadata: dict[str, object]
     slot_metadata: dict[int, dict[str, object]]
     unimplemented: list[UnimplementedFeature]
