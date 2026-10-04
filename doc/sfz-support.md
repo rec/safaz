@@ -6,6 +6,8 @@ Generated from `safaz.registry` using the [SFZ Format catalog](https://sfzformat
 
 Numeric `polyphony` imports as a group-scoped voice pool using oldest-immediate retirement. By default, the instrument is retained with a diagnostic; `polyphony_overflow="oldest_immediate"` accepts the choice. Conflicting limits, legato values, and limits that may reject simultaneous layers remain diagnosed.
 
+`set_ccN` imports under `<control>` as a named-control default, including sustain for CC 64. It remains classified as `controller_binding`: without an explicit MIDI binding request or a shared channel range, the default is retained with a diagnostic. Conflicting initial values remain diagnosed. Export is unsupported.
+
 | Kind | Name | Version | Classification |
 | --- | --- | --- | --- |
 | Header | `<region>` | SFZ v1 | supported |

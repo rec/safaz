@@ -42,7 +42,12 @@ from .parser import (
     _sfz_issue_position,
     sample_paths,
 )
-from .registry import AMP_VELOCITY_CURVE, CONTROLLER_CONDITION, OPCODE_ALIASES
+from .registry import (
+    AMP_VELOCITY_CURVE,
+    CONTROLLER_CONDITION,
+    INITIAL_CONTROLLER,
+    OPCODE_ALIASES,
+)
 
 
 def compile_instrument(
@@ -98,6 +103,7 @@ def compile_instrument(
             )
         )
     unimplemented = list(source.unimplemented)
+    controller_defaults = _controller_defaults(source.control_opcodes, unimplemented)
     articulations = _keyswitches(source.regions, unimplemented)
     controller_numbers = {
         int(match.group(2))
@@ -105,6 +111,7 @@ def compile_instrument(
         for opcode in region.opcodes
         if (match := CONTROLLER_CONDITION.fullmatch(opcode.opcode))
     }
+    controller_numbers.update(controller_defaults)
     if any(number > 127 for number in controller_numbers):
         raise ValueError('SFZ controller number must be between 0 and 127')
     slots: list[SampleSlot] = []
@@ -174,9 +181,15 @@ def compile_instrument(
                 ],
                 body=SampleInstrument(
                     settings=SampleSettings(
-                        controls={'sustain': controls.ControlDeclaration()}
+                        controls={
+                            'sustain': controls.ControlDeclaration(
+                                default=controller_defaults.get(64, 0) / 127
+                            )
+                        }
                         | {
-                            f'cc-{number}': controls.ControlDeclaration()
+                            f'cc-{number}': controls.ControlDeclaration(
+                                default=controller_defaults.get(number, 0) / 127
+                            )
                             for number in controller_numbers
                             if number != 64
                         },
@@ -199,6 +212,31 @@ def compile_instrument(
         binding=binding if document is not None else None,
         unimplemented=unimplemented,
     )
+
+
+def _controller_defaults(
+    opcodes: list[ParsedOpcode], unimplemented: list[UnimplementedFeature]
+) -> dict[int, int]:
+    declarations: dict[int, list[ParsedOpcode]] = {}
+    values: dict[int, set[int]] = {}
+    for opcode in opcodes:
+        match = INITIAL_CONTROLLER.fullmatch(opcode.opcode)
+        assert match is not None
+        number = _integer(match.group(1), opcode.opcode, minimum=0, maximum=127)
+        value = _integer(opcode.value, opcode.opcode, minimum=0, maximum=127)
+        declarations.setdefault(number, []).append(opcode)
+        values.setdefault(number, set()).add(value)
+    defaults: dict[int, int] = {}
+    for number, candidates in values.items():
+        if len(candidates) == 1:
+            defaults[number] = next(iter(candidates))
+        else:
+            defaults[number] = 0
+            for opcode in declarations[number]:
+                _add_unimplemented(
+                    unimplemented, opcode, 'SFZ initial controller values conflict'
+                )
+    return defaults
 
 
 def _keyswitches(
@@ -378,6 +416,13 @@ def _midi_binding(
             if CONTROLLER_CONDITION.fullmatch(opcode.opcode):
                 conditions[(opcode.line, opcode.column)] = opcode
     if request is None or len(ranges) > 1:
+        reason = (
+            'SFZ initial controller value requires a MIDI binding request'
+            if request is None
+            else 'SFZ initial controller value has no shared MIDI channel binding'
+        )
+        for opcode in source.control_opcodes:
+            _add_unimplemented(unimplemented, opcode, reason)
         reason = (
             'SFZ MIDI channel range requires an external controller binding'
             if request is None

@@ -69,6 +69,23 @@ source-located diagnostics. Different channel ranges in
 different regions cannot be represented by one instrument-level MIDI channel
 filter, so they also remain diagnostics rather than being silently merged.
 
+`<control> set_ccN` imports an initial MIDI CC value (integer 0 through 127)
+as a named-control default divided by 127; CC numbers must also be 0 through
+127. CC 64 initializes `sustain`. Controllers declared only by `set_ccN` are
+also declared and included in the requested MIDI binding. Initial values apply
+independently to each part until overridden by an explicit native control event.
+They do not send MIDI messages or synthesize controller-triggered voices.
+Hosts carrying controller state across instrument loads must emit that state
+explicitly.
+
+Without a MIDI binding request, or with mixed per-region channel ranges, initial
+values are retained with source-located binding diagnostics. Repeated identical
+values are accepted across `<control>` sections. Conflicting values diagnose
+every declaration and leave the controller at its existing default rather than
+choosing a value. Declarations outside `<control>` are diagnosed and omitted.
+Initial controller export remains unsupported under the existing named-control
+diagnostics.
+
 ## Sequence counters
 
 SFZ import reports `seq_length` and `seq_position` as unsupported by

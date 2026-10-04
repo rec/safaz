@@ -48,6 +48,12 @@ selection. `loccN`/`hiccN` note-on conditions now use part-local controller
 state and map to named controls when a MIDI binding is requested. Controller
 conditions without that binding, and release conditions that need note-on
 controller history, retain located diagnostics.
+`<control> set_ccN` now imports part-local named-control defaults, including
+sustain for CC 64 and controllers with no other supported use. Explicit MIDI
+bindings include those controllers; missing bindings or mixed channel ranges
+retain the defaults with located diagnostics. Conflicting initial values and
+declarations outside `<control>` remain diagnosed. Initialization emits no
+events, and export remains unsupported.
 The pinned SFZ v1/v2 registry classifies 453 opcodes and the standard headers,
 drives unsupported-feature diagnostics, and generates the
 [support table](../doc/sfz-support.md). SFZ 2 `#define` values expand
@@ -70,10 +76,10 @@ models and preparation belong in uFor. A player or editor owns live MIDI input
 and playback.
 
 1. **Remaining keyswitch and controller behavior.** Sticky `sw_last`, optional
-   `sw_default`, and `loccN`/`hiccN` note-on conditions are complete. Held and
-   previous-key switches, CC-triggered regions, and initial CC values still
-   need precise portable selection and binding rules. Do not guess how a host
-   reads or schedules controllers.
+   `sw_default`, `loccN`/`hiccN` note-on conditions, and initial CC values are
+   complete on import. Held and previous-key switches and CC-triggered regions
+   still need precise portable selection and binding rules. Do not guess how a
+   host reads or schedules controllers.
 2. **Basic filters and their musical controls.** Cutoff and resonance have a
    large audible effect. uFor now defines resonant filters and enge renders
    them, so map only SFZ responses and ranges with a verified equivalent.

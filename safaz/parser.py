@@ -19,6 +19,7 @@ from .model import (
 from .registry import (
     AMP_VELOCITY_CURVE,
     CONTROLLER_CONDITION,
+    INITIAL_CONTROLLER,
     OPCODE_ALIASES,
     PARSABLE_OPCODES,
     Support,
@@ -30,11 +31,12 @@ from .registry import (
 def parse(text: str) -> SfzSource:
     """Parse SFZ text without opening files or invoking vendor preprocessors."""
     metadata, slots, metadata_issues = _metadata(text)
-    regions, issues = _parse(text)
+    regions, control_opcodes, issues = _parse(text)
     if not regions and not issues:
         raise ValueError('SFZ file contains no regions')
     return SfzSource(
         regions=regions,
+        control_opcodes=control_opcodes,
         instrument_metadata=metadata or {},
         slot_metadata=slots,
         unimplemented=[*issues, *metadata_issues],
@@ -139,7 +141,9 @@ def _sfz_issue_position(feature: UnimplementedFeature) -> tuple[int, int]:
     return feature.location.line, feature.location.column
 
 
-def _parse(text: str) -> tuple[list[ParsedRegion], list[UnimplementedFeature]]:
+def _parse(
+    text: str,
+) -> tuple[list[ParsedRegion], list[ParsedOpcode], list[UnimplementedFeature]]:
     unimplemented: list[UnimplementedFeature] = []
     text = BLOCK_COMMENT.sub(_blank_comment, text)
     text = LINE_COMMENT.sub('', text)
@@ -157,6 +161,7 @@ def _parse(text: str) -> tuple[list[ParsedRegion], list[UnimplementedFeature]]:
     group_opcodes: list[ParsedOpcode] = []
     region_opcodes: list[ParsedOpcode] = []
     regions: list[ParsedRegion] = []
+    control_opcodes: list[ParsedOpcode] = []
     variables: dict[str, str] = {}
     next_definition = 0
 
@@ -252,10 +257,14 @@ def _parse(text: str) -> tuple[list[ParsedRegion], list[UnimplementedFeature]]:
             or CONTROLLER_CONDITION.fullmatch(canonical)
         )
         if current == 'control':
-            if name != 'default_path':
+            if INITIAL_CONTROLLER.fullmatch(name):
+                control_opcodes.append(item)
+            elif name == 'default_path':
+                default_path = value
+            else:
                 _add_unimplemented(unimplemented, item, diagnostic_reason(name))
-                continue
-            default_path = value
+        elif INITIAL_CONTROLLER.fullmatch(name):
+            _add_unimplemented(unimplemented, item, 'SFZ set_ccN requires <control>')
         elif not supported:
             _add_unimplemented(unimplemented, item, diagnostic_reason(name))
         elif current == 'global':
@@ -268,7 +277,7 @@ def _parse(text: str) -> tuple[list[ParsedRegion], list[UnimplementedFeature]]:
             region_opcodes.append(item)
 
     finish_region()
-    return regions, unimplemented
+    return regions, control_opcodes, unimplemented
 
 
 def _add_unimplemented(
