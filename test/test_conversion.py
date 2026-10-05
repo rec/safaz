@@ -286,7 +286,7 @@ def test_sfz_reports_unsupported_header_and_its_opcodes(
     ('opcode', 'classification', 'reason'),
     [
         ('cutoff', registry.Support.new_model, 'filter model'),
-        ('on_locc7', registry.Support.controller_binding, 'controller binding'),
+        ('start_locc7', registry.Support.controller_binding, 'controller binding'),
         ('sync_beats', registry.Support.new_model, 'transport and tempo model'),
         ('md5', registry.Support.asset_metadata, 'asset metadata'),
         ('vendor_setting', registry.Support.vendor_extension, 'Vendor'),

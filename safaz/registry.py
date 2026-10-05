@@ -30,6 +30,7 @@ def opcode_support(name: str) -> tuple[Support, str | None, str | None]:
     if (
         canonical in PARSABLE_OPCODES
         or CONTROLLER_CONDITION.fullmatch(canonical)
+        or CONTROLLER_TRIGGER.fullmatch(canonical)
         or name == 'amp_velcurve_N'
         or AMP_VELOCITY_CURVE.fullmatch(canonical)
     ):
@@ -37,7 +38,9 @@ def opcode_support(name: str) -> tuple[Support, str | None, str | None]:
             return Support.asset_metadata, version, category
         if canonical in AMBIGUOUS_OPCODES:
             return Support.ambiguous, version, category
-        if canonical in CONDITIONAL_BINDING_OPCODES:
+        if canonical in CONDITIONAL_BINDING_OPCODES or CONTROLLER_TRIGGER.fullmatch(
+            canonical
+        ):
             return Support.controller_binding, version, category
         return Support.supported, version, category
     if entry is None:
@@ -132,6 +135,13 @@ def support_table() -> str:
         'a shared channel range, the default is retained with a diagnostic. '
         'Conflicting initial values remain diagnosed. Export is unsupported.',
         '',
+        '`sw_down` and `sw_up` require a shared consumed switch range; '
+        '`sw_previous` tracks every prior note-on in the part. Release-region '
+        'history combinations remain diagnosed. `on_loccN`/`on_hiccN` import '
+        'only the explicit one-shot, note-independent subset with a MIDI '
+        'binding; uncertain combinations remain diagnosed. These features '
+        'have no implemented export.',
+        '',
         '| Kind | Name | Version | Classification |',
         '| --- | --- | --- | --- |',
     ]
@@ -217,6 +227,9 @@ PARSABLE_OPCODES = {
     'sw_default',
     'sw_hikey',
     'sw_last',
+    'sw_down',
+    'sw_up',
+    'sw_previous',
     'sw_lokey',
     'seq_length',
     'seq_position',
@@ -266,6 +279,7 @@ AMBIGUOUS_OPCODES = {'polyphony', 'seq_length', 'seq_position'}
 CONDITIONAL_BINDING_OPCODES = {'lochan', 'hichan'}
 AMP_VELOCITY_CURVE = re.compile(r'amp_velcurve_(\d+)')
 CONTROLLER_CONDITION = re.compile(r'(lo|hi)cc(\d+)')
+CONTROLLER_TRIGGER = re.compile(r'(on_lo|on_hi)cc(\d+)')
 INITIAL_CONTROLLER = re.compile(r'set_cc(\d+)')
 STANDARD_OPCODES: dict[str, tuple[str, str]] = {
     '#define': ('SFZ v2', 'Instrument Settings'),

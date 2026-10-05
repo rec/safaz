@@ -181,6 +181,9 @@ def _region(
     issues: list[UnimplementedFeature],
 ) -> list[Opcode] | None:
     path = f'body.slots[{index}]'
+    if slot.control_trigger is not None:
+        _slot_issues(slot, path, issues)
+        return None
     sample_slice = next(s for s in document.body.slices if s.name == slot.slice)
     asset = next(a for a in document.assets if a.name == sample_slice.asset)
     if not isinstance(asset.location, RelativeFileLocation):
@@ -809,6 +812,16 @@ def _crossfade_opcodes(
 def _slot_issues(
     slot: SampleSlot, path: str, issues: list[UnimplementedFeature]
 ) -> None:
+    for name in ('key_conditions', 'previous_key', 'control_trigger'):
+        value = getattr(slot, name)
+        if value is not None and value != []:
+            _issue(
+                issues,
+                f'{path}.{name}',
+                value,
+                'Selection conditions and control triggers '
+                'have no implemented SFZ export',
+            )
     for name in ('take', 'microphone', 'alignment_frames'):
         if value := getattr(slot, name):
             _issue(

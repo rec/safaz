@@ -8,6 +8,8 @@ Numeric `polyphony` imports as a group-scoped voice pool using oldest-immediate 
 
 `set_ccN` imports under `<control>` as a named-control default, including sustain for CC 64. It remains classified as `controller_binding`: without an explicit MIDI binding request or a shared channel range, the default is retained with a diagnostic. Conflicting initial values remain diagnosed. Export is unsupported.
 
+`sw_down` and `sw_up` require a shared consumed switch range; `sw_previous` tracks every prior note-on in the part. Release-region history combinations remain diagnosed. `on_loccN`/`on_hiccN` import only the explicit one-shot, note-independent subset with a MIDI binding; uncertain combinations remain diagnosed. These features have no implemented export.
+
 | Kind | Name | Version | Classification |
 | --- | --- | --- | --- |
 | Header | `<region>` | SFZ v1 | supported |
@@ -426,12 +428,12 @@ Numeric `polyphony` imports as a group-scoped voice pool using oldest-immediate 
 | Opcode | `strings_wet_onccN` | SFZ v2 | new_model |
 | Opcode | `sustain_sw` | SFZ v2 | controller_binding |
 | Opcode | `sw_default` | SFZ v2 | supported |
-| Opcode | `sw_down` | SFZ v1 | controller_binding |
+| Opcode | `sw_down` | SFZ v1 | supported |
 | Opcode | `sw_hikey` | SFZ v1 | supported |
 | Opcode | `sw_last` | SFZ v1 | supported |
 | Opcode | `sw_lokey` | SFZ v1 | supported |
-| Opcode | `sw_previous` | SFZ v1 | controller_binding |
-| Opcode | `sw_up` | SFZ v1 | controller_binding |
+| Opcode | `sw_previous` | SFZ v1 | supported |
+| Opcode | `sw_up` | SFZ v1 | supported |
 | Opcode | `sw_vel` | SFZ v1 | controller_binding |
 | Opcode | `sync_beats` | SFZ v1 | new_model |
 | Opcode | `sync_offset` | SFZ v1 | new_model |
