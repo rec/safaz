@@ -1,0 +1,15 @@
+- part: main
+  template: region-2
+  tick: 0
+- part: main
+  template: region-1
+  tick: 3
+- part: main
+  template: region-1
+  tick: 5
+- part: main
+  template: region-2
+  tick: 8
+- part: other
+  template: region-2
+  tick: 9

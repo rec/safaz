@@ -86,6 +86,44 @@ choosing a value. Declarations outside `<control>` are diagnosed and omitted.
 Initial controller export remains unsupported under the existing named-control
 diagnostics.
 
+## Held and previous-note conditions
+
+`sw_down` requires a physically pressed key and `sw_up` requires a physically
+released key. They combine independently with each other and sticky `sw_last`;
+all conditions on a region must pass. A shared `sw_lokey`/`sw_hikey` range is
+required and consumed. Missing or inconsistent ranges and switch keys outside
+the range are not approximated. Overlapping presses are tracked by trigger ID,
+and sustain does not keep a key physically pressed. The native state updates
+before selection and changing a switch does not alter existing voices.
+
+`sw_previous` selects by the previous note-on in the part, including consumed
+switches and unmatched notes. Selection precedes the history update. History
+starts empty and survives note releases and silence. Held and previous-note
+conditions on `release`/`release_key` regions remain diagnosed until their SFZ
+history rules have a verified equivalent. Export remains diagnosed.
+
+## Controller-triggered regions
+
+`on_loccN`/`on_hiccN` imports one triggering CC per region with both inclusive
+endpoints explicitly assigned. Values and controller numbers must be 0 through
+127. The first supported subset requires `key=-1`, `loop_mode=one_shot`,
+`pitch_keytrack=0`, and `amp_veltrack=0`, with no other note-dependent processing,
+selection, or explicit `trigger` declaration. Ordinary `loccN`/`hiccN` conditions
+use the updated part-control values. Uncertain combinations are located
+diagnostics, and their regions are omitted rather than becoming note regions.
+The registry keeps controller triggers classified as `controller_binding`.
+
+Every matching part-scoped control message starts a voice, including repeated
+identical values. Initial defaults do not trigger voices. The native trigger
+rule records the region's pitch-center frequency and unit velocity, which do
+not influence note-independent processing. It creates no note key or note
+identity, and does not update physical presses, previous-note history, or
+note-on sequence counters. Voices finish naturally; existing chokes and voice
+limits can retire them. Note release, sustain, and leaving the controller range
+do not release them. The binding request and shared channel-range requirements
+match other imported controller conditions. Export remains diagnosed and omits
+control-triggered regions.
+
 ## Sequence counters
 
 SFZ import reports `seq_length` and `seq_position` as unsupported by

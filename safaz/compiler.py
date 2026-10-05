@@ -45,6 +45,7 @@ from .parser import (
 from .registry import (
     AMP_VELOCITY_CURVE,
     CONTROLLER_CONDITION,
+    CONTROLLER_TRIGGER,
     INITIAL_CONTROLLER,
     OPCODE_ALIASES,
 )
@@ -109,7 +110,10 @@ def compile_instrument(
         int(match.group(2))
         for region in source.regions
         for opcode in region.opcodes
-        if (match := CONTROLLER_CONDITION.fullmatch(opcode.opcode))
+        if (
+            match := CONTROLLER_CONDITION.fullmatch(opcode.opcode)
+            or CONTROLLER_TRIGGER.fullmatch(opcode.opcode)
+        )
     }
     controller_numbers.update(controller_defaults)
     if any(number > 127 for number in controller_numbers):
@@ -243,6 +247,7 @@ def _keyswitches(
     regions: list[ParsedRegion], unimplemented: list[UnimplementedFeature]
 ) -> selection.Articulations | None:
     keys: set[int] = set()
+    sticky_keys: set[int] = set()
     ranges: set[tuple[int, int]] = set()
     defaults: set[int] = set()
     switches: dict[tuple[int, int], ParsedOpcode] = {}
@@ -255,11 +260,16 @@ def _keyswitches(
             defaults.add(_key(values['sw_default'], 'sw_default'))
             opcode = declarations['sw_default']
             default_declarations[(opcode.line, opcode.column)] = opcode
-        if 'sw_last' not in values:
+        names = [n for n in ('sw_last', 'sw_down', 'sw_up') if n in values]
+        if not names:
             continue
-        keys.add(_key(values['sw_last'], 'sw_last'))
-        opcode = declarations['sw_last']
-        switches[(opcode.line, opcode.column)] = opcode
+        for name in names:
+            key = _key(values[name], name)
+            keys.add(key)
+            if name == 'sw_last':
+                sticky_keys.add(key)
+            opcode = declarations[name]
+            switches[(opcode.line, opcode.column)] = opcode
         if 'sw_lokey' not in values or 'sw_hikey' not in values:
             missing_range = True
             continue
@@ -271,9 +281,17 @@ def _keyswitches(
         )
     if not keys:
         return None
+    if defaults and not sticky_keys:
+        for opcode in default_declarations.values():
+            _add_unimplemented(
+                unimplemented,
+                opcode,
+                'SFZ sw_default without sw_last requires '
+                'verified initialization semantics',
+            )
     if missing_range or len(ranges) != 1:
         reason = (
-            'SFZ sw_last requires sw_lokey and sw_hikey'
+            'SFZ keyswitch conditions require sw_lokey and sw_hikey'
             if missing_range
             else 'SFZ keyswitch ranges differ between regions'
         )
@@ -285,16 +303,26 @@ def _keyswitches(
             _add_unimplemented(unimplemented, opcode, 'SFZ keyswitch defaults conflict')
         return None
     low, high = next(iter(ranges))
-    if low > high or any(not low <= key <= high for key in keys | defaults):
+    if low > high or any(not low <= key <= high for key in sticky_keys | defaults):
         raise ValueError('SFZ keyswitch keys and default must lie within the range')
+    for opcode in switches.values():
+        if (
+            opcode.opcode != 'sw_last'
+            and not low <= _key(opcode.value, opcode.opcode) <= high
+        ):
+            _add_unimplemented(
+                unimplemented,
+                opcode,
+                'SFZ held keyswitch lies outside the declared switch range',
+            )
     default = next(iter(defaults)) if defaults else None
     return selection.Articulations(
-        ids=[f'sfz-switch-{key}' for key in sorted(keys)],
-        default=f'sfz-switch-{default}' if default in keys else None,
+        ids=[f'sfz-switch-{key}' for key in sorted(sticky_keys)],
+        default=f'sfz-switch-{default}' if default in sticky_keys else None,
         keys=[
             selection.KeySwitch(
                 key=key,
-                articulation=f'sfz-switch-{key}' if key in keys else None,
+                articulation=f'sfz-switch-{key}' if key in sticky_keys else None,
             )
             for key in range(low, high + 1)
         ],
@@ -413,7 +441,9 @@ def _midi_binding(
         for opcode in region.opcodes:
             if opcode.opcode in ('lochan', 'hichan'):
                 declarations[(opcode.line, opcode.column)] = opcode
-            if CONTROLLER_CONDITION.fullmatch(opcode.opcode):
+            if CONTROLLER_CONDITION.fullmatch(
+                opcode.opcode
+            ) or CONTROLLER_TRIGGER.fullmatch(opcode.opcode):
                 conditions[(opcode.line, opcode.column)] = opcode
     if request is None or len(ranges) > 1:
         reason = (
@@ -502,6 +532,11 @@ def _slot(
     choke_targets: dict[str, dict[str, enums.ChokeMode]],
     articulations: selection.Articulations | None,
 ) -> tuple[SampleSlot, playback.Slice] | None:
+    control_trigger = None
+    if any(CONTROLLER_TRIGGER.fullmatch(o.opcode) for o in region.opcodes):
+        control_trigger = _control_trigger(region, unimplemented)
+        if control_trigger is None:
+            return None
     values: dict[str, str] = {}
     declarations: dict[str, ParsedOpcode] = {}
     low_key = 0
@@ -516,7 +551,8 @@ def _slot(
         declarations[opcode] = item
         if opcode == 'key':
             last_key = position
-            low_key = high_key = pitch_keycenter = _key(value, opcode)
+            if control_trigger is None:
+                low_key = high_key = pitch_keycenter = _key(value, opcode)
         elif opcode == 'lokey':
             low_key = _key(value, opcode)
         elif opcode == 'hikey':
@@ -525,8 +561,11 @@ def _slot(
             last_pitch_keycenter = position
             pitch_keycenter = _key(value, opcode)
 
-    if last_key > last_pitch_keycenter >= 0 and _key(values['key'], 'key') != _key(
-        values['pitch_keycenter'], 'pitch_keycenter'
+    if (
+        control_trigger is None
+        and last_key > last_pitch_keycenter >= 0
+        and _key(values['key'], 'key')
+        != _key(values['pitch_keycenter'], 'pitch_keycenter')
     ):
         _add_unimplemented(
             unimplemented,
@@ -578,8 +617,31 @@ def _slot(
         'mapping': mapping,
         'channels': _channel_routes(metadata.channels, output_channels),
     }
+    if control_trigger is not None:
+        kwargs['trigger'] = enums.TriggerKind.control
+        kwargs['control_trigger'] = control_trigger
     if articulations is not None and 'sw_last' in values:
         kwargs['articulations'] = [f'sfz-switch-{_key(values["sw_last"], "sw_last")}']
+    key_conditions = []
+    for name in ('sw_down', 'sw_up', 'sw_previous'):
+        if name not in values:
+            continue
+        key = _key(values[name], name)
+        if values.get('trigger') in ('release', 'release_key'):
+            _add_unimplemented(
+                unimplemented,
+                declarations[name],
+                'Release keyswitch condition requires a verified history rule',
+            )
+        elif name == 'sw_previous':
+            kwargs['previous_key'] = key
+        elif articulations is not None and any(
+            s.key == key for s in articulations.keys
+        ):
+            key_conditions.append(
+                selection.KeyCondition(key=key, pressed=name == 'sw_down')
+            )
+    kwargs['key_conditions'] = key_conditions
     conditions = []
     for number in sorted(
         {
@@ -1043,6 +1105,89 @@ def _processing(
                 'Panning multichannel samples is not implemented',
             )
     return result
+
+
+def _control_trigger(
+    region: ParsedRegion, unimplemented: list[UnimplementedFeature]
+) -> selection.ControlTrigger | None:
+    values = {OPCODE_ALIASES.get(o.opcode, o.opcode): o.value for o in region.opcodes}
+    declarations = {
+        o.opcode: o for o in region.opcodes if CONTROLLER_TRIGGER.fullmatch(o.opcode)
+    }
+    numbers = {
+        int(m.group(2)) for n in declarations if (m := CONTROLLER_TRIGGER.fullmatch(n))
+    }
+    for number in numbers:
+        _integer(str(number), 'SFZ controller number', minimum=0, maximum=127)
+        for name in (f'on_locc{number}', f'on_hicc{number}'):
+            if name in values:
+                _integer(values[name], name, minimum=-1, maximum=127)
+    reason = None
+    if len(numbers) != 1:
+        reason = (
+            'Multiple SFZ triggering controllers require verified combination rules'
+        )
+    elif 'trigger' in values:
+        reason = 'SFZ controller trigger combined with explicit trigger is not defined'
+    elif values.get('key') != '-1':
+        reason = (
+            'SFZ controller trigger requires explicit key=-1 to disable note selection'
+        )
+    elif values.get('loop_mode') != 'one_shot':
+        reason = 'SFZ controller trigger requires explicit one-shot playback'
+    elif (
+        _integer(
+            values.get('pitch_keytrack', '100'),
+            'pitch_keytrack',
+            minimum=-1200,
+            maximum=1200,
+        )
+        != 0
+        or _number(values.get('amp_veltrack', '100'), 'amp_veltrack') != 0
+    ):
+        reason = (
+            'SFZ controller trigger requires explicit '
+            'pitch_keytrack=0 and amp_veltrack=0'
+        )
+    elif (
+        any(
+            n in ('lokey', 'hikey', 'lovel', 'hivel', 'lorand', 'hirand')
+            or n.startswith(
+                ('sw_', 'seq_', 'ampeg_vel2', 'amp_velcurve_', 'xfin_', 'xfout_')
+            )
+            for n in values
+        )
+        or _number(values.get('amp_keytrack', '0'), 'amp_keytrack')
+        or _integer(
+            values.get('pitch_veltrack', '0'),
+            'pitch_veltrack',
+            minimum=-9600,
+            maximum=9600,
+        )
+    ):
+        reason = (
+            'SFZ controller trigger has note-dependent or unverified selection behavior'
+        )
+    number = next(iter(numbers))
+    low_name, high_name = f'on_locc{number}', f'on_hicc{number}'
+    if reason is None and (low_name not in values or high_name not in values):
+        reason = 'SFZ controller trigger requires both explicit range endpoints'
+    if reason is None and (values[low_name] == '-1' or values[high_name] == '-1'):
+        reason = (
+            'Unassigned SFZ controller trigger endpoints have no native trigger mapping'
+        )
+    if reason is not None:
+        for opcode in declarations.values():
+            _add_unimplemented(unimplemented, opcode, reason)
+        return None
+    key = _key(values.get('pitch_keycenter', '60'), 'pitch_keycenter')
+    return selection.ControlTrigger(
+        control='sustain' if number == 64 else f'cc-{number}',
+        minimum_value=int(values[low_name]) / 127,
+        maximum_value=int(values[high_name]) / 127,
+        pitch_hz=440.0 * 2 ** ((key - 69) / 12),
+        velocity=1,
+    )
 
 
 def _trigger(

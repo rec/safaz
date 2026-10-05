@@ -710,6 +710,268 @@ def test_sfz_polyphony_distinguishes_unnumbered_group_headers() -> None:
     )
 
 
+def test_held_switches_combine_with_sticky_selection_and_count_overlaps(
+    data_regression: DataRegressionFixture,
+) -> None:
+    result = _compile(
+        '<global> sw_lokey=24 sw_hikey=26 sw_default=24 '
+        '<region> sample=sample.wav key=60 sw_last=24 sw_down=24 sw_up=25 '
+        '<region> sample=sample.wav key=60 sw_up=24'
+    )
+    assert result.complete
+    assert result.instrument is not None
+    prepared = trace.prepare(
+        result.instrument.body,
+        [
+            Trigger(tick=0, ordinal=0, part='main', trigger_id='first', key=60),
+            Trigger(tick=1, ordinal=1, part='main', trigger_id='a', key=24),
+            Trigger(tick=2, ordinal=2, part='main', trigger_id='b', key=24),
+            Trigger(tick=3, ordinal=3, part='main', trigger_id='held', key=60),
+            Release(tick=4, ordinal=4, part='main', trigger_id='a'),
+            Trigger(tick=5, ordinal=5, part='main', trigger_id='overlap', key=60),
+            ControlChange(
+                tick=6, ordinal=6, part='main', scope='part', control='sustain', value=1
+            ),
+            Release(tick=7, ordinal=7, part='main', trigger_id='b'),
+            Trigger(tick=8, ordinal=8, part='main', trigger_id='released', key=60),
+            Trigger(tick=9, ordinal=9, part='other', trigger_id='isolated', key=60),
+        ],
+        seed=1,
+    )
+    data_regression.check(
+        [
+            {'tick': a.tick, 'part': a.part, 'template': a.template}
+            for a in prepared.actions
+            if isinstance(a, trace.VoiceStart)
+        ]
+    )
+    assert not exporter.write(result.instrument).complete
+
+
+def test_previous_note_tracks_consumed_keyswitches_and_survives_release(
+    data_regression: DataRegressionFixture,
+) -> None:
+    result = _compile(
+        '<global> sw_lokey=24 sw_hikey=24 '
+        '<region> sample=sample.wav key=60 sw_down=24 '
+        '<region> sample=sample.wav key=60 sw_previous=24'
+    )
+    assert result.complete
+    assert result.instrument is not None
+    prepared = trace.prepare(
+        result.instrument.body,
+        [
+            Trigger(tick=0, ordinal=0, part='main', trigger_id='first', key=60),
+            Trigger(tick=1, ordinal=1, part='main', trigger_id='switch', key=24),
+            Release(tick=2, ordinal=2, part='main', trigger_id='switch'),
+            Trigger(tick=100, ordinal=3, part='main', trigger_id='after', key=60),
+            Trigger(tick=101, ordinal=4, part='main', trigger_id='next', key=60),
+        ],
+        seed=1,
+    )
+    data_regression.check(
+        [
+            {'tick': a.tick, 'template': a.template}
+            for a in prepared.actions
+            if isinstance(a, trace.VoiceStart)
+        ]
+    )
+
+
+def test_held_switches_do_not_guess_a_sticky_default() -> None:
+    result = _compile(
+        '<region> sample=sample.wav sw_lokey=24 sw_hikey=24 sw_down=24 sw_default=24'
+    )
+    assert result.instrument is not None
+    assert not result.complete
+    assert result.unimplemented[0].location.opcode == 'sw_default'
+    assert result.instrument.body.settings.articulations is not None
+    assert result.instrument.body.settings.articulations.default is None
+
+
+def test_held_switch_outside_declared_range_is_diagnosed() -> None:
+    result = _compile('<region> sample=sample.wav sw_lokey=24 sw_hikey=25 sw_down=26')
+    assert result.instrument is not None
+    assert not result.complete
+    assert result.instrument.body.slots[0].key_conditions == []
+    assert result.unimplemented[0].location.opcode == 'sw_down'
+    assert 'outside' in result.unimplemented[0].reason
+
+
+@pytest.mark.parametrize('opcode', ['sw_down', 'sw_up', 'sw_previous'])
+@pytest.mark.parametrize('trigger', ['release', 'release_key'])
+def test_release_key_conditions_remain_diagnosed(opcode: str, trigger: str) -> None:
+    result = _compile(
+        '<region> sample=sample.wav sw_lokey=24 sw_hikey=24 '
+        f'{opcode}=24 trigger={trigger}'
+    )
+    assert result.instrument is not None
+    assert not result.complete
+    assert result.instrument.body.slots[0].key_conditions == []
+    assert result.instrument.body.slots[0].previous_key is None
+    assert result.unimplemented[0].location.opcode == opcode
+    assert 'history rule' in result.unimplemented[0].reason
+
+
+@pytest.mark.parametrize(
+    'switches',
+    [
+        'sw_down=24',
+        'sw_up=24',
+        '<global> sw_lokey=24 sw_hikey=25 <region> sw_down=24 '
+        '<global> sw_lokey=26 sw_hikey=27 <region> sw_up=26',
+    ],
+)
+def test_held_keys_without_one_shared_range_remain_diagnosed(switches: str) -> None:
+    text = (
+        switches.replace('<region>', '<region> sample=sample.wav')
+        if '<region>' in switches
+        else f'<region> sample=sample.wav {switches}'
+    )
+    result = _compile(text)
+    assert result.instrument is not None
+    assert not result.complete
+    assert result.instrument.body.settings.articulations is None
+    assert all(s.key_conditions == [] for s in result.instrument.body.slots)
+
+
+def test_cc_messages_start_only_one_shot_voices_with_explicit_binding(
+    data_regression: DataRegressionFixture,
+) -> None:
+    result = _compile(
+        '<control> set_cc74=127 '
+        '<region> sample=sample.wav key=-1 loop_mode=one_shot '
+        'pitch_keytrack=0 amp_veltrack=0 on_locc74=64 on_hicc74=127 '
+        'locc74=64 hicc74=64',
+        midi_binding=SfzMidiBindingRequest(
+            instrument=ScoreReference(path='instrument.toml'),
+            part='main',
+            repeated_key_release='newest',
+        ),
+    )
+    assert result.complete
+    assert result.instrument is not None
+    assert result.binding is not None
+    prepared = trace.prepare(
+        result.instrument.body,
+        [
+            Trigger(tick=0, ordinal=0, part='main', trigger_id='note', key=60),
+            ControlChange(
+                tick=1,
+                ordinal=1,
+                part='main',
+                scope='part',
+                control='cc-74',
+                value=64 / 127,
+            ),
+            ControlChange(
+                tick=2,
+                ordinal=2,
+                part='main',
+                scope='part',
+                control='cc-74',
+                value=64 / 127,
+            ),
+            Release(tick=3, ordinal=3, part='main', trigger_id='note'),
+            ControlChange(
+                tick=4, ordinal=4, part='main', scope='part', control='cc-74', value=0
+            ),
+        ],
+        seed=1,
+    )
+    data_regression.check(
+        [
+            {
+                'tick': a.tick,
+                'key': a.key,
+                'trigger_id': a.trigger_id,
+                'velocity': a.velocity,
+                'pitch_hz': a.pitch_hz,
+            }
+            for a in prepared.actions
+            if isinstance(a, trace.VoiceStart)
+        ]
+    )
+    assert len(prepared.snapshots[0].voices) == 2
+    assert not exporter.write(result.instrument).complete
+    assert '<region>' not in exporter.write(result.instrument).contents
+
+
+@pytest.mark.parametrize(
+    'extra',
+    [
+        'trigger=attack',
+        'loop_mode=loop_continuous',
+        'pitch_keytrack=100',
+        'amp_veltrack=100',
+        'pitch_veltrack=100',
+        'ampeg_vel2attack=0.1',
+        'sw_previous=60',
+        'seq_length=2 seq_position=1',
+        'lorand=0.5',
+        'on_locc7=0 on_hicc7=127',
+    ],
+)
+def test_uncertain_cc_regions_are_diagnosed_without_becoming_note_regions(
+    extra: str,
+) -> None:
+    result = _compile(
+        '<region> sample=sample.wav key=-1 loop_mode=one_shot '
+        'pitch_keytrack=0 amp_veltrack=0 on_locc74=64 on_hicc74=127 '
+        + extra
+        + ' <region> sample=sample.wav key=60'
+    )
+    assert result.instrument is not None
+    assert not result.complete
+    assert len(result.instrument.body.slots) == 1
+    assert result.instrument.body.slots[0].name == 'region-2'
+    assert any(i.location.opcode == 'on_locc74' for i in result.unimplemented)
+
+
+@pytest.mark.parametrize('mixed', [False, True])
+def test_cc_triggers_keep_binding_requirements_explicit(mixed: bool) -> None:
+    result = _compile(
+        '<region> sample=sample.wav key=-1 loop_mode=one_shot '
+        'pitch_keytrack=0 amp_veltrack=0 on_locc74=64 on_hicc74=127 '
+        'lochan=1 hichan=1 <region> sample=sample.wav lochan=2 hichan=2',
+        midi_binding=(
+            SfzMidiBindingRequest(
+                instrument=ScoreReference(path='instrument.toml'),
+                part='main',
+                repeated_key_release='newest',
+            )
+            if mixed
+            else None
+        ),
+    )
+    assert result.instrument is not None
+    assert result.binding is None
+    assert not result.complete
+    assert result.instrument.body.slots[0].control_trigger is not None
+    assert any(
+        i.location.opcode == 'on_locc74' and 'binding' in i.reason
+        for i in result.unimplemented
+    )
+
+
+@pytest.mark.parametrize(
+    'range_values',
+    [
+        'on_locc128=0 on_hicc128=127',
+        'on_locc74=-2 on_hicc74=127',
+        'on_locc74=64 on_hicc74=128',
+        'on_locc74=1.5 on_hicc74=127',
+        'on_locc74=100 on_hicc74=50',
+    ],
+)
+def test_cc_trigger_rejects_invalid_numbers_and_ranges(range_values: str) -> None:
+    with pytest.raises(ValueError):
+        _compile(
+            '<region> sample=sample.wav key=-1 loop_mode=one_shot '
+            f'pitch_keytrack=0 amp_veltrack=0 {range_values}'
+        )
+
+
 def _compile(
     text: str,
     output_channels: list[str] | None = None,

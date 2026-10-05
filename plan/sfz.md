@@ -54,6 +54,15 @@ bindings include those controllers; missing bindings or mixed channel ranges
 retain the defaults with located diagnostics. Conflicting initial values and
 declarations outside `<control>` remain diagnosed. Initialization emits no
 events, and export remains unsupported.
+Held `sw_down`/`sw_up` conditions now use physical presses by trigger identity,
+with a shared consumed switch range. Independent held conditions combine with
+sticky selection. `sw_previous` uses part-local history of every note-on, checked
+before updating and retained through releases and silence. Release-region
+history conditions remain diagnosed. `on_loccN`/`on_hiccN` now imports explicit
+one-shot note-independent regions with one controller and an explicit MIDI
+binding. Repeated matching messages trigger separate voices without changing
+note history. Ambiguous combinations, note-dependent processing, and sustained
+or looped controller voices remain diagnosed. Export remains unsupported.
 The pinned SFZ v1/v2 registry classifies 453 opcodes and the standard headers,
 drives unsupported-feature diagnostics, and generates the
 [support table](../doc/sfz-support.md). SFZ 2 `#define` values expand
@@ -77,9 +86,11 @@ and playback.
 
 1. **Remaining keyswitch and controller behavior.** Sticky `sw_last`, optional
    `sw_default`, `loccN`/`hiccN` note-on conditions, and initial CC values are
-   complete on import. Held and previous-key switches and CC-triggered regions
-   still need precise portable selection and binding rules. Do not guess how a
-   host reads or schedules controllers.
+   complete on import. Held and previous-key switches and the explicit one-shot,
+   note-independent CC-trigger subset are implemented. Remaining work includes
+   release-region history rules and richer controller-trigger combinations only
+   when a verified portable equivalent exists. Do not guess how a host reads or
+   schedules controllers.
 2. **Basic filters and their musical controls.** Cutoff and resonance have a
    large audible effect. uFor now defines resonant filters and enge renders
    them, so map only SFZ responses and ranges with a verified equivalent.
