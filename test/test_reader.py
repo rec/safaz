@@ -433,11 +433,50 @@ def test_sfz_import_rejects_symlinks_outside_its_directory(tmp_path: Path) -> No
     folder = tmp_path / 'instrument'
     folder.mkdir()
     _write_wav(tmp_path / 'outside.wav')
-    (folder / 'linked.wav').symlink_to(tmp_path / 'outside.wav')
+    try:
+        (folder / 'linked.wav').symlink_to(tmp_path / 'outside.wav')
+    except OSError as e:
+        if getattr(e, 'winerror', None) != 1314:
+            raise
+        pytest.skip('Windows requires Developer Mode or symlink privileges')
     path = folder / 'source.sfz'
     path.write_text('<region> sample=linked.wav')
     with pytest.raises(ValueError, match='escapes the instrument directory'):
         read(path)
+
+
+@pytest.mark.parametrize('separator', ['/', '\\'])
+@pytest.mark.parametrize('newline', ['\n', '\r\n'])
+@pytest.mark.parametrize('bom', [b'', b'\xef\xbb\xbf'])
+def test_read_sfz_preserves_portable_paths_and_utf8(
+    tmp_path: Path, separator: str, newline: str, bom: bytes
+) -> None:
+    folder = tmp_path / 'Gläss 音'
+    sample = folder / 'Samples 音' / 'Glass' / 'Soft ä.wav'
+    _write_wav(sample, loop=(100, 199))
+    path = folder / 'Gläss.sfz'
+    text = newline.join(
+        [
+            f'<control> default_path=Samples 音{separator}',
+            f'<region> sample=Glass{separator}Soft ä.wav key=60',
+            '',
+        ]
+    )
+    path.write_bytes(bom + text.encode('utf-8'))
+
+    result = read(path)
+
+    assert result.complete
+    assert result.instrument is not None
+    asset = result.instrument.assets[0]
+    assert asset.location == RelativeFileLocation(path='Samples 音/Glass/Soft ä.wav')
+    assert asset.content == ContentIdentity(
+        byte_length=sample.stat().st_size,
+        sha256=sha256(sample.read_bytes()).hexdigest(),
+    )
+    assert result.instrument.body.slices[0].loop == playback.Loop(
+        start_frame=100, end_frame=200, mode=enums.LoopMode.through_release
+    )
 
 
 @pytest.mark.parametrize(
@@ -567,7 +606,7 @@ def test_write_sfz_is_deterministic_and_round_trips_complete_import(
     assert exported.complete
     assert exported == exporter.write(first.instrument)
     output = tmp_path / 'output.sfz'
-    output.write_text(exported.contents)
+    output.write_text(exported.contents, encoding='utf-8')
     second = read(output)
 
     assert second.complete
@@ -604,9 +643,9 @@ def test_write_sfz_preserves_recs_metadata(
 
     exported = exporter.write(document)
     assert exported.complete
-    file_regression.check(exported.contents, extension='.sfz')
+    file_regression.check(exported.contents, extension='.sfz', encoding='utf-8')
     path = tmp_path / 'renamed.sfz'
-    path.write_text(exported.contents)
+    path.write_text(exported.contents, encoding='utf-8')
     restored = read(path)
 
     assert restored.complete
@@ -711,7 +750,7 @@ def test_write_sfz_exports_loops_chokes_crossfades_and_velocity(tmp_path: Path) 
     exported = exporter.write(document)
     assert exported.complete
     path = tmp_path / 'export.sfz'
-    path.write_text(exported.contents)
+    path.write_text(exported.contents, encoding='utf-8')
     restored = read(path)
 
     assert restored.complete
