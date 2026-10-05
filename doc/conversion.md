@@ -55,6 +55,50 @@ is 48 kHz stereo output; callers may select another supported output layout/rate
 It does not generate audio. `safaz.reader` and `safaz.assets` own file acquisition
 and asset inspection.
 
+## Static filter responses
+
+`read()` and `compile_instrument()` accept
+`filter_response="diagnose"` (the default) or `filter_response="sfizz_rbj"`.
+The default omits active filters and reports a located diagnostic requiring
+an explicit response choice. Accepting the latter imports static `lpf_2p`,
+`hpf_2p`, `bpf_2p`, and `brf_2p` responses into native `processing.filters`.
+The first filter uses `fil_type`, `cutoff`, and `resonance`; the second uses
+`fil2_type`, `cutoff2`, and `resonance2`. They retain that serial order and
+stable local names `sfz-filter-1` and `sfz-filter-2` after inheritance and
+region overrides. A missing type defaults to `lpf_2p` and a missing resonance
+to 0 dB. Declared filters without explicit cutoff remain omitted and diagnosed,
+including the implicit first filter when only the second is declared.
+The documented disabled default and sfizz's initialized zero-cutoff filter
+do not establish one verified interpretation. Regions with no filter
+declarations have no filters and acquire no filter diagnostics.
+
+The verified static transfer profile comes from sfizz revision
+`f5c6e29f23b8057867c08e88f5f6ac6738baa30b`:
+[filter definitions](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/dsp/filters/sfz_filters.dsp)
+and [RBJ coefficients](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/dsp/filters/rbj_filters.dsp).
+Resonance maps as `Q = 10^(resonance/20)`, so 0 dB becomes Q=1,
+rather than the native model's default Q. Import accepts the standard
+0–40 dB resonance range. Cutoff must be within
+`[1, min(20000, 0.999 * output_sample_rate / 2)]` Hz to avoid sfizz's
+internal clipping and the native filter boundary. Values outside this
+interval, explicit `cutoff=0`, and unrepresented filter types are diagnosed
+without clamping or approximating. Malformed numeric values fail explicitly.
+
+Even an accepted static response retains a diagnostic: sfizz's
+[voice pipeline](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Voice.cpp)
+applies amplitude before filtering; native processing applies filtering
+before amplitude. A changing envelope makes these operations differ, so
+matching coefficients alone cannot establish a complete conversion.
+This option accepts only the static transfer profile, not equivalence to
+the whole player. The returned instrument is partial and `complete` is false.
+
+Unsupported filter modulation retains its source diagnostic alongside any
+accepted static filter. Filter export, higher-order and alternate filter
+types, key/velocity tracking, controller modulation, envelopes, and LFOs
+remain unsupported. The [SFZ fixture](../conformance/filters.sfz) and
+[native filter settings](../conformance/filters.json) demonstrate inheritance
+and the static two-filter mapping without asserting complete playback equivalence.
+
 ## Performance bindings
 
 SFZ import can return a `ufor.performance_binding.PerformanceBindingScore`

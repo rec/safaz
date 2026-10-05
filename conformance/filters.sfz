@@ -1,0 +1,5 @@
+// Import with filter_response="sfizz_rbj". Static filters only.
+<global> cutoff=2000 resonance=20
+<group> fil2_type=hpf_2p cutoff2=250
+<region> sample=audio/glass.wav
+<region> sample=audio/glass.wav cutoff=1000 resonance=0

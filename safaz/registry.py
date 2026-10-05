@@ -90,7 +90,7 @@ def diagnostic_reason(name: str, *, header: bool = False) -> str:
         return 'SFZ header requires a native model'
     category = opcode_support(name)[2] or ''
     if category.startswith('Performance Parameters/Filter'):
-        return 'SFZ filter requires a native filter model'
+        return 'SFZ filter behavior has no implemented conversion'
     if category == 'Effects':
         return 'SFZ effect requires a native effects routing model'
     if category == 'Wavetable Oscillator':
@@ -128,6 +128,17 @@ def support_table() -> str:
         'with a diagnostic; `polyphony_overflow="oldest_immediate"` accepts '
         'the choice. Conflicting limits, legato values, and limits that may '
         'reject simultaneous layers remain diagnosed.',
+        '',
+        'Static two-pole `lpf_2p`, `hpf_2p`, `bpf_2p`, and `brf_2p` filters '
+        'require `filter_response="sfizz_rbj"` to accept the verified sfizz '
+        'static response. Without that choice, the filter is omitted with a '
+        'diagnostic. `fil_type`/`cutoff`/`resonance` and their second-filter '
+        'counterparts map to ordered native filters with Q = 10^(resonance/20). '
+        'Declared filters without cutoff, explicit zero, unsupported types, '
+        'modulation, and cutoff outside the unclamped native/output-rate bounds '
+        'remain diagnosed. Accepted static responses still retain a diagnostic '
+        'because sfizz applies amplitude before filtering and native processing '
+        'applies it after filtering. Export is unsupported.',
         '',
         '`set_ccN` imports under `<control>` as a named-control default, '
         'including sustain for CC 64. It remains classified as '
@@ -194,9 +205,13 @@ PARSABLE_OPCODES = {
     'amp_keycenter',
     'amp_keytrack',
     'count',
+    'cutoff',
+    'cutoff2',
     'delay',
     'direction',
     'end',
+    'fil_type',
+    'fil2_type',
     'group',
     'hichan',
     'hikey',
@@ -222,6 +237,8 @@ PARSABLE_OPCODES = {
     'pitch_veltrack',
     'polyphony',
     'region_label',
+    'resonance',
+    'resonance2',
     'sample',
     'sample_fadeout',
     'sw_default',
@@ -275,7 +292,17 @@ ASSET_OPCODES = {
     'loop_end',
     'md5',
 }
-AMBIGUOUS_OPCODES = {'polyphony', 'seq_length', 'seq_position'}
+AMBIGUOUS_OPCODES = {
+    'cutoff',
+    'cutoff2',
+    'fil_type',
+    'fil2_type',
+    'polyphony',
+    'resonance',
+    'resonance2',
+    'seq_length',
+    'seq_position',
+}
 CONDITIONAL_BINDING_OPCODES = {'lochan', 'hichan'}
 AMP_VELOCITY_CURVE = re.compile(r'amp_velcurve_(\d+)')
 CONTROLLER_CONDITION = re.compile(r'(lo|hi)cc(\d+)')

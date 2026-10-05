@@ -6,6 +6,8 @@ Generated from `safaz.registry` using the [SFZ Format catalog](https://sfzformat
 
 Numeric `polyphony` imports as a group-scoped voice pool using oldest-immediate retirement. By default, the instrument is retained with a diagnostic; `polyphony_overflow="oldest_immediate"` accepts the choice. Conflicting limits, legato values, and limits that may reject simultaneous layers remain diagnosed.
 
+Static two-pole `lpf_2p`, `hpf_2p`, `bpf_2p`, and `brf_2p` filters require `filter_response="sfizz_rbj"` to accept the verified sfizz static response. Without that choice, the filter is omitted with a diagnostic. `fil_type`/`cutoff`/`resonance` and their second-filter counterparts map to ordered native filters with Q = 10^(resonance/20). Declared filters without cutoff, explicit zero, unsupported types, modulation, and cutoff outside the unclamped native/output-rate bounds remain diagnosed. Accepted static responses still retain a diagnostic because sfizz applies amplitude before filtering and native processing applies it after filtering. Export is unsupported.
+
 `set_ccN` imports under `<control>` as a named-control default, including sustain for CC 64. It remains classified as `controller_binding`: without an explicit MIDI binding request or a shared channel range, the default is retained with a diagnostic. Conflicting initial values remain diagnosed. Export is unsupported.
 
 `sw_down` and `sw_up` require a shared consumed switch range; `sw_previous` tracks every prior note-on in the part. Release-region history combinations remain diagnosed. `on_loccN`/`on_hiccN` import only the explicit one-shot, note-independent subset with a MIDI binding; uncertain combinations remain diagnosed. These features have no implemented export.
@@ -84,13 +86,13 @@ Numeric `polyphony` imports as a group-scoped voice pool using oldest-immediate 
 | Opcode | `comp_stlink` | SFZ v2 | new_model |
 | Opcode | `comp_threshold` | SFZ v2 | new_model |
 | Opcode | `count` | SFZ v1 | supported |
-| Opcode | `cutoff` | SFZ v1 | new_model |
+| Opcode | `cutoff` | SFZ v1 | ambiguous |
 | Opcode | `cutoff_curveccN` | SFZ v2 | new_model |
 | Opcode | `cutoff_onccN` | SFZ v2 | new_model |
 | Opcode | `cutoff_random` | SFZ v2 | new_model |
 | Opcode | `cutoff_smoothccN` | SFZ v2 | new_model |
 | Opcode | `cutoff_stepccN` | SFZ v2 | new_model |
-| Opcode | `cutoff2` | SFZ v2 | new_model |
+| Opcode | `cutoff2` | SFZ v2 | ambiguous |
 | Opcode | `decim` | SFZ v2 | new_model |
 | Opcode | `default_path` | SFZ v2 | supported |
 | Opcode | `delay` | SFZ v1 | supported |
@@ -190,7 +192,7 @@ Numeric `polyphony` imports as a group-scoped voice pool using oldest-immediate 
 | Opcode | `fil_random` | SFZ v1 | new_model |
 | Opcode | `fil_release` | SFZ v2 | new_model |
 | Opcode | `fil_sustain` | SFZ v2 | new_model |
-| Opcode | `fil_type` | SFZ v1 | new_model |
+| Opcode | `fil_type` | SFZ v1 | ambiguous |
 | Opcode | `fil_vel2attack` | SFZ v2 | new_model |
 | Opcode | `fil_vel2decay` | SFZ v2 | new_model |
 | Opcode | `fil_vel2delay` | SFZ v2 | new_model |
@@ -201,7 +203,7 @@ Numeric `polyphony` imports as a group-scoped voice pool using oldest-immediate 
 | Opcode | `fil_veltrack` | SFZ v1 | new_model |
 | Opcode | `fil2_keycenter` | SFZ v2 | new_model |
 | Opcode | `fil2_keytrack` | SFZ v2 | new_model |
-| Opcode | `fil2_type` | SFZ v2 | new_model |
+| Opcode | `fil2_type` | SFZ v2 | ambiguous |
 | Opcode | `fil2_veltrack` | SFZ v2 | new_model |
 | Opcode | `fileg_attack` | SFZ v1 | new_model |
 | Opcode | `fileg_decay` | SFZ v1 | new_model |
@@ -384,12 +386,12 @@ Numeric `polyphony` imports as a group-scoped voice pool using oldest-immediate 
 | Opcode | `polyphony` | SFZ v2 | ambiguous |
 | Opcode | `position` | SFZ v1 | new_model |
 | Opcode | `release_key` | SFZ v2 | new_model |
-| Opcode | `resonance` | SFZ v1 | new_model |
+| Opcode | `resonance` | SFZ v1 | ambiguous |
 | Opcode | `resonance_curveccN` | SFZ v2 | new_model |
 | Opcode | `resonance_onccN` | SFZ v2 | new_model |
 | Opcode | `resonance_smoothccN` | SFZ v2 | new_model |
 | Opcode | `resonance_stepccN` | SFZ v2 | new_model |
-| Opcode | `resonance2` | SFZ v2 | new_model |
+| Opcode | `resonance2` | SFZ v2 | ambiguous |
 | Opcode | `resonance2_ccN` | SFZ v2 | new_model |
 | Opcode | `reverb_damp` | SFZ v2 | new_model |
 | Opcode | `reverb_dry` | SFZ v2 | new_model |

@@ -27,6 +27,12 @@ For conversion without file I/O, use `safaz.parser.parse`,
 caller-supplied `ufor.samples.metadata.AudioMetadata` facts.
 `safaz.exporter.write` returns text without writing files.
 
+Static two-pole filter responses can be imported with
+`read(Path('Glass.sfz'), filter_response='sfizz_rbj')`. The default diagnoses
+them without importing a filter. Accepted responses still retain an
+amplitude/filter ordering diagnostic, so the result remains partial; see the
+[filter conversion rules](doc/conversion.md#static-filter-responses).
+
 uFor owns generic instrument definitions, controller bindings, and preparation.
 safaz owns SFZ rules, compatibility diagnostics, sample-file inspection, tests,
 and documentation. Rendering and live device access belong to consuming
