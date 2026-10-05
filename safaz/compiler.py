@@ -1,6 +1,7 @@
 """Compile parsed SFZ regions into a native sample instrument."""
 
 from fractions import Fraction
+from math import isfinite
 from pathlib import PurePosixPath
 from typing import Literal
 
@@ -61,6 +62,7 @@ def compile_instrument(
     output_channels: list[str],
     sequence_counter: Literal['reject', 'all_note_ons'] = 'reject',
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
+    filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
     midi_binding: SfzMidiBindingRequest | None = None,
 ) -> SfzCompileResult:
     """Build a native document from parsed text and caller-supplied asset facts."""
@@ -68,6 +70,8 @@ def compile_instrument(
         raise ValueError(f'Unknown SFZ sequence counter rule: {sequence_counter}')
     if polyphony_overflow not in ('diagnose', 'oldest_immediate'):
         raise ValueError(f'Unknown SFZ polyphony overflow rule: {polyphony_overflow}')
+    if filter_response not in ('diagnose', 'sfizz_rbj'):
+        raise ValueError(f'Unknown SFZ filter response: {filter_response}')
     paths = sample_paths(source)
     if missing := [p for p in paths if p not in assets]:
         raise ValueError(f'Missing audio metadata for SFZ samples: {missing}')
@@ -145,6 +149,8 @@ def compile_instrument(
                 sequence_counter,
                 choke_targets,
                 articulations,
+                output_timebase.rate.numerator / output_timebase.rate.denominator,
+                filter_response,
             )
         ) is not None:
             slot, sample_slice = result
@@ -531,6 +537,8 @@ def _slot(
     sequence_counter: Literal['reject', 'all_note_ons'],
     choke_targets: dict[str, dict[str, enums.ChokeMode]],
     articulations: selection.Articulations | None,
+    output_rate: float,
+    filter_response: Literal['diagnose', 'sfizz_rbj'],
 ) -> tuple[SampleSlot, playback.Slice] | None:
     control_trigger = None
     if any(CONTROLLER_TRIGGER.fullmatch(o.opcode) for o in region.opcodes):
@@ -760,6 +768,10 @@ def _slot(
     processing_values = _processing(
         values, declarations, metadata.channels, unimplemented
     )
+    if filters := _filters(
+        values, declarations, output_rate, filter_response, unimplemented
+    ):
+        processing_values['filters'] = filters
     slot_processing = processing.Processing.model_validate(processing_values)
     if processing_values:
         kwargs['processing'] = slot_processing
@@ -1104,6 +1116,89 @@ def _processing(
                 declarations['pan'],
                 'Panning multichannel samples is not implemented',
             )
+    return result
+
+
+def _filters(
+    values: dict[str, str],
+    declarations: dict[str, ParsedOpcode],
+    output_rate: float,
+    filter_response: Literal['diagnose', 'sfizz_rbj'],
+    unimplemented: list[UnimplementedFeature],
+) -> list[processing.ResonantFilter]:
+    result: list[processing.ResonantFilter] = []
+    responses = {
+        'lpf_2p': processing.FilterResponse.lowpass,
+        'hpf_2p': processing.FilterResponse.highpass,
+        'bpf_2p': processing.FilterResponse.bandpass,
+        'brf_2p': processing.FilterResponse.notch,
+    }
+    second_declared = any(n in values for n in ('fil2_type', 'cutoff2', 'resonance2'))
+    for index, names in enumerate(
+        [('fil_type', 'cutoff', 'resonance'), ('fil2_type', 'cutoff2', 'resonance2')], 1
+    ):
+        type_name, cutoff_name, resonance_name = names
+        filter_type = values.get(type_name, 'lpf_2p')
+        cutoff = (
+            _number(values[cutoff_name], cutoff_name) if cutoff_name in values else None
+        )
+        resonance = _number(values.get(resonance_name, '0'), resonance_name)
+        if cutoff is not None and (not isfinite(cutoff) or cutoff < 0):
+            raise ValueError(f'{cutoff_name} must be finite and nonnegative')
+        if not 0 <= resonance <= 40:
+            raise ValueError(f'{resonance_name} must be between 0 and 40 dB')
+        if filter_type not in responses:
+            _add_unimplemented(
+                unimplemented,
+                declarations[type_name],
+                'SFZ filter type has no verified static native equivalent',
+            )
+            continue
+        if cutoff is None:
+            authored = [declarations[n] for n in names if n in declarations]
+            if not authored and index == 1 and second_declared:
+                authored = [
+                    declarations[n]
+                    for n in ('fil2_type', 'cutoff2', 'resonance2')
+                    if n in declarations
+                ]
+            if authored:
+                _add_unimplemented(
+                    unimplemented,
+                    authored[0],
+                    f'SFZ filter {index} has no explicit cutoff; '
+                    'player initialization differs',
+                )
+            continue
+        if cutoff == 0:
+            reason = 'SFZ players disagree on cutoff=0 filter behavior'
+        elif not 1 <= cutoff <= min(20_000, 0.999 * output_rate / 2):
+            reason = (
+                'SFZ cutoff exceeds the verified unclamped static filter range '
+                'at the output sample rate'
+            )
+        elif filter_response == 'diagnose':
+            reason = (
+                'SFZ filter requires filter_response="sfizz_rbj" '
+                'to accept the verified static response'
+            )
+        else:
+            result.append(
+                processing.ResonantFilter(
+                    name=f'sfz-filter-{index}',
+                    response=responses[filter_type],
+                    cutoff_hz=cutoff,
+                    q=10 ** (resonance / 20),
+                )
+            )
+            _add_unimplemented(
+                unimplemented,
+                declarations[cutoff_name],
+                'Static filter response imported, but sfizz applies amplitude '
+                'before filtering and native processing applies it after filtering',
+            )
+            continue
+        _add_unimplemented(unimplemented, declarations[cutoff_name], reason)
     return result
 
 

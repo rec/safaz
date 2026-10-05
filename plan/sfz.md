@@ -63,6 +63,13 @@ one-shot note-independent regions with one controller and an explicit MIDI
 binding. Repeated matching messages trigger separate voices without changing
 note history. Ambiguous combinations, note-dependent processing, and sustained
 or looped controller voices remain diagnosed. Export remains unsupported.
+Static two-pole lowpass, highpass, bandpass, and notch filter responses now
+import with the explicit `sfizz_rbj` response choice, including a second
+filter in series and inherited defaults. The default diagnoses active filters
+without importing them. Accepted responses retain an amplitude/filter ordering
+diagnostic because matching static coefficients does not establish whole-player
+equivalence. Zero cutoff, unclamped range boundaries, unsupported types,
+modulation, and export remain diagnosed.
 The pinned SFZ v1/v2 registry classifies 453 opcodes and the standard headers,
 drives unsupported-feature diagnostics, and generates the
 [support table](../doc/sfz-support.md). SFZ 2 `#define` values expand
@@ -92,8 +99,9 @@ and playback.
    when a verified portable equivalent exists. Do not guess how a host reads or
    schedules controllers.
 2. **Basic filters and their musical controls.** Cutoff and resonance have a
-   large audible effect. uFor now defines resonant filters and enge renders
-   them, so map only SFZ responses and ranges with a verified equivalent.
+   large audible effect. The verified static two-pole response subset now
+   imports with an explicit choice and an ordering diagnostic. Resolve the
+   amplitude/filter ordering difference before claiming complete conversion.
    Then consider key/velocity tracking and filter envelopes or LFOs; diagnose
    responses that are not equivalent rather than approximating them.
 3. **Pitch bend and aftertouch.** These make an imported instrument expressive
