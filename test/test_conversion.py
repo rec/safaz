@@ -738,7 +738,18 @@ def test_sfz_reports_unrepresentable_native_features(
     assert path in [i.location.path for i in result.unimplemented]
 
 
-@pytest.mark.parametrize('sample', ['../outside.wav', '/outside.wav', 'C:/outside.wav'])
+@pytest.mark.parametrize(
+    'sample',
+    [
+        '../outside.wav',
+        '/outside.wav',
+        'C:/outside.wav',
+        'C:outside.wav',
+        '..\\outside.wav',
+        '\\outside.wav',
+        '\\\\server\\share\\outside.wav',
+    ],
+)
 def test_sfz_paths_are_validated_before_requesting_asset_facts(sample: str) -> None:
     source = parser.parse(f'<region> sample={sample}')
     with pytest.raises(ValueError, match='declared root'):
