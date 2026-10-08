@@ -29,8 +29,8 @@ caller-supplied `ufor.samples.metadata.AudioMetadata` facts.
 
 Static two-pole filter responses can be imported with
 `read(Path('Glass.sfz'), filter_response='sfizz_rbj')`. The default diagnoses
-them without importing a filter. Accepted responses still retain an
-amplitude/filter ordering diagnostic, so the result remains partial; see the
+them without importing a filter. Accepted responses use native filtering after
+amplitude, matching the sfizz voice pipeline; see the
 [filter conversion rules](doc/conversion.md#static-filter-responses).
 
 uFor owns generic instrument definitions, controller bindings, and preparation.

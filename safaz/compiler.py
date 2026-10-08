@@ -772,6 +772,7 @@ def _slot(
         values, declarations, output_rate, filter_response, unimplemented
     ):
         processing_values['filters'] = filters
+        processing_values['filter_order'] = processing.FilterOrder.after_amplitude
     slot_processing = processing.Processing.model_validate(processing_values)
     if processing_values:
         kwargs['processing'] = slot_processing
@@ -1190,12 +1191,6 @@ def _filters(
                     cutoff_hz=cutoff,
                     q=10 ** (resonance / 20),
                 )
-            )
-            _add_unimplemented(
-                unimplemented,
-                declarations[cutoff_name],
-                'Static filter response imported, but sfizz applies amplitude '
-                'before filtering and native processing applies it after filtering',
             )
             continue
         _add_unimplemented(unimplemented, declarations[cutoff_name], reason)

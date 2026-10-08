@@ -66,9 +66,9 @@ or looped controller voices remain diagnosed. Export remains unsupported.
 Static two-pole lowpass, highpass, bandpass, and notch filter responses now
 import with the explicit `sfizz_rbj` response choice, including a second
 filter in series and inherited defaults. The default diagnoses active filters
-without importing them. Accepted responses retain an amplitude/filter ordering
-diagnostic because matching static coefficients does not establish whole-player
-equivalence. Zero cutoff, unclamped range boundaries, unsupported types,
+without importing them. Accepted responses select native filtering after
+amplitude, resolving the former ordering diagnostic. Zero cutoff, unclamped
+range boundaries, unsupported types,
 modulation, and export remain diagnosed.
 The pinned SFZ v1/v2 registry classifies 453 opcodes and the standard headers,
 drives unsupported-feature diagnostics, and generates the
@@ -100,9 +100,8 @@ and playback.
    schedules controllers.
 2. **Basic filters and their musical controls.** Cutoff and resonance have a
    large audible effect. The verified static two-pole response subset now
-   imports with an explicit choice and an ordering diagnostic. Resolve the
-   amplitude/filter ordering difference before claiming complete conversion.
-   Then consider key/velocity tracking and filter envelopes or LFOs; diagnose
+   imports with an explicit choice and filtering after amplitude. Next consider
+   key/velocity tracking and filter envelopes or LFOs; diagnose
    responses that are not equivalent rather than approximating them.
 3. **Pitch bend and aftertouch.** These make an imported instrument expressive
    under performance. Define their transport-neutral event and binding rules,

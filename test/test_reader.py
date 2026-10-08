@@ -429,7 +429,7 @@ def test_sfz_import_seals_assets_without_changing_media(tmp_path: Path) -> None:
     assert sample.read_bytes() == before
 
 
-def test_read_sfz_imports_accepted_static_filter_with_ordering_diagnostic(
+def test_read_sfz_imports_accepted_static_filter_after_amplitude(
     tmp_path: Path,
 ) -> None:
     _write_wav(tmp_path / 'sample.wav')
@@ -438,7 +438,7 @@ def test_read_sfz_imports_accepted_static_filter_with_ordering_diagnostic(
 
     result = read(path, filter_response='sfizz_rbj')
 
-    assert not result.complete
+    assert result.complete
     assert result.instrument is not None
     assert result.instrument.body.slots[0].processing.filters == [
         processing.ResonantFilter(
@@ -448,8 +448,10 @@ def test_read_sfz_imports_accepted_static_filter_with_ordering_diagnostic(
             q=10,
         )
     ]
-    assert len(result.unimplemented) == 1
-    assert 'applies amplitude' in result.unimplemented[0].reason
+    assert (
+        result.instrument.body.slots[0].processing.filter_order
+        == processing.FilterOrder.after_amplitude
+    )
 
 
 def test_sfz_import_rejects_symlinks_outside_its_directory(tmp_path: Path) -> None:

@@ -29,9 +29,12 @@ def test_static_filters_preserve_response_cutoff_and_resonance(
         f'cutoff=2000 resonance={resonance}',
         filter_response='sfizz_rbj',
     )
-    assert not result.complete
-    assert all('applies amplitude' in f.reason for f in result.unimplemented)
+    assert result.complete
     assert result.instrument is not None
+    assert (
+        result.instrument.body.slots[0].processing.filter_order
+        == processing.FilterOrder.after_amplitude
+    )
     assert result.instrument.body.slots[0].processing.filters == [
         processing.ResonantFilter(
             name='sfz-filter-1', response=response, cutoff_hz=2000, q=q
@@ -55,9 +58,12 @@ def test_filter_conformance_preserves_inheritance_and_serial_order() -> None:
     result = _compile(
         Path('conformance/filters.sfz').read_text(), filter_response='sfizz_rbj'
     )
-    assert not result.complete
-    assert len(result.unimplemented) == 4
+    assert result.complete
     assert result.instrument is not None
+    assert all(
+        s.processing.filter_order == processing.FilterOrder.after_amplitude
+        for s in result.instrument.body.slots
+    )
     expected = json.loads(Path('conformance/filters.json').read_text())
     assert [
         [f.model_dump(mode='json') for f in s.processing.filters]
@@ -116,7 +122,7 @@ def test_verified_cutoff_endpoints_import_without_clamping(cutoff: int) -> None:
         f'<region> sample=audio/glass.wav cutoff={cutoff}',
         filter_response='sfizz_rbj',
     )
-    assert not result.complete
+    assert result.complete
     assert result.instrument is not None
     assert result.instrument.body.slots[0].processing.filters[0].cutoff_hz == cutoff
 
@@ -130,7 +136,7 @@ def test_cutoff_bounds_follow_output_rate_instead_of_asset_rate(
         filter_response='sfizz_rbj',
         rate=16_000,
     )
-    assert not result.complete
+    assert result.complete == imported
     assert result.instrument is not None
     assert len(result.instrument.body.slots[0].processing.filters) == int(imported)
 
@@ -149,7 +155,7 @@ def test_unsupported_filter_type_does_not_replace_a_supported_serial_filter(
     assert [f.name for f in result.instrument.body.slots[0].processing.filters] == [
         'sfz-filter-2'
     ]
-    assert len(result.unimplemented) == 2
+    assert len(result.unimplemented) == 1
     assert any(f.location.opcode == 'fil_type' for f in result.unimplemented)
 
 
@@ -162,7 +168,7 @@ def test_unsupported_modulation_retains_only_the_static_filter(opcode: str) -> N
     assert not result.complete
     assert result.instrument is not None
     assert len(result.instrument.body.slots[0].processing.filters) == 1
-    assert len(result.unimplemented) == 2
+    assert len(result.unimplemented) == 1
     assert any(f.location.opcode == opcode for f in result.unimplemented)
 
 

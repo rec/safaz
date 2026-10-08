@@ -136,9 +136,9 @@ def support_table() -> str:
         'counterparts map to ordered native filters with Q = 10^(resonance/20). '
         'Declared filters without cutoff, explicit zero, unsupported types, '
         'modulation, and cutoff outside the unclamped native/output-rate bounds '
-        'remain diagnosed. Accepted static responses still retain a diagnostic '
-        'because sfizz applies amplitude before filtering and native processing '
-        'applies it after filtering. Export is unsupported.',
+        'remain diagnosed. Accepted static responses use native '
+        '`filter_order=after_amplitude` to match the sfizz voice pipeline. '
+        'Export is unsupported.',
         '',
         '`set_ccN` imports under `<control>` as a named-control default, '
         'including sustain for CC 64. It remains classified as '
