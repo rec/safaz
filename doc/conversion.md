@@ -95,12 +95,36 @@ diagnostic, so supported static regions can return `complete=True`. The option
 still accepts only the declared static transfer profile, not equivalence to
 the whole player.
 
+### Keyboard tracking
+
+With the same `sfizz_rbj` choice, `fil_keytrack` and `fil_keycenter` import
+keyboard tracking for the first filter; `fil2_keytrack` and `fil2_keycenter`
+configure the second independently. Tracking defaults to 0 cents per key and
+center to MIDI key 60. Center keys accept the existing numeric and note-name
+syntax. The verified standard subset uses integral tracking from 0 to 1200.
+The cutoff at an integer note key is
+`cutoff * 2^(fil_keytrack * (key - fil_keycenter) / 1200)`.
+This formula follows the pinned sfizz
+[filter setup](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/FilterPool.cpp).
+
+Native multiplication routes contain one point per playable integer key and
+share the existing note-key binding with amplitude and pitch tracking. The
+original note key determines the ratio, independently of pitch tuning. The
+range check uses each region's inclusive key mapping, not notes that cannot
+select it. Values outside the verified cutoff interval at any playable key,
+unverified tracking amounts, and controller-triggered voices with no note key
+retain the static filter with a located diagnostic. No clamping is introduced.
+Malformed tracking or center values fail explicitly. A zero track value creates
+no route; changing its center does not change the cutoff.
+
 Unsupported filter modulation retains its source diagnostic alongside any
 accepted static filter. Filter export, higher-order and alternate filter
-types, key/velocity tracking, controller modulation, envelopes, and LFOs
+types, velocity tracking, controller modulation, envelopes, and LFOs
 remain unsupported. The [SFZ fixture](../conformance/filters.sfz) and
 [native filter settings](../conformance/filters.json) demonstrate inheritance
 and the static two-filter mapping without asserting complete playback equivalence.
+The [keyboard tracking fixture](../conformance/filter-key-tracking.sfz) covers
+inherited tracking, independent centers, and a per-region zero override.
 
 ## Performance bindings
 
