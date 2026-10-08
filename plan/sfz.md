@@ -70,6 +70,13 @@ without importing them. Accepted responses select native filtering after
 amplitude, resolving the former ordering diagnostic. Zero cutoff, unclamped
 range boundaries, unsupported types,
 modulation, and export remain diagnosed.
+Keyboard tracking now imports `fil_keytrack`/`fil_keycenter` and their
+second-filter counterparts through the existing integer-key modulation model.
+The explicit `sfizz_rbj` choice remains required. Tracking is verified over
+each region's playable keys; unsupported amounts, controller voices without
+note keys, and cutoff values outside the unclamped output-rate bounds retain
+the static filter with located diagnostics. Velocity tracking remains deferred
+until its exponential response has an exact native representation.
 The pinned SFZ v1/v2 registry classifies 453 opcodes and the standard headers,
 drives unsupported-feature diagnostics, and generates the
 [support table](../doc/sfz-support.md). SFZ 2 `#define` values expand
@@ -101,7 +108,7 @@ and playback.
 2. **Basic filters and their musical controls.** Cutoff and resonance have a
    large audible effect. The verified static two-pole response subset now
    imports with an explicit choice and filtering after amplitude. Next consider
-   key/velocity tracking and filter envelopes or LFOs; diagnose
+   velocity tracking and filter envelopes or LFOs; diagnose
    responses that are not equivalent rather than approximating them.
 3. **Pitch bend and aftertouch.** These make an imported instrument expressive
    under performance. Define their transport-neutral event and binding rules,

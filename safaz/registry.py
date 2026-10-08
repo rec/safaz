@@ -134,8 +134,13 @@ def support_table() -> str:
         'static response. Without that choice, the filter is omitted with a '
         'diagnostic. `fil_type`/`cutoff`/`resonance` and their second-filter '
         'counterparts map to ordered native filters with Q = 10^(resonance/20). '
+        '`fil_keytrack`/`fil_keycenter` and their second-filter counterparts '
+        "map exact integer-key cutoff ratios over each region's playable keys. "
+        'Tracking is 0-1200 cents per key, with center key 60 by default. '
+        'Unverified tracking and tracked cutoff outside the verified range '
+        'retain the static filter with a diagnostic. '
         'Declared filters without cutoff, explicit zero, unsupported types, '
-        'modulation, and cutoff outside the unclamped native/output-rate bounds '
+        'other modulation, and cutoff outside the unclamped native/output-rate bounds '
         'remain diagnosed. Accepted static responses use native '
         '`filter_order=after_amplitude` to match the sfizz voice pipeline. '
         'Export is unsupported.',
@@ -211,7 +216,11 @@ PARSABLE_OPCODES = {
     'direction',
     'end',
     'fil_type',
+    'fil_keytrack',
+    'fil_keycenter',
     'fil2_type',
+    'fil2_keytrack',
+    'fil2_keycenter',
     'group',
     'hichan',
     'hikey',
@@ -296,7 +305,11 @@ AMBIGUOUS_OPCODES = {
     'cutoff',
     'cutoff2',
     'fil_type',
+    'fil_keytrack',
+    'fil_keycenter',
     'fil2_type',
+    'fil2_keytrack',
+    'fil2_keycenter',
     'polyphony',
     'resonance',
     'resonance2',
