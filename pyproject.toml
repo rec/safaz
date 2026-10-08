@@ -12,7 +12,14 @@ dependencies = ["ufor", "pydantic>=2.13.4", "soundfile"]
 Repository = "https://github.com/rec/safaz"
 
 [dependency-groups]
-dev = ["pytest", "pytest-regressions", "ruff", "ty", "pyupgrade"]
+dev = [
+    "pytest",
+    "pytest-regressions",
+    "pytest-xdist>=3.8.0",
+    "ruff",
+    "ty",
+    "pyupgrade",
+]
 
 [tool.uv.sources]
 ufor = { git = "ssh://git@github.com/rec/ufor.git", branch = "main" }
