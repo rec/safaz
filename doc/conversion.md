@@ -84,13 +84,16 @@ internal clipping and the native filter boundary. Values outside this
 interval, explicit `cutoff=0`, and unrepresented filter types are diagnosed
 without clamping or approximating. Malformed numeric values fail explicitly.
 
-Even an accepted static response retains a diagnostic: sfizz's
-[voice pipeline](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Voice.cpp)
-applies amplitude before filtering; native processing applies filtering
-before amplitude. A changing envelope makes these operations differ, so
-matching coefficients alone cannot establish a complete conversion.
-This option accepts only the static transfer profile, not equivalence to
-the whole player. The returned instrument is partial and `complete` is false.
+Accepted static responses select native `filter_order=after_amplitude` to match
+sfizz's [voice pipeline](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Voice.cpp).
+The amplitude envelope, velocity gain, volume, and changing amplitude controls
+precede the complete filter chain; native pan and channel routing follow it.
+sfizz places stereo pan before filtering; the supported static linear routing
+commutes with identical per-channel filters. No extra
+filter tail extends the native voice lifetime. This resolves the ordering
+diagnostic, so supported static regions can return `complete=True`. The option
+still accepts only the declared static transfer profile, not equivalence to
+the whole player.
 
 Unsupported filter modulation retains its source diagnostic alongside any
 accepted static filter. Filter export, higher-order and alternate filter
