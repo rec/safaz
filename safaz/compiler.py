@@ -846,12 +846,26 @@ def _slot(
         )
         if r is not None
     ]
+    filter_parameters, filter_routes = _filter_key_modulation(
+        values,
+        declarations,
+        filters,
+        mapping,
+        output_rate,
+        control_trigger is not None,
+        unimplemented,
+    )
+    parameters.extend(filter_parameters)
+    key_routes.extend(filter_routes)
     if key_routes:
         sources.append(
             modulation.Source(name='key', scope='voice', minimum=0, maximum=127)
         )
         for route in key_routes:
-            if route.target.parameter == 'tuning_cents':
+            if (
+                route.target.name != 'processing'
+                or route.target.parameter == 'tuning_cents'
+            ):
                 routes.append(route)
                 continue
             base = getattr(slot_processing, route.target.parameter)
@@ -1134,11 +1148,23 @@ def _filters(
         'bpf_2p': processing.FilterResponse.bandpass,
         'brf_2p': processing.FilterResponse.notch,
     }
-    second_declared = any(n in values for n in ('fil2_type', 'cutoff2', 'resonance2'))
+    second_names = (
+        'fil2_type',
+        'cutoff2',
+        'resonance2',
+        'fil2_keytrack',
+        'fil2_keycenter',
+    )
+    second_declared = any(n in values for n in second_names)
     for index, names in enumerate(
         [('fil_type', 'cutoff', 'resonance'), ('fil2_type', 'cutoff2', 'resonance2')], 1
     ):
         type_name, cutoff_name, resonance_name = names
+        tracking_names = (
+            ('fil_keytrack', 'fil_keycenter')
+            if index == 1
+            else ('fil2_keytrack', 'fil2_keycenter')
+        )
         filter_type = values.get(type_name, 'lpf_2p')
         cutoff = (
             _number(values[cutoff_name], cutoff_name) if cutoff_name in values else None
@@ -1156,13 +1182,11 @@ def _filters(
             )
             continue
         if cutoff is None:
-            authored = [declarations[n] for n in names if n in declarations]
+            authored = [
+                declarations[n] for n in (*names, *tracking_names) if n in declarations
+            ]
             if not authored and index == 1 and second_declared:
-                authored = [
-                    declarations[n]
-                    for n in ('fil2_type', 'cutoff2', 'resonance2')
-                    if n in declarations
-                ]
+                authored = [declarations[n] for n in second_names if n in declarations]
             if authored:
                 _add_unimplemented(
                     unimplemented,
@@ -1195,6 +1219,82 @@ def _filters(
             continue
         _add_unimplemented(unimplemented, declarations[cutoff_name], reason)
     return result
+
+
+def _filter_key_modulation(
+    values: dict[str, str],
+    declarations: dict[str, ParsedOpcode],
+    filters: list[processing.ResonantFilter],
+    mapping: playback.Mapping,
+    output_rate: float,
+    control_triggered: bool,
+    unimplemented: list[UnimplementedFeature],
+) -> tuple[list[modulation.Parameter], list[modulation.Route]]:
+    parameters: list[modulation.Parameter] = []
+    routes: list[modulation.Route] = []
+    for index, names in enumerate(
+        [('fil_keytrack', 'fil_keycenter'), ('fil2_keytrack', 'fil2_keycenter')], 1
+    ):
+        track_name, center_name = names
+        try:
+            tracking = int(values.get(track_name, '0'))
+        except ValueError:
+            raise ValueError(f'{track_name} must be an integer') from None
+        center = _key(values.get(center_name, '60'), center_name)
+        if tracking == 0:
+            continue
+        reason = None
+        if not 0 <= tracking <= 1200:
+            reason = (
+                'SFZ filter key tracking is outside the verified 0-1200 cents range'
+            )
+        elif control_triggered:
+            reason = (
+                'SFZ filter key tracking requires a note key, '
+                'absent on controller triggers'
+            )
+        filter = next((f for f in filters if f.name == f'sfz-filter-{index}'), None)
+        if reason is None and filter is None:
+            continue
+        if reason is None and filter is not None:
+            points = [
+                modulation.Point(input=k, amount=2 ** (tracking * (k - center) / 1200))
+                for k in range(mapping.lowest_key, mapping.highest_key + 1)
+            ]
+            cutoffs = [filter.cutoff_hz * p.amount for p in points]
+            if any(not 1 <= c <= min(20_000, 0.999 * output_rate / 2) for c in cutoffs):
+                reason = (
+                    'SFZ tracked cutoff exceeds the verified unclamped filter range '
+                    'for a playable key at the output sample rate'
+                )
+            else:
+                target = modulation.Target(
+                    name=f'filter-{filter.name}', parameter='cutoff_hz'
+                )
+                parameters.append(
+                    modulation.Parameter(
+                        target=target,
+                        unit=modulation.Unit.hz,
+                        scope=Scope.voice,
+                        minimum=min(filter.cutoff_hz, *cutoffs),
+                        maximum=max(filter.cutoff_hz, *cutoffs),
+                        default=filter.cutoff_hz,
+                    )
+                )
+                routes.append(
+                    modulation.Route(
+                        name=f'key-{filter.name}-cutoff',
+                        source='key',
+                        target=target,
+                        operation=modulation.Operation.multiply,
+                        unit=modulation.Unit.ratio,
+                        points=points,
+                    )
+                )
+                continue
+        if reason is not None:
+            _add_unimplemented(unimplemented, declarations[track_name], reason)
+    return parameters, routes
 
 
 def _control_trigger(

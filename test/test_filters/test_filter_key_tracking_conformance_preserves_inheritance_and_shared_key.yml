@@ -1,0 +1,20 @@
+- cutoff_hz:
+    sfz-filter-1: 500.0
+    sfz-filter-2: 200.0
+  key: 59
+  slot: region-1
+- cutoff_hz:
+    sfz-filter-1: 1000.0
+    sfz-filter-2: 400.0
+  key: 60
+  slot: region-1
+- cutoff_hz:
+    sfz-filter-1: 2000.0
+    sfz-filter-2: 800.0
+  key: 61
+  slot: region-1
+- cutoff_hz:
+    sfz-filter-1: 1000.0
+    sfz-filter-2: 200.0
+  key: 61
+  slot: region-2

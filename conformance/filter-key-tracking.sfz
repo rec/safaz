@@ -1,0 +1,6 @@
+<global> cutoff=1000 fil_keytrack=1200 fil_keycenter=60
+fil2_type=hpf_2p cutoff2=200 fil2_keytrack=1200 fil2_keycenter=59
+amp_keytrack=-1 pitch_keytrack=50
+<group> lokey=59 hikey=61
+<region> sample=audio/glass.wav
+<region> sample=audio/glass.wav key=61 fil_keycenter=C#4 fil2_keytrack=0
