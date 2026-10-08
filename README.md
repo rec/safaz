@@ -56,5 +56,14 @@ privileges and skips only when Windows reports that privilege is unavailable.
 - [Remaining work](plan/sfz.md)
 
 Development uses `uv sync`, `uv run pytest`, `uv run ruff check safaz test`, and
-`uv run ty check safaz`. The implementation and tests were extracted from uFor
+`uv run ty check safaz`. Tests default to serial execution because worker startup
+costs more than it saves for this suite. Use
+`uv run --locked pytest -n 4 --dist=worksteal` to check parallel isolation.
+Regenerate regression baselines separately with `-n 0`. Run one full suite at a
+time when also verifying uFor or enge; their workers share the same CPU budget.
+The manual [cross-platform workflow](.github/workflows/test.yml) checks both
+serial execution and four workers on Linux, Windows, and macOS.
+See [test performance](plan/parallelize.md) for measurements and worker choices.
+
+The implementation and tests were extracted from uFor
 and recs; this project retains their MIT license and copyright notices.
