@@ -21,8 +21,14 @@ dev = [
     "pyupgrade",
 ]
 
+reference = ["enge", "numpy", "mido"]
+
+[tool.uv]
+override-dependencies = ["ufor @ git+ssh://git@github.com/rec/ufor.git@e24e9aea1323c998c17f855f8ba5c776d8506da0"]
+
 [tool.uv.sources]
-ufor = { git = "ssh://git@github.com/rec/ufor.git", branch = "main" }
+enge = { git = "ssh://git@github.com/rec/enge.git", rev = "0292931487bcee6a7bae32f16e1f6b7712739b43" }
+ufor = { git = "ssh://git@github.com/rec/ufor.git", rev = "e24e9aea1323c998c17f855f8ba5c776d8506da0" }
 
 [build-system]
 requires = ["hatchling"]
