@@ -1011,3 +1011,19 @@ def _write_wav(
     chunk = b'smpl' + struct.pack('<I', len(smpl)) + smpl
     data += chunk
     path.write_bytes(data[:4] + struct.pack('<I', len(data) - 8) + data[8:])
+
+
+def test_read_sfz_imports_explicitly_accepted_filter_lfo(tmp_path: Path) -> None:
+    _write_wav(tmp_path / 'sample.wav')
+    path = tmp_path / 'lfo.sfz'
+    path.write_text(
+        '<region> sample=sample.wav cutoff=1000 fillfo_freq=2 fillfo_depth=1200'
+    )
+    result = read(
+        path, filter_response='sfizz_rbj', filter_lfo_response='sfizz_triangle'
+    )
+    assert result.complete
+    assert result.instrument is not None
+    slot = result.instrument.body.slots[0]
+    assert 'sfz-filter-lfo' in slot.motions
+    assert any(r.source == 'filter-lfo' for r in slot.modulation.routes)

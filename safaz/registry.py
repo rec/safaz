@@ -147,7 +147,11 @@ def support_table() -> str:
         'other modulation, and cutoff outside the unclamped native/output-rate bounds '
         'remain diagnosed. Accepted static responses use native '
         '`filter_order=after_amplitude` to match the sfizz voice pipeline. '
-        'Export is unsupported.',
+        'Basic first-filter LFOs additionally require '
+        '`filter_lfo_response="sfizz_triangle"`: fixed frequency and signed depth '
+        'use a voice-local triangle starting at zero rising. Delay, fade, and '
+        'nonordinary triggers remain diagnosed. Combined cutoff modulation '
+        'outside bounds retains only the static filter. Export is unsupported.',
         '',
         '`set_ccN` imports under `<control>` as a named-control default, '
         'including sustain for CC 64. It remains classified as '
@@ -223,6 +227,10 @@ PARSABLE_OPCODES = {
     'fil_keytrack',
     'fil_keycenter',
     'fil_veltrack',
+    'fillfo_freq',
+    'fillfo_depth',
+    'fillfo_delay',
+    'fillfo_fade',
     'fil2_type',
     'fil2_keytrack',
     'fil2_keycenter',
@@ -314,6 +322,10 @@ AMBIGUOUS_OPCODES = {
     'fil_keytrack',
     'fil_keycenter',
     'fil_veltrack',
+    'fillfo_freq',
+    'fillfo_depth',
+    'fillfo_delay',
+    'fillfo_fade',
     'fil2_type',
     'fil2_keytrack',
     'fil2_keycenter',

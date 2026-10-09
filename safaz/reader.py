@@ -19,6 +19,7 @@ def read(
     sequence_counter: Literal['reject', 'all_note_ons'] = 'reject',
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
+    filter_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
     midi_binding: SfzMidiBindingRequest | None = None,
 ) -> SfzCompileResult:
     """Seal local assets and import with explicit stereo/48 kHz output defaults."""
@@ -44,5 +45,6 @@ def read(
         sequence_counter=sequence_counter,
         polyphony_overflow=polyphony_overflow,
         filter_response=filter_response,
+        filter_lfo_response=filter_lfo_response,
         midi_binding=midi_binding,
     )

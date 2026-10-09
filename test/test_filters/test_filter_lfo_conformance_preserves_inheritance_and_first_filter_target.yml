@@ -1,0 +1,30 @@
+- at: '0'
+  cutoffs:
+    filter-sfz-filter-1: 2828.42712475
+    filter-sfz-filter-2: 282.84271247
+  slot: region-1
+- at: 1/8
+  cutoffs:
+    filter-sfz-filter-1: 5656.85424949
+    filter-sfz-filter-2: 282.84271247
+  slot: region-1
+- at: 3/8
+  cutoffs:
+    filter-sfz-filter-1: 1414.21356237
+    filter-sfz-filter-2: 282.84271247
+  slot: region-1
+- at: '0'
+  cutoffs:
+    filter-sfz-filter-1: 2828.42712475
+    filter-sfz-filter-2: 282.84271247
+  slot: region-2
+- at: 1/8
+  cutoffs:
+    filter-sfz-filter-1: 1414.21356237
+    filter-sfz-filter-2: 282.84271247
+  slot: region-2
+- at: 3/8
+  cutoffs:
+    filter-sfz-filter-1: 5656.85424949
+    filter-sfz-filter-2: 282.84271247
+  slot: region-2

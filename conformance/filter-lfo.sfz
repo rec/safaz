@@ -1,0 +1,5 @@
+<global> cutoff=1000 cutoff2=400 fil2_veltrack=-1200
+fillfo_freq=2 fillfo_depth=1200
+<group> key=61 fil_keytrack=1200 fil_veltrack=1200
+<region> sample=audio/glass.wav
+<region> sample=audio/glass.wav fillfo_depth=-1200

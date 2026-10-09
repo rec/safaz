@@ -5,7 +5,7 @@ from math import isfinite
 from pathlib import PurePosixPath
 from typing import Literal
 
-from ufor import envelope, modulation, segments
+from ufor import envelope, modulation, motion, segments
 from ufor.assets import AudioDescription, ContentIdentity, RelativeFileLocation
 from ufor.control import Scope
 from ufor.interface import AudioBinding, EventType, Input, Output, PerformanceBinding
@@ -63,6 +63,7 @@ def compile_instrument(
     sequence_counter: Literal['reject', 'all_note_ons'] = 'reject',
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
+    filter_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
     midi_binding: SfzMidiBindingRequest | None = None,
 ) -> SfzCompileResult:
     """Build a native document from parsed text and caller-supplied asset facts."""
@@ -72,6 +73,8 @@ def compile_instrument(
         raise ValueError(f'Unknown SFZ polyphony overflow rule: {polyphony_overflow}')
     if filter_response not in ('diagnose', 'sfizz_rbj'):
         raise ValueError(f'Unknown SFZ filter response: {filter_response}')
+    if filter_lfo_response not in ('diagnose', 'sfizz_triangle'):
+        raise ValueError(f'Unknown SFZ filter LFO response: {filter_lfo_response}')
     paths = sample_paths(source)
     if missing := [p for p in paths if p not in assets]:
         raise ValueError(f'Missing audio metadata for SFZ samples: {missing}')
@@ -151,6 +154,7 @@ def compile_instrument(
                 articulations,
                 output_timebase.rate.numerator / output_timebase.rate.denominator,
                 filter_response,
+                filter_lfo_response,
             )
         ) is not None:
             slot, sample_slice = result
@@ -539,6 +543,7 @@ def _slot(
     articulations: selection.Articulations | None,
     output_rate: float,
     filter_response: Literal['diagnose', 'sfizz_rbj'],
+    filter_lfo_response: Literal['diagnose', 'sfizz_triangle'],
 ) -> tuple[SampleSlot, playback.Slice] | None:
     control_trigger = None
     if any(CONTROLLER_TRIGGER.fullmatch(o.opcode) for o in region.opcodes):
@@ -781,7 +786,7 @@ def _slot(
     sources: list[modulation.Source] = []
     parameters: list[modulation.Parameter] = []
     routes: list[modulation.Route] = []
-    bindings: list[processing.EventBinding] = []
+    bindings: list[processing.Binding] = []
     if result := _velocity_modulation(values):
         sources.append(
             modulation.Source(name='velocity', scope='voice', minimum=0, maximum=1)
@@ -853,9 +858,27 @@ def _slot(
         mapping,
         output_rate,
         control_trigger is not None,
+        filter_lfo_response,
         unimplemented,
     )
     parameters.extend(filter_parameters)
+    if lfo_routes := [r for r in filter_routes if r.source == 'filter-lfo']:
+        kwargs['motions'] = {
+            'sfz-filter-lfo': motion.MotionUse(
+                body=motion.Cycle(
+                    shape='triangle',
+                    rate=Fraction(values['fillfo_freq']),
+                    phase=Fraction(1, 4),
+                ),
+            )
+        }
+        sources.append(
+            modulation.Source(name='filter-lfo', scope='voice', minimum=-1, maximum=1)
+        )
+        bindings.append(
+            processing.GeneratorBinding(name='filter-lfo', reference='sfz-filter-lfo')
+        )
+        routes.extend(lfo_routes)
     key_routes.extend(r for r in filter_routes if r.source == 'key')
     velocity_routes = [r for r in filter_routes if r.source == 'velocity']
     if velocity_routes:
@@ -1170,7 +1193,15 @@ def _filters(
     ):
         type_name, cutoff_name, resonance_name = names
         tracking_names = (
-            ('fil_keytrack', 'fil_keycenter', 'fil_veltrack')
+            (
+                'fil_keytrack',
+                'fil_keycenter',
+                'fil_veltrack',
+                'fillfo_freq',
+                'fillfo_depth',
+                'fillfo_delay',
+                'fillfo_fade',
+            )
             if index == 1
             else ('fil2_keytrack', 'fil2_keycenter', 'fil2_veltrack')
         )
@@ -1237,6 +1268,7 @@ def _filter_tracking_modulation(
     mapping: playback.Mapping,
     output_rate: float,
     control_triggered: bool,
+    filter_lfo_response: Literal['diagnose', 'sfizz_triangle'],
     unimplemented: list[UnimplementedFeature],
 ) -> tuple[list[modulation.Parameter], list[modulation.Route]]:
     parameters: list[modulation.Parameter] = []
@@ -1331,6 +1363,18 @@ def _filter_tracking_modulation(
                     ),
                 )
             )
+        if index == 1:
+            lfo_route = _filter_lfo_modulation(
+                values,
+                declarations,
+                filter,
+                upper,
+                control_triggered,
+                filter_lfo_response,
+                unimplemented,
+            )
+            if lfo_route is not None:
+                candidates.append(lfo_route)
         if filter is None or not candidates:
             continue
         low = high = filter.cutoff_hz
@@ -1339,11 +1383,17 @@ def _filter_tracking_modulation(
             high *= max(p.amount for p in route.points)
         if not 1 <= low <= high <= upper:
             for route in candidates:
-                name = track_name if route.source == 'key' else velocity_name
+                name = (
+                    track_name
+                    if route.source == 'key'
+                    else velocity_name
+                    if route.source == 'velocity'
+                    else 'fillfo_depth'
+                )
                 _add_unimplemented(
                     unimplemented,
                     declarations[name],
-                    'Combined SFZ keyboard and velocity tracking exceeds the verified '
+                    'Combined SFZ cutoff modulation exceeds the verified '
                     'unclamped filter range; retaining only the static filter',
                 )
             continue
@@ -1359,6 +1409,88 @@ def _filter_tracking_modulation(
         )
         routes.extend(candidates)
     return parameters, routes
+
+
+def _filter_lfo_modulation(
+    values: dict[str, str],
+    declarations: dict[str, ParsedOpcode],
+    filter: processing.ResonantFilter | None,
+    upper: float,
+    control_triggered: bool,
+    response: Literal['diagnose', 'sfizz_triangle'],
+    unimplemented: list[UnimplementedFeature],
+) -> modulation.Route | None:
+    settings = {
+        n: _number(values.get(n, '0'), n)
+        for n in ('fillfo_freq', 'fillfo_depth', 'fillfo_delay', 'fillfo_fade')
+    }
+    bounds = {
+        'fillfo_freq': (0, 20),
+        'fillfo_depth': (-1200, 1200),
+        'fillfo_delay': (0, 100),
+        'fillfo_fade': (0, 100),
+    }
+    invalid = False
+    for name, value in settings.items():
+        if not isfinite(value):
+            raise ValueError(f'{name} must be finite')
+        low, high = bounds[name]
+        if not low <= value <= high:
+            _add_unimplemented(
+                unimplemented,
+                declarations[name],
+                f'{name} is outside the verified {low}-{high} range',
+            )
+            invalid = True
+    if invalid or settings['fillfo_depth'] == 0 or settings['fillfo_freq'] == 0:
+        return None
+    unsupported_timing = False
+    for name in ('fillfo_delay', 'fillfo_fade'):
+        if settings[name] != 0:
+            _add_unimplemented(
+                unimplemented,
+                declarations[name],
+                'SFZ filter LFO delay/fade has no verified native timing equivalent',
+            )
+            unsupported_timing = True
+    if unsupported_timing:
+        return None
+    reason = None
+    if control_triggered or values.get('trigger', 'attack') != 'attack':
+        reason = (
+            'SFZ filter LFO supports only ordinary note-on triggers in this profile'
+        )
+    elif response == 'diagnose':
+        reason = (
+            'SFZ filter LFO requires filter_lfo_response="sfizz_triangle" '
+            'to accept its verified waveform and phase'
+        )
+    if reason is not None:
+        _add_unimplemented(unimplemented, declarations['fillfo_depth'], reason)
+        return None
+    if filter is None:
+        return None
+    depth = settings['fillfo_depth']
+    points = [
+        modulation.Point(input=-1, amount=2 ** (-depth / 1200)),
+        modulation.Point(input=1, amount=2 ** (depth / 1200)),
+    ]
+    if any(not 1 <= filter.cutoff_hz * p.amount <= upper for p in points):
+        _add_unimplemented(
+            unimplemented,
+            declarations['fillfo_depth'],
+            'SFZ filter LFO cutoff exceeds the verified unclamped filter range',
+        )
+        return None
+    return modulation.Route(
+        name=f'lfo-{filter.name}-cutoff',
+        source='filter-lfo',
+        target=modulation.Target(name=f'filter-{filter.name}', parameter='cutoff_hz'),
+        operation=modulation.Operation.multiply,
+        unit=modulation.Unit.ratio,
+        points=points,
+        interpolation=modulation.Interpolation.exponential,
+    )
 
 
 def _control_trigger(
