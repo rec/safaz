@@ -7,7 +7,7 @@ exclude-newer = "2026-10-02T17:32:33.732771Z"
 exclude-newer-span = "P1W"
 
 [manifest]
-overrides = [{ name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=e24e9aea1323c998c17f855f8ba5c776d8506da0" }]
+overrides = [{ name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=5cea0275f1e3cac05540a1d6c8561063a2c94ab1" }]
 
 [[package]]
 name = "annotated-types"
@@ -112,7 +112,7 @@ wheels = [
 [[package]]
 name = "enge"
 version = "0.1.0"
-source = { git = "ssh://git@github.com/rec/enge.git?rev=0292931487bcee6a7bae32f16e1f6b7712739b43#0292931487bcee6a7bae32f16e1f6b7712739b43" }
+source = { git = "ssh://git@github.com/rec/enge.git?rev=1bcb76566b813a1566afe0bdf1ed3092e40ed278#1bcb76566b813a1566afe0bdf1ed3092e40ed278" }
 dependencies = [
     { name = "mido" },
     { name = "numpy" },
@@ -537,7 +537,7 @@ reference = [
 requires-dist = [
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "soundfile" },
-    { name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=e24e9aea1323c998c17f855f8ba5c776d8506da0" },
+    { name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=5cea0275f1e3cac05540a1d6c8561063a2c94ab1" },
 ]
 
 [package.metadata.requires-dev]
@@ -550,7 +550,7 @@ dev = [
     { name = "ty" },
 ]
 reference = [
-    { name = "enge", git = "ssh://git@github.com/rec/enge.git?rev=0292931487bcee6a7bae32f16e1f6b7712739b43" },
+    { name = "enge", git = "ssh://git@github.com/rec/enge.git?rev=1bcb76566b813a1566afe0bdf1ed3092e40ed278" },
     { name = "mido" },
     { name = "numpy" },
 ]
@@ -678,7 +678,7 @@ wheels = [
 [[package]]
 name = "ufor"
 version = "0.1.0"
-source = { git = "ssh://git@github.com/rec/ufor.git?rev=e24e9aea1323c998c17f855f8ba5c776d8506da0#e24e9aea1323c998c17f855f8ba5c776d8506da0" }
+source = { git = "ssh://git@github.com/rec/ufor.git?rev=5cea0275f1e3cac05540a1d6c8561063a2c94ab1#5cea0275f1e3cac05540a1d6c8561063a2c94ab1" }
 dependencies = [
     { name = "pydantic" },
     { name = "tomlkit" },

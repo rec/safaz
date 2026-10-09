@@ -24,11 +24,11 @@ dev = [
 reference = ["enge", "numpy", "mido"]
 
 [tool.uv]
-override-dependencies = ["ufor @ git+ssh://git@github.com/rec/ufor.git@e24e9aea1323c998c17f855f8ba5c776d8506da0"]
+override-dependencies = ["ufor @ git+ssh://git@github.com/rec/ufor.git@5cea0275f1e3cac05540a1d6c8561063a2c94ab1"]
 
 [tool.uv.sources]
-enge = { git = "ssh://git@github.com/rec/enge.git", rev = "0292931487bcee6a7bae32f16e1f6b7712739b43" }
-ufor = { git = "ssh://git@github.com/rec/ufor.git", rev = "e24e9aea1323c998c17f855f8ba5c776d8506da0" }
+enge = { git = "ssh://git@github.com/rec/enge.git", rev = "1bcb76566b813a1566afe0bdf1ed3092e40ed278" }
+ufor = { git = "ssh://git@github.com/rec/ufor.git", rev = "5cea0275f1e3cac05540a1d6c8561063a2c94ab1" }
 
 [build-system]
 requires = ["hatchling"]
