@@ -37,11 +37,11 @@ master gain, output sample format, voice limits, and render termination.
 Use a library-only/offline build without audio-device or plugin dependencies.
 Verify build flags against that revision rather than copying current defaults.
 
-The runner must support identical settings and a declared render horizon.
-If the bundled client cannot provide the required control or output precision,
-stop and propose replacing it with one small offline driver using sfizz's C
-API. Do not maintain two reference paths or silently weaken the comparisons.
-The API requires block events to be submitted before rendering that block.
+Use the exact third-party client without patches or a replacement driver.
+The approved audit found PCM16 output and block-rounded duration. Record both
+limitations, compare a declared common interval with padding checked separately,
+and report measurements below useful PCM16 precision as unresolved. Do not
+silently weaken comparisons. An upstream float-output contribution is deferred.
 
 References: [official build documentation](https://www.sfz.tools/sfizz/development/build/),
 [C API](https://sfz.tools/sfizz/api/sfizz.h/), and
@@ -192,6 +192,16 @@ Keep unsupported features and richer SFZ 2 modulation outside the first slice.
 - The existing unit suite stays independent of the external reference build.
 - No tolerance change, gain fitting, time alignment, or unexpected diagnostic
   can silently turn a mismatch into a pass.
+
+## Implementation Status
+
+The optional dependency group, four baseline fixture families, failure artifacts,
+measurement fault checks and manual three-platform workflow are implemented in
+`reference_test/`. The initial macOS run exposes native envelope rejection and
+reference waveform/block-size discrepancies. Audio equivalence and cross-platform
+consistency remain unestablished. See `reference_test/findings.md` for evidence.
+The user approved finishing this harness with visible failures and addressing
+enge separately. No production behavior or third-party source was repaired.
 
 ## Additional work beyond the prompt
 
