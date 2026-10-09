@@ -197,11 +197,13 @@ Keep unsupported features and richer SFZ 2 modulation outside the first slice.
 
 The optional dependency group, four baseline fixture families, failure artifacts,
 measurement fault checks and manual three-platform workflow are implemented in
-`reference_test/`. The initial macOS run exposes native envelope rejection and
-reference waveform/block-size discrepancies. Audio equivalence and cross-platform
-consistency remain unestablished. See `reference_test/findings.md` for evidence.
-The user approved finishing this harness with visible failures and addressing
-enge separately. No production behavior or third-party source was repaired.
+`reference_test/`. A separate enge follow-up now permits curve metadata on
+zero-duration amplitude-envelope phases. The unchanged macOS fixtures proceed
+past envelope validation and stop at unsupported native EventBindings for
+velocity. Reference waveform/block-size discrepancies remain. Audio equivalence
+and cross-platform consistency remain unestablished; see
+`reference_test/findings.md` for the original and follow-up evidence.
+No SFZ importer behavior or third-party source was changed.
 
 ## Additional work beyond the prompt
 

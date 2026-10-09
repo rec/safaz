@@ -1,8 +1,10 @@
 # Initial reference findings
 
 The harness is implemented, but baseline audio equivalence is **not established**.
-The user approved preserving these failures and fixing enge in a separate slice.
-No upstream source, importer behavior, or renderer behavior was changed.
+The zero-duration envelope blocker has been fixed in a separate enge slice;
+the reference run now stops at unsupported event bindings. The original pinned
+run below is retained for comparison. Upstream sfizz and SFZ import behavior
+remain unchanged.
 
 ## Local run, 2026-10-09
 
@@ -57,13 +59,44 @@ The dedicated Linux/Windows/macOS workflow is manual and retains failing
 comparison artifacts. Its matrix has not yet been executed. Cross-platform
 audio consistency and the native rendering stage remain outstanding.
 
+## Zero-duration envelope follow-up, 2026-10-09
+
+enge revision: `1bcb76566b813a1566afe0bdf1ed3092e40ed278`. uFor revision:
+`5cea0275f1e3cac05540a1d6c8561063a2c94ab1`, matching enge's existing dependency
+lock. The compatible uFor pin is required by the current enge Latch imports.
+
+enge now accepts curve metadata on amplitude-envelope phases whose duration is
+exactly zero. Those phases already jump immediately to their endpoints in both
+renderers; the fix changes only their validation. Held voice/seconds envelopes
+and linear nonzero-duration phases remain the accepted profile. Positive-duration
+curved attack or release phases still raise an error.
+
+Six focused cases pass, covering zero-duration jumps between linear phases,
+linear and instant releases on NumPy/native backends, and positive-duration curve
+rejection. WAV regressions contain one second of 48 kHz audio. The full enge run
+reported 1,067 passes, 21 optional Rubber Band skips, and one outdated rejection
+fixture. That fixture now uses a nonzero duration; its corrected case passes
+on rerun. Ruff, formatting, type checking and pyupgrade checks pass.
+
+safaz's 334 unit tests pass with the new pins. The unchanged reference fixtures
+still report **4 passed, 9 failed**, but the eight native preparation failures
+are now `Only control and motion bindings are implemented`. Imported velocity
+uses an EventBinding, which enge does not yet consume. Complete import and
+authored region selection continue to pass; native audio remains unavailable.
+
+The reference-only repeatability failure also remains: identical 256-frame
+renders agree in this invocation, the 64-frame render differs by a maximum of
+0.10693359375, and the 257-frame comparison differs by one PCM16 step. Reference
+source, fixtures, settings, oracle equations and acceptance thresholds were not
+changed for this rerun. Cross-platform execution remains unverified.
+
 ## Next slice
 
-Address enge's rejection of zero-duration curved envelope phases, with focused
-tests for their actual semantics. Then rerun the unchanged fixtures and
-investigate the remaining reference differences. Curved nonzero-duration
-envelopes need their own behavior contract; this finding does not authorize a
-general envelope rewrite or an upstream patch.
+Establish the narrow native EventBinding profile needed for imported note
+velocity, then rerun these same fixtures. Keep unresolved binding kinds and
+nonzero-duration envelope curves rejected. Reference waveform/block differences
+still need investigation before claiming equivalence; no upstream patch is
+authorized by these findings.
 
 ## Additional work beyond the prompt
 
