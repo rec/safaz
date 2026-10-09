@@ -65,5 +65,9 @@ The manual [cross-platform workflow](.github/workflows/test.yml) checks both
 serial execution and four workers on Linux, Windows, and macOS.
 See [test performance](plan/parallelize.md) for measurements and worker choices.
 
+The optional [reference suite](reference_test/README.md) compares imported
+playback against a pinned, unmodified sfizz client. Its separate manual workflow
+preserves mismatches as failure evidence; it does not imply playback equivalence.
+
 The implementation and tests were extracted from uFor
 and recs; this project retains their MIT license and copyright notices.

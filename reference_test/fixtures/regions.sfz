@@ -1,0 +1,7 @@
+<control> set_cc7=127
+<global> loop_mode=one_shot pitch_keytrack=0 amp_veltrack=100 volume=0 pan=0
+ampeg_attack=0 ampeg_decay=0 ampeg_sustain=100 ampeg_release=0
+<region> sample=a.wav key=60
+<region> sample=b.wav key=61
+<region> sample=a.wav key=62 lovel=1 hivel=63
+<region> sample=b.wav key=62 lovel=64 hivel=127
