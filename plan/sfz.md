@@ -75,8 +75,14 @@ second-filter counterparts through the existing integer-key modulation model.
 The explicit `sfizz_rbj` choice remains required. Tracking is verified over
 each region's playable keys; unsupported amounts, controller voices without
 note keys, and cutoff values outside the unclamped output-rate bounds retain
-the static filter with located diagnostics. Velocity tracking remains deferred
-until its exponential response has an exact native representation.
+the static filter with located diagnostics. Velocity tracking now imports
+`fil_veltrack` and `fil2_veltrack` through generic positive-valued exponential
+routes in uFor, with matching array evaluation in enge. Signed integral depths
+use the exact continuous velocity ratio. Combined keyboard/velocity cutoffs
+outside the verified bounds diagnose both routes and retain the static filter.
+Controller and release-trigger velocity semantics remain diagnosed. Native
+consumers restricted to direct linear routes continue to reject exponential
+routes explicitly.
 The pinned SFZ v1/v2 registry classifies 453 opcodes and the standard headers,
 drives unsupported-feature diagnostics, and generates the
 [support table](../doc/sfz-support.md). SFZ 2 `#define` values expand
@@ -108,7 +114,7 @@ and playback.
 2. **Basic filters and their musical controls.** Cutoff and resonance have a
    large audible effect. The verified static two-pole response subset now
    imports with an explicit choice and filtering after amplitude. Next consider
-   velocity tracking and filter envelopes or LFOs; diagnose
+   filter envelopes or LFOs; diagnose
    responses that are not equivalent rather than approximating them.
 3. **Pitch bend and aftertouch.** These make an imported instrument expressive
    under performance. Define their transport-neutral event and binding rules,

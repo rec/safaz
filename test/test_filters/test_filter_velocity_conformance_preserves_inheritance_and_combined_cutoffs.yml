@@ -1,0 +1,72 @@
+- cutoffs:
+    filter-sfz-filter-1: 500.0
+    filter-sfz-filter-2: 400.0
+  key: 59
+  slot: region-1
+  velocity: 0
+- cutoffs:
+    filter-sfz-filter-1: 707.10678119
+    filter-sfz-filter-2: 282.84271247
+  key: 59
+  slot: region-1
+  velocity: 0.5
+- cutoffs:
+    filter-sfz-filter-1: 1000.0
+    filter-sfz-filter-2: 200.0
+  key: 59
+  slot: region-1
+  velocity: 1
+- cutoffs:
+    filter-sfz-filter-1: 1000.0
+    filter-sfz-filter-2: 400.0
+  key: 60
+  slot: region-1
+  velocity: 0
+- cutoffs:
+    filter-sfz-filter-1: 1414.21356237
+    filter-sfz-filter-2: 282.84271247
+  key: 60
+  slot: region-1
+  velocity: 0.5
+- cutoffs:
+    filter-sfz-filter-1: 2000.0
+    filter-sfz-filter-2: 200.0
+  key: 60
+  slot: region-1
+  velocity: 1
+- cutoffs:
+    filter-sfz-filter-1: 2000.0
+    filter-sfz-filter-2: 400.0
+  key: 61
+  slot: region-1
+  velocity: 0
+- cutoffs:
+    filter-sfz-filter-1: 2828.42712475
+    filter-sfz-filter-2: 282.84271247
+  key: 61
+  slot: region-1
+  velocity: 0.5
+- cutoffs:
+    filter-sfz-filter-1: 4000.0
+    filter-sfz-filter-2: 200.0
+  key: 61
+  slot: region-1
+  velocity: 1
+- cutoffs:
+    filter-sfz-filter-1: 1000.0
+    filter-sfz-filter-2: 400.0
+  key: 60
+  slot: region-2
+  velocity: 0
+- cutoffs:
+    filter-sfz-filter-1: 1000.0
+    filter-sfz-filter-2: 800.0
+  key: 60
+  slot: region-2
+  velocity: 0.5
+- cutoffs:
+    filter-sfz-filter-1: 1000.0
+    filter-sfz-filter-2: 1600.0
+  key: 60
+  slot: region-2
+  velocity: 1

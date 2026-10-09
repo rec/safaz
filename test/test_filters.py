@@ -161,7 +161,7 @@ def test_unsupported_filter_type_does_not_replace_a_supported_serial_filter(
     assert any(f.location.opcode == 'fil_type' for f in result.unimplemented)
 
 
-@pytest.mark.parametrize('opcode', ['cutoff_oncc1', 'fil_veltrack', 'fileg_depth'])
+@pytest.mark.parametrize('opcode', ['cutoff_oncc1', 'fil_random', 'fileg_depth'])
 def test_unsupported_modulation_retains_only_the_static_filter(opcode: str) -> None:
     result = _compile(
         f'<region> sample=audio/glass.wav cutoff=1000 {opcode}=1200',
@@ -410,6 +410,168 @@ def test_controller_filter_tracking_is_diagnosed_without_note_binding() -> None:
     assert not any(b.kind == 'key' for b in slot.bindings)
     assert any(
         f.location.opcode == 'fil_keytrack' and 'note key' in f.reason
+        for f in result.unimplemented
+    )
+
+
+@pytest.mark.parametrize('depth', [-9600, -1200, 0, 1200, 9600])
+@pytest.mark.parametrize('velocity', [0, 0.137, 0.5, 1])
+def test_filter_velocity_tracks_continuously_in_both_directions(
+    depth: int, velocity: float
+) -> None:
+    base = 256 if depth == -9600 else 64
+    result = _compile(
+        f'<region> sample=audio/glass.wav key=60 cutoff={base} fil_veltrack={depth}',
+        filter_response='sfizz_rbj',
+    )
+    assert result.complete
+    assert result.instrument is not None
+    slot = result.instrument.body.slots[0]
+    values = {
+        s.name: modulation.SourceValue(value=velocity if s.name == 'velocity' else 60)
+        for s in slot.modulation.sources
+    }
+    observed = modulation.evaluate(slot.modulation, values)
+    cutoff = next(
+        (v.value for v in observed if v.target.parameter == 'cutoff_hz'), base
+    )
+    assert cutoff == pytest.approx(base * 2 ** (depth * velocity / 1200))
+    assert sum(b.kind == 'velocity' for b in slot.bindings) == 1
+    tracked = [r for r in slot.modulation.routes if r.target.parameter == 'cutoff_hz']
+    assert len(tracked) == (depth != 0)
+    if tracked:
+        assert tracked[0].interpolation == modulation.Interpolation.exponential
+
+
+def test_filter_velocity_conformance_preserves_inheritance_and_combined_cutoffs(
+    data_regression: DataRegressionFixture,
+) -> None:
+    result = _compile(
+        Path('conformance/filter-velocity-tracking.sfz').read_text(),
+        filter_response='sfizz_rbj',
+    )
+    assert result.complete
+    assert result.instrument is not None
+    observed = []
+    for slot in result.instrument.body.slots:
+        for key in range(slot.mapping.lowest_key, slot.mapping.highest_key + 1):
+            for velocity in (0, 0.5, 1):
+                values = {
+                    s.name: modulation.SourceValue(
+                        value=key if s.name == 'key' else velocity
+                    )
+                    for s in slot.modulation.sources
+                }
+                cutoffs = {
+                    v.target.name: round(v.value, 8)
+                    for v in modulation.evaluate(slot.modulation, values)
+                    if v.target.parameter == 'cutoff_hz'
+                }
+                observed.append(
+                    {
+                        'slot': slot.name,
+                        'key': key,
+                        'velocity': velocity,
+                        'cutoffs': cutoffs,
+                    }
+                )
+        assert sum(b.kind == 'velocity' for b in slot.bindings) == 1
+    data_regression.check(observed)
+
+
+@pytest.mark.parametrize('cutoff,depth,key', [(6000, 1200, 61), (2, -1200, 59)])
+def test_combined_tracking_outside_bounds_diagnoses_both_and_retains_static(
+    cutoff: int,
+    depth: int,
+    key: int,
+) -> None:
+    result = _compile(
+        f'<region> sample=audio/glass.wav key={key} cutoff={cutoff} '
+        f'fil_keytrack=1200 fil_veltrack={depth}',
+        filter_response='sfizz_rbj',
+    )
+    assert not result.complete
+    assert result.instrument is not None
+    slot = result.instrument.body.slots[0]
+    assert slot.processing.filters[0].cutoff_hz == cutoff
+    assert not any(r.target.parameter == 'cutoff_hz' for r in slot.modulation.routes)
+    assert {f.location.opcode for f in result.unimplemented} == {
+        'fil_keytrack',
+        'fil_veltrack',
+    }
+    assert all('Combined' in f.reason for f in result.unimplemented)
+
+
+@pytest.mark.parametrize(
+    'declaration',
+    [
+        'fil_veltrack=9601',
+        'fil_veltrack=-9601',
+        'fil_veltrack=1200 trigger=release',
+        'fil_veltrack=1200 trigger=release_key',
+    ],
+)
+def test_unverified_velocity_tracking_retains_valid_keyboard_tracking(
+    declaration: str,
+) -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav key=60 cutoff=1000 fil_keytrack=100 '
+        + declaration,
+        filter_response='sfizz_rbj',
+    )
+    assert not result.complete
+    assert result.instrument is not None
+    tracked = [
+        r
+        for r in result.instrument.body.slots[0].modulation.routes
+        if r.target.parameter == 'cutoff_hz'
+    ]
+    assert [r.source for r in tracked] == ['key']
+    assert any(f.location.opcode == 'fil_veltrack' for f in result.unimplemented)
+
+
+@pytest.mark.parametrize('prefix', ['fil', 'fil2'])
+def test_malformed_filter_velocity_fails_explicitly(prefix: str) -> None:
+    with pytest.raises(ValueError, match=f'{prefix}_veltrack must be an integer'):
+        _compile(
+            f'<region> sample=audio/glass.wav {prefix}_veltrack=1.5',
+            filter_response='sfizz_rbj',
+        )
+
+
+def test_controller_filter_velocity_remains_diagnosed() -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav key=-1 loop_mode=one_shot '
+        'pitch_keytrack=0 amp_veltrack=0 on_locc1=1 on_hicc1=127 '
+        'cutoff=1000 fil_veltrack=1200',
+        filter_response='sfizz_rbj',
+    )
+    assert not result.complete
+    assert result.instrument is not None
+    slot = result.instrument.body.slots[0]
+    assert not any(b.kind == 'velocity' for b in slot.bindings)
+    assert any(
+        f.location.opcode == 'fil_veltrack' and 'controller-trigger' in f.reason
+        for f in result.unimplemented
+    )
+
+
+@pytest.mark.parametrize('rate,cutoff,depth', [(2000, 600, 1200), (48000, 1, -1200)])
+def test_velocity_cutoff_bounds_include_output_rate_and_lower_limit(
+    rate: int,
+    cutoff: int,
+    depth: int,
+) -> None:
+    result = _compile(
+        f'<region> sample=audio/glass.wav cutoff={cutoff} fil_veltrack={depth}',
+        filter_response='sfizz_rbj',
+        rate=rate,
+    )
+    assert not result.complete
+    assert result.instrument is not None
+    assert result.instrument.body.slots[0].processing.filters[0].cutoff_hz == cutoff
+    assert any(
+        f.location.opcode == 'fil_veltrack' and 'unclamped' in f.reason
         for f in result.unimplemented
     )
 

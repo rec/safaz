@@ -117,10 +117,30 @@ retain the static filter with a located diagnostic. No clamping is introduced.
 Malformed tracking or center values fail explicitly. A zero track value creates
 no route; changing its center does not change the cutoff.
 
+### Velocity tracking
+
+With `sfizz_rbj`, `fil_veltrack` and `fil2_veltrack` independently import
+integral depths from -9600 to 9600 cents, defaulting to zero. The continuous
+note velocity `v` in [0,1] multiplies the cutoff by `2^(depth*v/1200)`, following
+the same pinned sfizz filter setup. uFor's positive-valued `exponential`
+interpolation expresses this exactly with two ratio points; it does not
+quantize velocity to MIDI integers. Velocity binding is shared with other
+velocity-dependent settings. Zero depth creates no route.
+
+Keyboard and velocity ratios multiply. Bounds cover every playable key and
+the full native note-velocity domain [0,1], including output-rate limits.
+If individually valid routes exceed the cutoff limits when combined, both
+are diagnosed at their declarations and the static filter remains. An
+individually unsupported route is diagnosed without discarding another valid
+route. No player clamping is approximated. Malformed depths fail explicitly.
+Controller and release-triggered velocity tracking remain diagnosed because
+their velocity semantics are not verified. The
+[velocity fixture](../conformance/filter-velocity-tracking.sfz) demonstrates
+inherited, decreasing, combined, and zero-override tracking.
+
 Unsupported filter modulation retains its source diagnostic alongside any
 accepted static filter. Filter export, higher-order and alternate filter
-types, velocity tracking, controller modulation, envelopes, and LFOs
-remain unsupported. The [SFZ fixture](../conformance/filters.sfz) and
+types, controller modulation, envelopes, and LFOs remain unsupported. The [SFZ fixture](../conformance/filters.sfz) and
 [native filter settings](../conformance/filters.json) demonstrate inheritance
 and the static two-filter mapping without asserting complete playback equivalence.
 The [keyboard tracking fixture](../conformance/filter-key-tracking.sfz) covers
