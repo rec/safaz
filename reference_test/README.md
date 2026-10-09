@@ -96,4 +96,5 @@ alter gain, pitch, onset or source eligibility to ensure those errors are caught
 
 ## Additional work beyond the prompt
 
-None. Renderer repairs and an upstream float-output pull request are deferred.
+None. Event-binding support, nonzero-duration curved envelope support and an
+upstream float-output pull request remain separate future work.
