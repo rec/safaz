@@ -1,0 +1,5 @@
+<global> cutoff=1000 fil_keytrack=1200 fil_veltrack=1200
+fil2_type=hpf_2p cutoff2=400 fil2_veltrack=-1200
+<group> lokey=59 hikey=61
+<region> sample=audio/glass.wav
+<region> sample=audio/glass.wav key=60 fil_veltrack=0 fil2_veltrack=2400

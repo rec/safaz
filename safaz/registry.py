@@ -137,6 +137,10 @@ def support_table() -> str:
         '`fil_keytrack`/`fil_keycenter` and their second-filter counterparts '
         "map exact integer-key cutoff ratios over each region's playable keys. "
         'Tracking is 0-1200 cents per key, with center key 60 by default. '
+        '`fil_veltrack`/`fil2_veltrack` map exact continuous exponential velocity '
+        'ratios from -9600 to 9600 cents. Keyboard and velocity ratios multiply; '
+        'an out-of-range combination retains only the static filter. '
+        'Controller and release-trigger velocity tracking remain diagnosed. '
         'Unverified tracking and tracked cutoff outside the verified range '
         'retain the static filter with a diagnostic. '
         'Declared filters without cutoff, explicit zero, unsupported types, '
@@ -218,9 +222,11 @@ PARSABLE_OPCODES = {
     'fil_type',
     'fil_keytrack',
     'fil_keycenter',
+    'fil_veltrack',
     'fil2_type',
     'fil2_keytrack',
     'fil2_keycenter',
+    'fil2_veltrack',
     'group',
     'hichan',
     'hikey',
@@ -307,9 +313,11 @@ AMBIGUOUS_OPCODES = {
     'fil_type',
     'fil_keytrack',
     'fil_keycenter',
+    'fil_veltrack',
     'fil2_type',
     'fil2_keytrack',
     'fil2_keycenter',
+    'fil2_veltrack',
     'polyphony',
     'resonance',
     'resonance2',

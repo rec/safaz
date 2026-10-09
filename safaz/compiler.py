@@ -846,7 +846,7 @@ def _slot(
         )
         if r is not None
     ]
-    filter_parameters, filter_routes = _filter_key_modulation(
+    filter_parameters, filter_routes = _filter_tracking_modulation(
         values,
         declarations,
         filters,
@@ -856,7 +856,15 @@ def _slot(
         unimplemented,
     )
     parameters.extend(filter_parameters)
-    key_routes.extend(filter_routes)
+    key_routes.extend(r for r in filter_routes if r.source == 'key')
+    velocity_routes = [r for r in filter_routes if r.source == 'velocity']
+    if velocity_routes:
+        if not any(s.name == 'velocity' for s in sources):
+            sources.append(
+                modulation.Source(name='velocity', scope='voice', minimum=0, maximum=1)
+            )
+            bindings.append(processing.EventBinding(name='velocity', kind='velocity'))
+        routes.extend(velocity_routes)
     if key_routes:
         sources.append(
             modulation.Source(name='key', scope='voice', minimum=0, maximum=127)
@@ -1154,6 +1162,7 @@ def _filters(
         'resonance2',
         'fil2_keytrack',
         'fil2_keycenter',
+        'fil2_veltrack',
     )
     second_declared = any(n in values for n in second_names)
     for index, names in enumerate(
@@ -1161,9 +1170,9 @@ def _filters(
     ):
         type_name, cutoff_name, resonance_name = names
         tracking_names = (
-            ('fil_keytrack', 'fil_keycenter')
+            ('fil_keytrack', 'fil_keycenter', 'fil_veltrack')
             if index == 1
-            else ('fil2_keytrack', 'fil2_keycenter')
+            else ('fil2_keytrack', 'fil2_keycenter', 'fil2_veltrack')
         )
         filter_type = values.get(type_name, 'lpf_2p')
         cutoff = (
@@ -1221,7 +1230,7 @@ def _filters(
     return result
 
 
-def _filter_key_modulation(
+def _filter_tracking_modulation(
     values: dict[str, str],
     declarations: dict[str, ParsedOpcode],
     filters: list[processing.ResonantFilter],
@@ -1232,68 +1241,123 @@ def _filter_key_modulation(
 ) -> tuple[list[modulation.Parameter], list[modulation.Route]]:
     parameters: list[modulation.Parameter] = []
     routes: list[modulation.Route] = []
-    for index, names in enumerate(
-        [('fil_keytrack', 'fil_keycenter'), ('fil2_keytrack', 'fil2_keycenter')], 1
-    ):
-        track_name, center_name = names
+    upper = min(20_000, 0.999 * output_rate / 2)
+    for index, prefix in enumerate(('fil', 'fil2'), 1):
+        track_name, center_name = f'{prefix}_keytrack', f'{prefix}_keycenter'
+        velocity_name = f'{prefix}_veltrack'
         try:
             tracking = int(values.get(track_name, '0'))
         except ValueError:
             raise ValueError(f'{track_name} must be an integer') from None
         center = _key(values.get(center_name, '60'), center_name)
-        if tracking == 0:
-            continue
-        reason = None
-        if not 0 <= tracking <= 1200:
-            reason = (
-                'SFZ filter key tracking is outside the verified 0-1200 cents range'
-            )
-        elif control_triggered:
-            reason = (
-                'SFZ filter key tracking requires a note key, '
-                'absent on controller triggers'
-            )
+        try:
+            velocity = int(values.get(velocity_name, '0'))
+        except ValueError:
+            raise ValueError(f'{velocity_name} must be an integer') from None
         filter = next((f for f in filters if f.name == f'sfz-filter-{index}'), None)
-        if reason is None and filter is None:
-            continue
-        if reason is None and filter is not None:
-            points = [
-                modulation.Point(input=k, amount=2 ** (tracking * (k - center) / 1200))
-                for k in range(mapping.lowest_key, mapping.highest_key + 1)
-            ]
-            cutoffs = [filter.cutoff_hz * p.amount for p in points]
-            if any(not 1 <= c <= min(20_000, 0.999 * output_rate / 2) for c in cutoffs):
+        candidates: list[modulation.Route] = []
+        for name, amount, source in (
+            (track_name, tracking, 'key'),
+            (velocity_name, velocity, 'velocity'),
+        ):
+            if amount == 0:
+                continue
+            reason = None
+            if source == 'key' and not 0 <= amount <= 1200:
                 reason = (
+                    'SFZ filter key tracking is outside the verified 0-1200 cents range'
+                )
+            elif source == 'velocity' and not -9600 <= amount <= 9600:
+                reason = (
+                    'SFZ filter velocity tracking is outside the verified '
+                    '-9600-9600 cents range'
+                )
+            elif control_triggered:
+                reason = (
+                    'SFZ filter key tracking requires a note key, '
+                    'absent on controller triggers'
+                    if source == 'key'
+                    else 'SFZ filter velocity tracking has no verified '
+                    'controller-trigger velocity'
+                )
+            elif source == 'velocity' and values.get('trigger') in (
+                'release',
+                'release_key',
+            ):
+                reason = (
+                    'SFZ filter velocity tracking has no verified '
+                    'release-trigger velocity'
+                )
+            if reason is not None:
+                _add_unimplemented(unimplemented, declarations[name], reason)
+                continue
+            if filter is None:
+                continue
+            points = (
+                [
+                    modulation.Point(
+                        input=k, amount=2 ** (amount * (k - center) / 1200)
+                    )
+                    for k in range(mapping.lowest_key, mapping.highest_key + 1)
+                ]
+                if source == 'key'
+                else [
+                    modulation.Point(input=0, amount=1),
+                    modulation.Point(input=1, amount=2 ** (amount / 1200)),
+                ]
+            )
+            if any(not 1 <= filter.cutoff_hz * p.amount <= upper for p in points):
+                _add_unimplemented(
+                    unimplemented,
+                    declarations[name],
                     'SFZ tracked cutoff exceeds the verified unclamped filter range '
-                    'for a playable key at the output sample rate'
-                )
-            else:
-                target = modulation.Target(
-                    name=f'filter-{filter.name}', parameter='cutoff_hz'
-                )
-                parameters.append(
-                    modulation.Parameter(
-                        target=target,
-                        unit=modulation.Unit.hz,
-                        scope=Scope.voice,
-                        minimum=min(filter.cutoff_hz, *cutoffs),
-                        maximum=max(filter.cutoff_hz, *cutoffs),
-                        default=filter.cutoff_hz,
-                    )
-                )
-                routes.append(
-                    modulation.Route(
-                        name=f'key-{filter.name}-cutoff',
-                        source='key',
-                        target=target,
-                        operation=modulation.Operation.multiply,
-                        unit=modulation.Unit.ratio,
-                        points=points,
-                    )
+                    'for a playable key or note velocity at the output sample rate',
                 )
                 continue
-        if reason is not None:
-            _add_unimplemented(unimplemented, declarations[track_name], reason)
+            candidates.append(
+                modulation.Route(
+                    name=f'{source}-{filter.name}-cutoff',
+                    source=source,
+                    target=modulation.Target(
+                        name=f'filter-{filter.name}', parameter='cutoff_hz'
+                    ),
+                    operation=modulation.Operation.multiply,
+                    unit=modulation.Unit.ratio,
+                    points=points,
+                    interpolation=(
+                        modulation.Interpolation.linear
+                        if source == 'key'
+                        else modulation.Interpolation.exponential
+                    ),
+                )
+            )
+        if filter is None or not candidates:
+            continue
+        low = high = filter.cutoff_hz
+        for route in candidates:
+            low *= min(p.amount for p in route.points)
+            high *= max(p.amount for p in route.points)
+        if not 1 <= low <= high <= upper:
+            for route in candidates:
+                name = track_name if route.source == 'key' else velocity_name
+                _add_unimplemented(
+                    unimplemented,
+                    declarations[name],
+                    'Combined SFZ keyboard and velocity tracking exceeds the verified '
+                    'unclamped filter range; retaining only the static filter',
+                )
+            continue
+        parameters.append(
+            modulation.Parameter(
+                target=candidates[0].target,
+                unit=modulation.Unit.hz,
+                scope=Scope.voice,
+                minimum=min(filter.cutoff_hz, low),
+                maximum=max(filter.cutoff_hz, high),
+                default=filter.cutoff_hz,
+            )
+        )
+        routes.extend(candidates)
     return parameters, routes
 
 
