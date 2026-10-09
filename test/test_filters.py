@@ -1,10 +1,11 @@
 import json
+from fractions import Fraction
 from pathlib import Path
 from typing import Literal
 
 import pytest
 from pytest_regressions.data_regression import DataRegressionFixture
-from ufor import modulation
+from ufor import modulation, motion
 from ufor.samples import processing
 from ufor.samples.metadata import AudioMetadata
 from ufor.time import Rate, Timebase
@@ -576,10 +577,253 @@ def test_velocity_cutoff_bounds_include_output_rate_and_lower_limit(
     )
 
 
+@pytest.mark.parametrize('depth', [-1200, -333.5, 333.5, 1200])
+def test_filter_lfo_starts_zero_rising_and_maps_signed_depth(depth: float) -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav cutoff=1000 '
+        f'fillfo_freq=2 fillfo_depth={depth}',
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+    )
+    assert result.complete
+    assert result.instrument is not None
+    slot = result.instrument.body.slots[0]
+    oscillator = slot.motions['sfz-filter-lfo']
+    state = motion.initial_motion(oscillator, Fraction(0))
+    for at, triangle in [
+        (Fraction(0), 0),
+        (Fraction(1, 16), 0.5),
+        (Fraction(1, 8), 1),
+        (Fraction(1, 4), 0),
+        (Fraction(3, 8), -1),
+        (Fraction(1, 2), 0),
+    ]:
+        observation = motion.motion_at(oscillator, state, at)
+        assert observation.value == pytest.approx(triangle)
+        values = {
+            s.name: modulation.SourceValue(
+                value=observation.value if s.name == 'filter-lfo' else 1,
+                weight=observation.weight if s.name == 'filter-lfo' else 1,
+            )
+            for s in slot.modulation.sources
+        }
+        cutoff = next(
+            v.value
+            for v in modulation.evaluate(slot.modulation, values)
+            if v.target.parameter == 'cutoff_hz'
+        )
+        assert cutoff == pytest.approx(1000 * 2 ** (depth * triangle / 1200))
+    exported = exporter.write(result.instrument)
+    assert not exported.complete
+    assert any('motions' in f.reason.lower() for f in exported.unimplemented)
+
+
+def test_filter_lfo_requires_separate_explicit_acceptance() -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav cutoff=1000 fillfo_freq=2 fillfo_depth=1200',
+        filter_response='sfizz_rbj',
+    )
+    assert not result.complete
+    assert result.instrument is not None
+    assert result.instrument.body.slots[0].motions == {}
+    assert len(result.unimplemented) == 1
+    assert result.unimplemented[0].location.opcode == 'fillfo_depth'
+    assert 'filter_lfo_response="sfizz_triangle"' in result.unimplemented[0].reason
+
+
+@pytest.mark.parametrize(
+    'declaration',
+    [
+        'fillfo_delay=0.1',
+        'fillfo_fade=0.1',
+        'trigger=release',
+        'trigger=release_key',
+        'trigger=legato',
+        'fillfo_freq=21',
+        'fillfo_depth=1201',
+        'fillfo_depth=-1201',
+    ],
+)
+def test_unverified_filter_lfo_retains_valid_tracking(declaration: str) -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav key=60 cutoff=1000 fil_keytrack=100 '
+        'fillfo_freq=2 fillfo_depth=1200 ' + declaration,
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+    )
+    assert not result.complete
+    assert result.instrument is not None
+    slot = result.instrument.body.slots[0]
+    assert slot.motions == {}
+    assert any(
+        r.source == 'key' and r.target.parameter == 'cutoff_hz'
+        for r in slot.modulation.routes
+    )
+    assert any(f.location.opcode.startswith('fillfo_') for f in result.unimplemented)
+
+
+@pytest.mark.parametrize(
+    'declaration',
+    ['', 'fillfo_freq=0 fillfo_depth=1200', 'fillfo_freq=2 fillfo_depth=0'],
+)
+def test_inactive_filter_lfo_creates_no_motion(declaration: str) -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav cutoff=1000 ' + declaration,
+        filter_response='sfizz_rbj',
+    )
+    assert result.complete
+    assert result.instrument is not None
+    assert result.instrument.body.slots[0].motions == {}
+
+
+@pytest.mark.parametrize(
+    'opcode', ['fillfo_freq', 'fillfo_depth', 'fillfo_delay', 'fillfo_fade']
+)
+def test_malformed_filter_lfo_fails_explicitly(opcode: str) -> None:
+    with pytest.raises(ValueError):
+        _compile(f'<region> sample=audio/glass.wav {opcode}=oops')
+
+
+@pytest.mark.parametrize('cutoff,depth,key', [(3000, 1200, 61), (4, -1200, 59)])
+def test_filter_lfo_combination_diagnoses_all_cutoff_routes(
+    cutoff: int, depth: int, key: int
+) -> None:
+    result = _compile(
+        f'<region> sample=audio/glass.wav key={key} cutoff={cutoff} '
+        f'fil_keytrack=1200 fil_veltrack={depth} fillfo_freq=2 fillfo_depth=1200 '
+        'cutoff2=400 fil2_veltrack=-1200',
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+    )
+    assert not result.complete
+    assert result.instrument is not None
+    slot = result.instrument.body.slots[0]
+    assert slot.motions == {}
+    assert [
+        r.target.name
+        for r in slot.modulation.routes
+        if r.target.parameter == 'cutoff_hz'
+    ] == ['filter-sfz-filter-2']
+    assert {f.location.opcode for f in result.unimplemented} == {
+        'fil_keytrack',
+        'fil_veltrack',
+        'fillfo_depth',
+    }
+    assert all('Combined' in f.reason for f in result.unimplemented)
+
+
+def test_filter_lfo_controller_trigger_remains_diagnosed() -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav key=-1 loop_mode=one_shot '
+        'pitch_keytrack=0 amp_veltrack=0 on_locc1=1 on_hicc1=127 '
+        'cutoff=1000 fillfo_freq=2 fillfo_depth=1200',
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+    )
+    assert not result.complete
+    assert result.instrument is not None
+    assert result.instrument.body.slots[0].motions == {}
+    assert any(
+        f.location.opcode == 'fillfo_depth' and 'note-on' in f.reason
+        for f in result.unimplemented
+    )
+
+
+def test_filter_lfo_conformance_preserves_inheritance_and_first_filter_target(
+    data_regression: DataRegressionFixture,
+) -> None:
+    result = _compile(
+        Path('conformance/filter-lfo.sfz').read_text(),
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+    )
+    assert result.complete
+    assert result.instrument is not None
+    observed = []
+    for slot in result.instrument.body.slots:
+        for at in (Fraction(0), Fraction(1, 8), Fraction(3, 8)):
+            oscillator = slot.motions['sfz-filter-lfo']
+            observation = motion.motion_at(
+                oscillator, motion.initial_motion(oscillator, Fraction(0)), at
+            )
+            values = {
+                s.name: modulation.SourceValue(
+                    value=observation.value
+                    if s.name == 'filter-lfo'
+                    else 61
+                    if s.name == 'key'
+                    else 0.5
+                )
+                for s in slot.modulation.sources
+            }
+            resolved = {
+                v.target.name: round(v.value, 8)
+                for v in modulation.evaluate(slot.modulation, values)
+                if v.target.parameter == 'cutoff_hz'
+            }
+            observed.append({'slot': slot.name, 'at': str(at), 'cutoffs': resolved})
+        assert all(
+            r.target.name == 'filter-sfz-filter-1'
+            for r in slot.modulation.routes
+            if r.source == 'filter-lfo'
+        )
+    data_regression.check(observed)
+
+
+@pytest.mark.parametrize('rate,cutoff', [(2000, 600), (48000, 1), (48000, 12000)])
+def test_filter_lfo_cutoff_bounds_retain_the_static_filter(
+    rate: int, cutoff: int
+) -> None:
+    result = _compile(
+        f'<region> sample=audio/glass.wav cutoff={cutoff} '
+        'fillfo_freq=2 fillfo_depth=1200',
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+        rate=rate,
+    )
+    assert not result.complete
+    assert result.instrument is not None
+    slot = result.instrument.body.slots[0]
+    assert slot.processing.filters[0].cutoff_hz == cutoff
+    assert slot.motions == {}
+    assert any(
+        f.location.opcode == 'fillfo_depth' and 'unclamped' in f.reason
+        for f in result.unimplemented
+    )
+
+
+def test_filter_lfo_acceptance_does_not_accept_the_static_response() -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav cutoff=1000 fillfo_freq=2 fillfo_depth=1200',
+        filter_lfo_response='sfizz_triangle',
+    )
+    assert not result.complete
+    assert result.instrument is not None
+    assert result.instrument.body.slots[0].processing.filters == []
+    assert result.instrument.body.slots[0].motions == {}
+    assert any('filter_response="sfizz_rbj"' in f.reason for f in result.unimplemented)
+
+
+def test_filter_lfo_without_explicit_cutoff_remains_diagnosed() -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav fillfo_freq=2 fillfo_depth=1200',
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+    )
+    assert not result.complete
+    assert any('no explicit cutoff' in f.reason for f in result.unimplemented)
+
+
+def test_unknown_filter_lfo_response_fails_explicitly() -> None:
+    with pytest.raises(ValueError, match='Unknown SFZ filter LFO response'):
+        _compile('<region> sample=audio/glass.wav', filter_lfo_response='unknown')
+
+
 def _compile(
     text: str,
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
     rate: int = 48_000,
+    filter_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
 ) -> SfzCompileResult:
     return compiler.compile_instrument(
         parser.parse(text),
@@ -599,4 +843,5 @@ def _compile(
         output_timebase=Timebase(name='output', rate=Rate(numerator=rate)),
         output_channels=['left', 'right'],
         filter_response=filter_response,
+        filter_lfo_response=filter_lfo_response,
     )
