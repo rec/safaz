@@ -83,6 +83,12 @@ outside the verified bounds diagnose both routes and retain the static filter.
 Controller and release-trigger velocity semantics remain diagnosed. Native
 consumers restricted to direct linear routes continue to reject exponential
 routes explicitly.
+Basic first-filter LFOs now import fixed frequency and signed depth with a
+separate `filter_lfo_response="sfizz_triangle"` choice. They reuse a voice-local
+native triangle at quarter-cycle phase and an exponential cutoff ratio.
+Combined tracking/LFO bounds diagnose all active cutoff routes on the affected
+filter. Delay, fade, nonordinary triggers, richer LFOs, and export remain
+diagnosed; no native model or engine changes were needed.
 The pinned SFZ v1/v2 registry classifies 453 opcodes and the standard headers,
 drives unsupported-feature diagnostics, and generates the
 [support table](../doc/sfz-support.md). SFZ 2 `#define` values expand
@@ -114,7 +120,7 @@ and playback.
 2. **Basic filters and their musical controls.** Cutoff and resonance have a
    large audible effect. The verified static two-pole response subset now
    imports with an explicit choice and filtering after amplitude. Next consider
-   filter envelopes or LFOs; diagnose
+   filter envelopes and LFO delay/fade semantics; diagnose
    responses that are not equivalent rather than approximating them.
 3. **Pitch bend and aftertouch.** These make an imported instrument expressive
    under performance. Define their transport-neutral event and binding rules,

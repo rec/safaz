@@ -138,9 +138,42 @@ their velocity semantics are not verified. The
 [velocity fixture](../conformance/filter-velocity-tracking.sfz) demonstrates
 inherited, decreasing, combined, and zero-override tracking.
 
+### Basic filter LFO
+
+Import additionally requires `filter_lfo_response="sfizz_triangle"` alongside
+`filter_response="sfizz_rbj"`. This separate choice accepts the pinned sfizz
+[LFO waveform and phase](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/LFO.cpp)
+and [default triangle](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Defaults.cpp),
+not other players' LFO behavior. Both `compile_instrument` and `read` expose it.
+
+`fillfo_freq` imports fixed frequency from 0 to 20 Hz; `fillfo_depth` imports
+signed depth from -1200 to 1200 cents. Both default to zero, which makes the
+LFO inactive without creating a motion. Active LFOs use a voice-local native
+triangle at phase 1/4, starting at zero rising. Negative depth inverts its
+cutoff effect. The cutoff ratio is `2^(depth * triangle / 1200)`, represented
+by a positive exponential route. Each new ordinary note-on voice starts its
+own oscillator; it runs through release until that voice finishes.
+
+Only the first filter is targeted, following the pinned sfizz legacy
+[opcode mapping](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Region.cpp).
+LFO, keyboard, and velocity ratios multiply. Bounds cover the full oscillation,
+playable keys, and native velocity domain. An individually unsupported LFO
+retains valid tracking; a combined out-of-range result diagnoses every active
+cutoff route on that filter and retains its static settings. The second filter
+remains independent. See the [inheritance fixture](../conformance/filter-lfo.sfz).
+
+Nonzero `fillfo_delay` and `fillfo_fade` remain diagnosed: sfizz pauses phase
+during delay and scales the oscillator before the cents-to-ratio conversion,
+whereas the native cycle advances phase during delay and applies activation
+weight after mapping. Controller and nonordinary note triggers, SFZ 2 LFOs,
+controller/aftertouch modulation, and export remain diagnosed. Malformed or
+nonfinite numbers fail explicitly; values outside the verified ranges are
+diagnosed without clamping. This profile asserts mathematical waveform and
+mapping semantics, not bit-identical floating-point playback.
+
 Unsupported filter modulation retains its source diagnostic alongside any
 accepted static filter. Filter export, higher-order and alternate filter
-types, controller modulation, envelopes, and LFOs remain unsupported. The [SFZ fixture](../conformance/filters.sfz) and
+types, controller modulation, envelopes, and richer LFO behavior remain unsupported. The [SFZ fixture](../conformance/filters.sfz) and
 [native filter settings](../conformance/filters.json) demonstrate inheritance
 and the static two-filter mapping without asserting complete playback equivalence.
 The [keyboard tracking fixture](../conformance/filter-key-tracking.sfz) covers
