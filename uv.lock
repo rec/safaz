@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.13"
 
 [options]
-exclude-newer = "2026-10-02T17:32:33.732771Z"
+exclude-newer = "2026-10-03T15:51:03.911236Z"
 exclude-newer-span = "P1W"
 
 [manifest]
@@ -510,7 +510,7 @@ wheels = [
 
 [[package]]
 name = "safaz"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
