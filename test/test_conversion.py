@@ -690,11 +690,28 @@ def test_sfz_rejects_velocity_gain_outside_its_representable_domain() -> None:
     assert 'amp_velcurve_127=2' not in result.contents
 
 
+@pytest.mark.parametrize(
+    'changes',
+    [
+        {'initial': 'current'},
+        {'start': 'event'},
+        {'playback': 'loop'},
+        {'markers': [{'name': 'peak', 'position': '1/2'}]},
+    ],
+)
+def test_sfz_reports_unrepresentable_shared_envelope_features(
+    changes: dict[str, object],
+) -> None:
+    raw = fixture()
+    raw['body']['slots'][0]['envelope'].update(changes)
+    result = exporter.write(SampleInstrumentScore.model_validate(raw))
+    assert not result.complete
+    assert 'body.slots[0].envelope' in [i.location.path for i in result.unimplemented]
+
+
 def test_sfz_generator_diagnostics_use_dictionary_paths() -> None:
     raw = fixture()
-    raw['body']['slots'][0]['envelfos'] = {
-        'vibrato': {'body': {'kind': 'lfo', 'rate': 5}}
-    }
+    raw['body']['slots'][0]['envelfos'] = {'vibrato': {'kind': 'lfo', 'rate': 5}}
     result = exporter.write(SampleInstrumentScore.model_validate(raw))
     assert not result.complete
     assert result.unimplemented[0].location.path == 'body.slots[0].envelfos.vibrato'

@@ -5,7 +5,7 @@ from math import isfinite
 from pathlib import PurePosixPath
 from typing import Literal
 
-from ufor import envelfo, envelope, modulation, segments
+from ufor import envelfo, modulation, segments
 from ufor.assets import AudioDescription, ContentIdentity, RelativeFileLocation
 from ufor.control import Scope
 from ufor.interface import AudioBinding, EventType, Input, Output, PerformanceBinding
@@ -503,7 +503,7 @@ def _midi_binding(
     )
 
 
-def amplitude_envelope(values: dict[str, str]) -> envelope.VoiceEnvelope:
+def amplitude_envelope(values: dict[str, str]) -> envelfo.Envelope:
     """Translate SFZ's DAHDSR vocabulary into the one shared segment model."""
     start = _number(values.get('ampeg_start', '0'), 'ampeg_start') / 100
     if not 0 <= start <= 1:
@@ -513,7 +513,7 @@ def amplitude_envelope(values: dict[str, str]) -> envelope.VoiceEnvelope:
         for n in ('delay', 'attack', 'hold', 'decay')
     ]
     sustain = _number(values.get('ampeg_sustain', '100'), 'ampeg_sustain') / 100
-    return envelope.VoiceEnvelope(
+    return envelfo.Envelope(
         initial=start,
         segments=[
             segments.Segment(duration=d, to=t, curve=c)
@@ -864,12 +864,10 @@ def _slot(
     parameters.extend(filter_parameters)
     if lfo_routes := [r for r in filter_routes if r.source == 'filter-lfo']:
         kwargs['envelfos'] = {
-            'sfz-filter-lfo': envelfo.EnveLFO(
-                body=envelfo.LFO(
-                    shape='triangle',
-                    rate=Fraction(values['fillfo_freq']),
-                    phase=Fraction(1, 4),
-                ),
+            'sfz-filter-lfo': envelfo.LFO(
+                shape='triangle',
+                rate=Fraction(values['fillfo_freq']),
+                phase=Fraction(1, 4),
             )
         }
         sources.append(
@@ -1698,7 +1696,7 @@ def _velocity_pitch_modulation(values: dict[str, str]) -> modulation.Route | Non
 
 
 def _velocity_envelope_durations(
-    values: dict[str, str], definition: envelope.VoiceEnvelope
+    values: dict[str, str], definition: envelfo.Envelope
 ) -> list[tuple[str, float, float]]:
     result: list[tuple[str, float, float]] = []
     for name, phase, index in (
