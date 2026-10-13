@@ -3,11 +3,11 @@ revision = 3
 requires-python = ">=3.13"
 
 [options]
-exclude-newer = "2026-10-06T14:20:11.241853Z"
+exclude-newer = "2026-10-06T14:48:06.433998Z"
 exclude-newer-span = "P1W"
 
 [manifest]
-overrides = [{ name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=a8a52f26adb30864050fbd02329d333969503b1a" }]
+overrides = [{ name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=3e40d778c0a077db9856f0757e6428298bb075b6" }]
 
 [[package]]
 name = "annotated-types"
@@ -112,7 +112,7 @@ wheels = [
 [[package]]
 name = "enge"
 version = "0.2.0"
-source = { git = "ssh://git@github.com/rec/enge.git?rev=6b0fece2fb17565b9ce919f68d6591ba3ee61c63#6b0fece2fb17565b9ce919f68d6591ba3ee61c63" }
+source = { git = "ssh://git@github.com/rec/enge.git?rev=8bef09f941d511cf4e25290b733e78b0e7fe4d88#8bef09f941d511cf4e25290b733e78b0e7fe4d88" }
 dependencies = [
     { name = "envelfo" },
     { name = "mido" },
@@ -126,7 +126,7 @@ dependencies = [
 [[package]]
 name = "envelfo"
 version = "0.1.0"
-source = { git = "ssh://git@github.com/rec/envelfo.git?branch=main#c252c11fbfa1d5f347a50d71cf43ff9ccca39c5d" }
+source = { git = "ssh://git@github.com/rec/envelfo.git?branch=main#055202d185677fda08a37797a9e29bb95dad5f52" }
 dependencies = [
     { name = "ufor" },
 ]
@@ -547,7 +547,7 @@ reference = [
 requires-dist = [
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "soundfile" },
-    { name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=a8a52f26adb30864050fbd02329d333969503b1a" },
+    { name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=3e40d778c0a077db9856f0757e6428298bb075b6" },
 ]
 
 [package.metadata.requires-dev]
@@ -561,7 +561,7 @@ dev = [
     { name = "ty" },
 ]
 reference = [
-    { name = "enge", git = "ssh://git@github.com/rec/enge.git?rev=6b0fece2fb17565b9ce919f68d6591ba3ee61c63" },
+    { name = "enge", git = "ssh://git@github.com/rec/enge.git?rev=8bef09f941d511cf4e25290b733e78b0e7fe4d88" },
     { name = "mido" },
     { name = "numpy" },
 ]
@@ -689,7 +689,7 @@ wheels = [
 [[package]]
 name = "ufor"
 version = "0.2.0"
-source = { git = "ssh://git@github.com/rec/ufor.git?rev=a8a52f26adb30864050fbd02329d333969503b1a#a8a52f26adb30864050fbd02329d333969503b1a" }
+source = { git = "ssh://git@github.com/rec/ufor.git?rev=3e40d778c0a077db9856f0757e6428298bb075b6#3e40d778c0a077db9856f0757e6428298bb075b6" }
 dependencies = [
     { name = "pydantic" },
     { name = "reccy" },
