@@ -3,7 +3,7 @@
 import json
 import math
 
-from ufor import base, envelope, modulation
+from ufor import base, envelfo, envelope, modulation
 from ufor.assets import RelativeFileLocation
 from ufor.control import Clock, Scope
 from ufor.samples import controls, crossfade, enums, playback, processing, selection
@@ -671,10 +671,16 @@ def _envelope_opcodes(
         f'{path}.envelope' if slot.envelope is not None else 'body.settings.envelope'
     )
     segments = value.segments
+    initial = value.initial
     representable = (
         value.clock == Clock.seconds
         and value.scope == Scope.voice
-        and 0 <= value.initial <= 1
+        and isinstance(initial, float)
+        and 0 <= initial <= 1
+        and value.start == 'activation'
+        and value.playback == envelfo.PlaybackMode.once
+        and value.position_driver == envelfo.PositionDriver.elapsed
+        and not value.markers
         and value.hold
         and value.retrigger == envelope.Retrigger.current
         and len(segments) == 4
@@ -696,6 +702,7 @@ def _envelope_opcodes(
             'with linear attack and exponential decay/release',
         )
         return []
+    assert isinstance(initial, float)
     values = dict(
         zip(
             ('ampeg_delay', 'ampeg_attack', 'ampeg_hold', 'ampeg_decay'),
@@ -704,8 +711,8 @@ def _envelope_opcodes(
         )
     )
     values['ampeg_sustain'] = segments[-1].to * 100
-    if value.initial:
-        values['ampeg_start'] = value.initial * 100
+    if initial:
+        values['ampeg_start'] = initial * 100
     values['ampeg_release'] = float(value.release[0].duration)
     return [Opcode(name=n, value=_number_text(v)) for n, v in values.items()]
 
