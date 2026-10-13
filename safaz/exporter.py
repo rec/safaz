@@ -156,12 +156,12 @@ def _sound_issues(
             value,
             'Instrument equalizer bands have no implemented SFZ conversion',
         )
-    for name, value in settings.motions.items():
+    for name, value in settings.envelfos.items():
         _issue(
             issues,
-            f'{path}.motions.{name}',
+            f'{path}.envelfos.{name}',
             value,
-            'Instrument motions have no implemented SFZ conversion',
+            'Instrument envelfos have no implemented SFZ conversion',
         )
     for i, value in enumerate(settings.modulation.routes):
         _issue(
@@ -866,12 +866,12 @@ def _slot_issues(
             condition,
             'Control conditions require an external SFZ controller binding',
         )
-    for name, value in slot.motions.items():
+    for name, value in slot.envelfos.items():
         _issue(
             issues,
-            f'{path}.motions.{name}',
+            f'{path}.envelfos.{name}',
             value,
-            'Instrument motions have no implemented SFZ conversion',
+            'Instrument envelfos have no implemented SFZ conversion',
         )
 
 

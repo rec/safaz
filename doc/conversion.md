@@ -148,7 +148,7 @@ not other players' LFO behavior. Both `compile_instrument` and `read` expose it.
 
 `fillfo_freq` imports fixed frequency from 0 to 20 Hz; `fillfo_depth` imports
 signed depth from -1200 to 1200 cents. Both default to zero, which makes the
-LFO inactive without creating a motion. Active LFOs use a voice-local native
+LFO inactive without creating a envelfo. Active LFOs use a voice-local native
 triangle at phase 1/4, starting at zero rising. Negative depth inverts its
 cutoff effect. The cutoff ratio is `2^(depth * triangle / 1200)`, represented
 by a positive exponential route. Each new ordinary note-on voice starts its

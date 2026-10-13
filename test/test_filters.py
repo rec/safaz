@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import Literal
 
 import pytest
+from envelfo.runtime import envelfo_at, initial_envelfo
 from pytest_regressions.data_regression import DataRegressionFixture
-from ufor import modulation, motion
+from ufor import modulation
 from ufor.samples import processing
 from ufor.samples.metadata import AudioMetadata
 from ufor.time import Rate, Timebase
@@ -588,8 +589,8 @@ def test_filter_lfo_starts_zero_rising_and_maps_signed_depth(depth: float) -> No
     assert result.complete
     assert result.instrument is not None
     slot = result.instrument.body.slots[0]
-    oscillator = slot.motions['sfz-filter-lfo']
-    state = motion.initial_motion(oscillator, Fraction(0))
+    oscillator = slot.envelfos['sfz-filter-lfo']
+    state = initial_envelfo(oscillator, Fraction(0))
     for at, triangle in [
         (Fraction(0), 0),
         (Fraction(1, 16), 0.5),
@@ -598,7 +599,7 @@ def test_filter_lfo_starts_zero_rising_and_maps_signed_depth(depth: float) -> No
         (Fraction(3, 8), -1),
         (Fraction(1, 2), 0),
     ]:
-        observation = motion.motion_at(oscillator, state, at)
+        observation = envelfo_at(oscillator, state, at)
         assert observation.value == pytest.approx(triangle)
         values = {
             s.name: modulation.SourceValue(
@@ -615,7 +616,7 @@ def test_filter_lfo_starts_zero_rising_and_maps_signed_depth(depth: float) -> No
         assert cutoff == pytest.approx(1000 * 2 ** (depth * triangle / 1200))
     exported = exporter.write(result.instrument)
     assert not exported.complete
-    assert any('motions' in f.reason.lower() for f in exported.unimplemented)
+    assert any('envelfos' in f.reason.lower() for f in exported.unimplemented)
 
 
 def test_filter_lfo_requires_separate_explicit_acceptance() -> None:
@@ -625,7 +626,7 @@ def test_filter_lfo_requires_separate_explicit_acceptance() -> None:
     )
     assert not result.complete
     assert result.instrument is not None
-    assert result.instrument.body.slots[0].motions == {}
+    assert result.instrument.body.slots[0].envelfos == {}
     assert len(result.unimplemented) == 1
     assert result.unimplemented[0].location.opcode == 'fillfo_depth'
     assert 'filter_lfo_response="sfizz_triangle"' in result.unimplemented[0].reason
@@ -654,7 +655,7 @@ def test_unverified_filter_lfo_retains_valid_tracking(declaration: str) -> None:
     assert not result.complete
     assert result.instrument is not None
     slot = result.instrument.body.slots[0]
-    assert slot.motions == {}
+    assert slot.envelfos == {}
     assert any(
         r.source == 'key' and r.target.parameter == 'cutoff_hz'
         for r in slot.modulation.routes
@@ -666,14 +667,14 @@ def test_unverified_filter_lfo_retains_valid_tracking(declaration: str) -> None:
     'declaration',
     ['', 'fillfo_freq=0 fillfo_depth=1200', 'fillfo_freq=2 fillfo_depth=0'],
 )
-def test_inactive_filter_lfo_creates_no_motion(declaration: str) -> None:
+def test_inactive_filter_lfo_creates_no_envelfo(declaration: str) -> None:
     result = _compile(
         '<region> sample=audio/glass.wav cutoff=1000 ' + declaration,
         filter_response='sfizz_rbj',
     )
     assert result.complete
     assert result.instrument is not None
-    assert result.instrument.body.slots[0].motions == {}
+    assert result.instrument.body.slots[0].envelfos == {}
 
 
 @pytest.mark.parametrize(
@@ -698,7 +699,7 @@ def test_filter_lfo_combination_diagnoses_all_cutoff_routes(
     assert not result.complete
     assert result.instrument is not None
     slot = result.instrument.body.slots[0]
-    assert slot.motions == {}
+    assert slot.envelfos == {}
     assert [
         r.target.name
         for r in slot.modulation.routes
@@ -722,7 +723,7 @@ def test_filter_lfo_controller_trigger_remains_diagnosed() -> None:
     )
     assert not result.complete
     assert result.instrument is not None
-    assert result.instrument.body.slots[0].motions == {}
+    assert result.instrument.body.slots[0].envelfos == {}
     assert any(
         f.location.opcode == 'fillfo_depth' and 'note-on' in f.reason
         for f in result.unimplemented
@@ -742,9 +743,9 @@ def test_filter_lfo_conformance_preserves_inheritance_and_first_filter_target(
     observed = []
     for slot in result.instrument.body.slots:
         for at in (Fraction(0), Fraction(1, 8), Fraction(3, 8)):
-            oscillator = slot.motions['sfz-filter-lfo']
-            observation = motion.motion_at(
-                oscillator, motion.initial_motion(oscillator, Fraction(0)), at
+            oscillator = slot.envelfos['sfz-filter-lfo']
+            observation = envelfo_at(
+                oscillator, initial_envelfo(oscillator, Fraction(0)), at
             )
             values = {
                 s.name: modulation.SourceValue(
@@ -785,7 +786,7 @@ def test_filter_lfo_cutoff_bounds_retain_the_static_filter(
     assert result.instrument is not None
     slot = result.instrument.body.slots[0]
     assert slot.processing.filters[0].cutoff_hz == cutoff
-    assert slot.motions == {}
+    assert slot.envelfos == {}
     assert any(
         f.location.opcode == 'fillfo_depth' and 'unclamped' in f.reason
         for f in result.unimplemented
@@ -800,7 +801,7 @@ def test_filter_lfo_acceptance_does_not_accept_the_static_response() -> None:
     assert not result.complete
     assert result.instrument is not None
     assert result.instrument.body.slots[0].processing.filters == []
-    assert result.instrument.body.slots[0].motions == {}
+    assert result.instrument.body.slots[0].envelfos == {}
     assert any('filter_response="sfizz_rbj"' in f.reason for f in result.unimplemented)
 
 
