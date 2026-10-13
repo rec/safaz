@@ -864,7 +864,7 @@ def _slot(
     parameters.extend(filter_parameters)
     if lfo_routes := [r for r in filter_routes if r.source == 'filter-lfo']:
         kwargs['envelfos'] = {
-            'sfz-filter-lfo': envelfo.EnvelfoUse(
+            'sfz-filter-lfo': envelfo.EnveLFO(
                 body=envelfo.LFO(
                     shape='triangle',
                     rate=Fraction(values['fillfo_freq']),
