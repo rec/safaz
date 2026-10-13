@@ -503,7 +503,7 @@ def _midi_binding(
     )
 
 
-def amplitude_envelope(values: dict[str, str]) -> envelope.Envelope:
+def amplitude_envelope(values: dict[str, str]) -> envelope.VoiceEnvelope:
     """Translate SFZ's DAHDSR vocabulary into the one shared segment model."""
     start = _number(values.get('ampeg_start', '0'), 'ampeg_start') / 100
     if not 0 <= start <= 1:
@@ -513,7 +513,7 @@ def amplitude_envelope(values: dict[str, str]) -> envelope.Envelope:
         for n in ('delay', 'attack', 'hold', 'decay')
     ]
     sustain = _number(values.get('ampeg_sustain', '100'), 'ampeg_sustain') / 100
-    return envelope.Envelope(
+    return envelope.VoiceEnvelope(
         initial=start,
         segments=[
             segments.Segment(duration=d, to=t, curve=c)
@@ -1698,7 +1698,7 @@ def _velocity_pitch_modulation(values: dict[str, str]) -> modulation.Route | Non
 
 
 def _velocity_envelope_durations(
-    values: dict[str, str], definition: envelope.Envelope
+    values: dict[str, str], definition: envelope.VoiceEnvelope
 ) -> list[tuple[str, float, float]]:
     result: list[tuple[str, float, float]] = []
     for name, phase, index in (
