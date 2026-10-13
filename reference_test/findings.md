@@ -80,7 +80,7 @@ on rerun. Ruff, formatting, type checking and pyupgrade checks pass.
 
 safaz's 334 unit tests pass with the new pins. The unchanged reference fixtures
 still report **4 passed, 9 failed**, but the eight native preparation failures
-are now `Only control and motion bindings are implemented`. Imported velocity
+are now `Only control and envelfo bindings are implemented`. Imported velocity
 uses an EventBinding, which enge does not yet consume. Complete import and
 authored region selection continue to pass; native audio remains unavailable.
 

@@ -5,7 +5,7 @@ from math import isfinite
 from pathlib import PurePosixPath
 from typing import Literal
 
-from ufor import envelope, modulation, motion, segments
+from ufor import envelfo, envelope, modulation, segments
 from ufor.assets import AudioDescription, ContentIdentity, RelativeFileLocation
 from ufor.control import Scope
 from ufor.interface import AudioBinding, EventType, Input, Output, PerformanceBinding
@@ -863,9 +863,9 @@ def _slot(
     )
     parameters.extend(filter_parameters)
     if lfo_routes := [r for r in filter_routes if r.source == 'filter-lfo']:
-        kwargs['motions'] = {
-            'sfz-filter-lfo': motion.MotionUse(
-                body=motion.Cycle(
+        kwargs['envelfos'] = {
+            'sfz-filter-lfo': envelfo.EnvelfoUse(
+                body=envelfo.LFO(
                     shape='triangle',
                     rate=Fraction(values['fillfo_freq']),
                     phase=Fraction(1, 4),

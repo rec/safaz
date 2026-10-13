@@ -1025,5 +1025,5 @@ def test_read_sfz_imports_explicitly_accepted_filter_lfo(tmp_path: Path) -> None
     assert result.complete
     assert result.instrument is not None
     slot = result.instrument.body.slots[0]
-    assert 'sfz-filter-lfo' in slot.motions
+    assert 'sfz-filter-lfo' in slot.envelfos
     assert any(r.source == 'filter-lfo' for r in slot.modulation.routes)

@@ -692,12 +692,12 @@ def test_sfz_rejects_velocity_gain_outside_its_representable_domain() -> None:
 
 def test_sfz_generator_diagnostics_use_dictionary_paths() -> None:
     raw = fixture()
-    raw['body']['slots'][0]['motions'] = {
-        'vibrato': {'body': {'kind': 'cycle', 'rate': 5}}
+    raw['body']['slots'][0]['envelfos'] = {
+        'vibrato': {'body': {'kind': 'lfo', 'rate': 5}}
     }
     result = exporter.write(SampleInstrumentScore.model_validate(raw))
     assert not result.complete
-    assert result.unimplemented[0].location.path == 'body.slots[0].motions.vibrato'
+    assert result.unimplemented[0].location.path == 'body.slots[0].envelfos.vibrato'
 
 
 def test_sfz_export_resolves_group_processing() -> None:
