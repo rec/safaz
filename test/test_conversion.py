@@ -697,6 +697,8 @@ def test_sfz_rejects_velocity_gain_outside_its_representable_domain() -> None:
         {'start': 'event'},
         {'playback': 'loop'},
         {'markers': [{'name': 'peak', 'position': '1/2'}]},
+        {'segments': [{'duration': None}]},
+        {'release': [{'duration': None}]},
     ],
 )
 def test_sfz_reports_unrepresentable_shared_envelope_features(

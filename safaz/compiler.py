@@ -1710,7 +1710,9 @@ def _velocity_envelope_durations(
         if opcode not in values:
             continue
         segments = definition.segments if phase == 'on' else definition.release
-        base = float(segments[index].duration)
+        duration = segments[index].duration
+        assert duration is not None
+        base = float(duration)
         amount = _number(values[opcode], opcode)
         if not -100 <= amount <= 100:
             raise ValueError(f'{opcode} must be between -100 and 100')
