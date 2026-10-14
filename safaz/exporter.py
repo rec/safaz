@@ -3,7 +3,7 @@
 import json
 import math
 
-from ufor import base, envelfo, envelope, modulation
+from ufor import base, envelfo, envelope, modulation, segments
 from ufor.assets import RelativeFileLocation
 from ufor.control import Clock, Scope
 from ufor.samples import controls, crossfade, enums, playback, processing, selection
@@ -670,7 +670,8 @@ def _envelope_opcodes(
     envelope_path = (
         f'{path}.envelope' if slot.envelope is not None else 'body.settings.envelope'
     )
-    segments = value.segments
+    finite = [s for s in value.segments if isinstance(s, segments.Segment)]
+    release = [s for s in value.release if isinstance(s, segments.Segment)]
     initial = value.initial
     representable = (
         value.clock == Clock.seconds
@@ -683,15 +684,15 @@ def _envelope_opcodes(
         and not value.markers
         and value.hold
         and value.retrigger == envelope.Retrigger.current
-        and len(segments) == 4
-        and len(value.release) == 1
+        and len(finite) == len(value.segments) == 4
+        and len(release) == len(value.release) == 1
     )
     if representable:
         representable = (
-            [s.to for s in segments[:3]] == [value.initial, 1, 1]
-            and [s.curve for s in segments] == [0, 0, 0, -5]
-            and value.release[0].to == 0
-            and value.release[0].curve == -5
+            [s.to for s in finite[:3]] == [value.initial, 1, 1]
+            and [s.curve for s in finite] == [0, 0, 0, -5]
+            and release[0].to == 0
+            and release[0].curve == -5
         )
     if not representable:
         _issue(
@@ -706,14 +707,14 @@ def _envelope_opcodes(
     values = dict(
         zip(
             ('ampeg_delay', 'ampeg_attack', 'ampeg_hold', 'ampeg_decay'),
-            (float(s.duration) for s in segments),
+            (float(s.duration) for s in finite),
             strict=True,
         )
     )
-    values['ampeg_sustain'] = segments[-1].to * 100
+    values['ampeg_sustain'] = finite[-1].to * 100
     if initial:
         values['ampeg_start'] = initial * 100
-    values['ampeg_release'] = float(value.release[0].duration)
+    values['ampeg_release'] = float(release[0].duration)
     return [Opcode(name=n, value=_number_text(v)) for n, v in values.items()]
 
 
