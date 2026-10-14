@@ -26,11 +26,11 @@ dev = [
 reference = ["enge", "numpy", "mido"]
 
 [tool.uv]
-override-dependencies = ["ufor @ git+ssh://git@github.com/rec/ufor.git@7ff1bf8984a45c5e1a34d6e52885560be62628ed"]
+override-dependencies = ["ufor @ git+ssh://git@github.com/rec/ufor.git@862e2c142d19547729cab019ed75ed13ff1bc6c8"]
 
 [tool.uv.sources]
-enge = { git = "ssh://git@github.com/rec/enge.git", rev = "646b169a9fcab3012efa0444fb9c7447dc3f3a1a" }
-ufor = { git = "ssh://git@github.com/rec/ufor.git", rev = "7ff1bf8984a45c5e1a34d6e52885560be62628ed" }
+enge = { git = "ssh://git@github.com/rec/enge.git", rev = "28e9f6959d8d184e8ddc1ae35a148ed27561f721" }
+ufor = { git = "ssh://git@github.com/rec/ufor.git", rev = "862e2c142d19547729cab019ed75ed13ff1bc6c8" }
 envelfo = { git = "ssh://git@github.com/rec/envelfo.git", branch = "main" }
 
 [build-system]
