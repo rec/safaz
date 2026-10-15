@@ -96,5 +96,6 @@ alter gain, pitch, onset or source eligibility to ensure those errors are caught
 
 ## Additional work beyond the prompt
 
-None. Event-binding support, nonzero-duration curved envelope support and an
-upstream float-output pull request remain separate future work.
+None. Wider event-binding support and an upstream float-output pull request
+remain separate future work. Sample velocity bindings are implemented; the
+remaining baseline differences are recorded in the findings.
