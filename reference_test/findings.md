@@ -140,15 +140,139 @@ equation, alignment rule or tolerance changed. These results establish native
 agreement with the authored baseline, not SFZ playback equivalence. Velocity 1's
 relative gain and cross-platform reference consistency remain unresolved.
 
+## Unity investigation, 2026-10-16
+
+The unity disagreement is explained locally by the pinned reference's MIDI
+dispatch, voice-age bookkeeping and stereo panning. A diagnostic calculation
+from those source equations reproduces **every decoded PCM16 sample**, including
+padding, in all four retained and four freshly rendered repeatability WAVs.
+This calculation is evidence about sfizz, not a replacement acceptance oracle.
+The authored equations, native rendering, fixtures and tolerances are unchanged;
+the reference comparisons still fail.
+
+The platform, compiler, sfizz revision and build remain those recorded above.
+The executable SHA-256 is
+`9cfe47514f8e968aa1660a3f06e8d4c8b446b42a6b421afc8b210818be2a59d0`.
+Tracked sfizz source and recursive submodules were checked again and are clean.
+
+### Event placement and the first block
+
+The authored onset is frame 275. The actual reference onset is **274**.
+`sfizz_render.cpp:210-211` advances fmidi by one sample before dispatching events
+with the current zero-based output-frame delay. In
+`external/fmidi/sources/fmidi/fmidi_mini.cpp:55-78`, the player first increments
+its time, then dispatches while that time is strictly greater than the event's
+timestamp. At this fixture's onset, 275 repeated double-precision additions of
+`1/48000` give `0.005729166666666685`, exceeding `11 * 0.5 / 960`,
+`0.005729166666666666`. The callback therefore dispatches at output frame 274.
+This result is specific to the tested timestamp and arithmetic; a universal
+one-frame correction is not justified.
+
+The earlier reported onset of 275 was misleading: `harness.measure_notes`
+only searches from the authored onset. Its window excludes frame 274.
+The existing whole-horizon waveform comparison does include that frame and
+correctly fails. The reporting gap does not invalidate its residual measurement.
+
+There is a second timing effect in
+[Voice.cpp](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Voice.cpp#L819).
+The first render increments `age_` by the full block length, then assigns
+`min(age_ - triggerDelay_, 0)`. For this note that sets the age back to zero.
+`fillWithData` at lines 1106-1112 consequently clears the first source-position
+jump again on the next block. Since the previous block saved its final source
+position, that sample is repeated once. At block size 256 this happens at output
+frame 512, cancelling the initial one-frame lead for subsequent source edges.
+
+| Block size | Reference onset | Repeated-source frame | Reference edges near onset |
+| --- | --- | --- | --- |
+| 64 | 274 | 320 | 274, 323, 371, 419, 467, 515 |
+| 256 | 274 | 512 | 274, 322, 370, 418, 466, 515 |
+| 257 | 274 | 514 | 274, 322, 370, 418, 466, 515 |
+| Authored | 275 | None | 275, 323, 371, 419, 467, 515 |
+
+At 256 frames, the only native/reference residuals exceeding 0.001 occur at
+frames **274, 322, 370, 418 and 466**. At 64 versus 256 frames, they occur at
+322, 370, 418 and 466. Linear interpolation at this fixture's integer source
+positions introduces no fractional-position error. A global time shift would
+make the already aligned later edges incorrect.
+
+### Stereo level and the odd block size
+
+[Voice.cpp:989-1030](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Voice.cpp#L989)
+applies both pan and position stages to stereo data, then multiplies by
+`1.9952623149688797` (+6 dB). Even ideal center coefficients of `sqrt(0.5)`
+would leave a multiplier of `0.9976311574844399`, rather than unity.
+
+The ARM path adds a small channel imbalance.
+[Panning.cpp:18-98](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Panning.cpp#L18)
+builds its table using `cos(i * pi / (2 * 4094))`. At center, the scalar path
+indexes 2047 for both channels. The NEON vector path instead indexes 2048 for
+left and 2046 for right, using 4095 in its index calculation. Rounded to
+float32, these coefficients are `0.7068354487419128` and
+`0.7073780298233032`. Applying each twice and the fixed +6 dB multiplier gives
+approximately `0.9968656301498413` left and `0.9983966946601868` right.
+The default full stereo width preserves the channels here.
+
+Apply those source-derived stages, the existing -7.35 dB master gain and the
+audited dr_wav conversion in float32. The resulting plateau integers match
+the reference exactly:
+
+| Source left/right | Reference PCM16 left/right |
+| --- | --- |
+| +0.125 / -0.0625 | 1751 / -878 |
+| -0.125 / +0.0625 | -1753 / 876 |
+| 0 / 0 | -1 / -1 |
+
+For 257-frame blocks, each block's final frame takes the scalar pan path while
+its first 256 frames take the vector path. Those tail samples explain the
+one-PCM16-step difference from 256-frame output in these runs. No measured gain
+ratio was fitted. These are implementation-specific stereo factors, not an
+SFZ import rule or justification for changing enge's generic gain semantics.
+
+### Reproduction and remaining limits
+
+Run the existing repeatability test with a fresh output directory:
+
+```sh
+uv run --no-sync pytest -q \
+  reference_test/test_reference.py::test_reference_repeatability_across_blocks \
+  --require-reference \
+  --sfizz-source /private/tmp/safaz-reference-velocity/sfizz \
+  --sfizz-build /private/tmp/safaz-reference-velocity/build \
+  --sfizz-render /private/tmp/safaz-reference-velocity/build/library/bin/sfizz_render \
+  --reference-output /private/tmp/safaz-unity-investigation --tb=short
+```
+
+The fresh test fails the unchanged across-block assertion, with the same raw
+lengths and errors as October 15. Repeated 256-frame PCM is identical; 64 versus
+256 has maximum error `0.10693359375`; 257 versus 256 has maximum error
+`3.0517578125e-05`. Local diagnostic script/output are retained alongside these
+WAVs as `analysis.py` and `analysis.txt`; the original manifests and WAVs remain
+under `/private/tmp/safaz-reference-velocity/results`.
+
+The diagnostic reconstruction uses source index `frame - 274` until the first
+block boundary after onset, then `frame - 275`; indices outside `[0, 24000)`
+produce silence. Use the original 96-frame square period and channel ratio,
+apply the two per-channel pan coefficients, compensation and master gain with
+float32 multiplication, then the audited PCM16 conversion. For odd blocks use
+the scalar center coefficient on the final `block_size % 4` frames. This
+predicts all samples in the eight inspected WAVs with zero decoded mismatch.
+It does not alter any harness comparison or acceptance status.
+
+This establishes causes for the inspected local unity renders. It does not
+explain every other fixture, qualify Linux/Windows, or resolve the previously
+observed larger 257-frame differences from older invocations. Those remain
+unverified. No upstream patch or importer/renderer behavior change was made.
+
 ## Next slice
 
-Investigate the unity fixture's remaining gain/pan and sample-edge differences
-at fixed block size, then use the 64/256/257-frame evidence to isolate the
-reference repeatability discrepancy. Check the pinned client's implicit
-controller behavior, event placement and interpolation against the measured
-output before proposing any importer, renderer or comparison-contract change.
-Keep sfizz unmodified and retain the existing acceptance limits throughout the
-investigation. Additional feature families should wait for a verified baseline.
+Correct the harness's onset reporting so it exposes audio before the authored
+note window, while retaining the whole-horizon assertions and thresholds.
+Then collect the unchanged unity case on the existing Linux/Windows/macOS
+matrix before deciding the reference comparison contract: the NEON pan factors
+are architecture-specific, and the pinned client/core timing behavior should
+not be copied into enge. Keep the failing comparisons visible and defer new
+feature families. Any change to accepted playback semantics needs a separate
+decision based on that evidence.
 
 ## Additional work beyond the prompt
 
