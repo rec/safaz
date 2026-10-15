@@ -1,10 +1,10 @@
 # Initial reference findings
 
 The harness is implemented, but baseline audio equivalence is **not established**.
-The zero-duration envelope blocker has been fixed in a separate enge slice;
-the reference run now stops at unsupported event bindings. The original pinned
-run below is retained for comparison. Upstream sfizz and SFZ import behavior
-remain unchanged.
+The envelope and sample-velocity binding blockers are fixed in enge. Both
+backends now complete every baseline render and match the authored oracle;
+comparisons with sfizz still fail. Earlier pinned runs below are retained for
+comparison. Upstream sfizz and SFZ import behavior remain unchanged.
 
 ## Local run, 2026-10-09
 
@@ -90,13 +90,65 @@ renders agree in this invocation, the 64-frame render differs by a maximum of
 source, fixtures, settings, oracle equations and acceptance thresholds were not
 changed for this rerun. Cross-platform execution remains unverified.
 
+## Sample velocity binding follow-up, 2026-10-15
+
+enge revision: `06cdefe51cd5743cf8829eeff869a0c84e2442b9`. Its tested Python
+dependency revisions are now pinned in safaz: Ufor
+`9b3b0cd6cd65f3af1015ae5b333e1c2e0ee681d6` and enveLFO
+`a9213ce9d99602866022339975ae5469e7784985`.
+
+Offline sample instruments now accept voice-scoped velocity EventBindings.
+Each declared source captures the prepared VoiceStart's velocity as an
+unsmoothed constant. Existing routes determine its effect; no automatic gain
+is added. Voice identity and the value survive snapshot/restore, later notes
+and controller changes. Key EventBindings and bindings in other offline engines
+or native live registration retain their validation restrictions.
+
+Five focused cases cover instrument/slot declarations on both backends,
+overlapping voices, controller-name collisions, velocities 0/1/64/127 in MIDI
+units, releases, snapshot round trips and rejected key bindings. Audio
+regressions write two-second 48 kHz WAVs. The full enge suite passes 1,146 tests,
+with 21 optional Rubber Band skips. Changed production files pass type checking;
+the whole-package check still reports two pre-existing return-type errors in
+unchanged `enge/native.py`. Ruff, formatting and pyupgrade checks pass.
+
+safaz's 340 unit tests pass with these pins. The unchanged reference suite still
+reports **4 passed, 9 failed**, now entirely at comparison assertions:
+
+- All eight imports, authored selections and native renders complete. Reference,
+  native and signed difference WAVs are retained for every case.
+- All eight native-versus-authored comparisons pass. Maximum errors below apply
+  to both NumPy and native backends, before WAV output quantization.
+- All eight native-versus-sfizz waveform comparisons fail the unchanged
+  `2/32768 + 2e-6` limit. The four injected measurement faults remain detected.
+
+| Fixture | Native vs authored maximum error | Native vs sfizz maximum error |
+| --- | --- | --- |
+| Unity | 0 | 0.10712758810798567 |
+| Gain/velocity | 6.98e-19 | 0.21375695224626184 |
+| Pitch | 0 | 0.10712758810798567 |
+| Regions | 1.73e-18 | 0.10712758810798567 |
+
+Reference repeatability also still fails: the repeated 256-frame render agrees
+exactly, the 64-frame comparison has maximum error 0.10693359375, and the
+257-frame comparison differs by one PCM16 step. Raw output lengths remain
+150016/150016/150016/150088 frames for the declared 150000-frame interval.
+
+sfizz was rebuilt from the same clean pinned tree and recursive submodules,
+using the original build settings. No fixture, reference setting, authored
+equation, alignment rule or tolerance changed. These results establish native
+agreement with the authored baseline, not SFZ playback equivalence. Velocity 1's
+relative gain and cross-platform reference consistency remain unresolved.
+
 ## Next slice
 
-Establish the narrow native EventBinding profile needed for imported note
-velocity, then rerun these same fixtures. Keep unresolved binding kinds and
-nonzero-duration envelope curves rejected. Reference waveform/block differences
-still need investigation before claiming equivalence; no upstream patch is
-authorized by these findings.
+Investigate the unity fixture's remaining gain/pan and sample-edge differences
+at fixed block size, then use the 64/256/257-frame evidence to isolate the
+reference repeatability discrepancy. Check the pinned client's implicit
+controller behavior, event placement and interpolation against the measured
+output before proposing any importer, renderer or comparison-contract change.
+Keep sfizz unmodified and retain the existing acceptance limits throughout the
+investigation. Additional feature families should wait for a verified baseline.
 
 ## Additional work beyond the prompt
 
