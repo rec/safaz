@@ -25,6 +25,9 @@ Substitute paths for the uppercase arguments. The default executable is
 `SFIZZ_BUILD/library/bin/sfizz_render`; with Visual Studio it is
 `SFIZZ_BUILD/library/bin/Release/sfizz_render.exe`. Use a new output directory
 for each run so evidence cannot be overwritten. No audio device is required.
+On Windows with Visual Studio 2022, add `-G "Visual Studio 17 2022" -A x64` to
+the configure command. The workflow selects this generator explicitly instead
+of relying on NMake or a preinitialized compiler shell.
 With the optional dependencies installed, omitting the runner options skips
 external comparisons locally. `--require-reference` turns missing configuration
 into a failure. Configured missing files, build failures, subprocess errors and
