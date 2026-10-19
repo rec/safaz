@@ -295,10 +295,43 @@ on this revision, is required to collect that evidence. No cross-platform
 qualification is claimed. sfizz, fixtures, dependency pins and tolerances
 remain unchanged.
 
+## First matrix run, 2026-10-19
+
+The user manually started
+[run 39245504713](https://github.com/rec/safaz/actions/runs/39245504713)
+at safaz revision `b89d091736f2f3bc535d23247fa7dad51a38c5fc`, which includes
+the onset-reporting fix. All three jobs completed with failure:
+
+| Platform | Last successful stage | Failed stage |
+| --- | --- | --- |
+| [Linux](https://github.com/rec/safaz/actions/runs/39245504713/job/118036328922) | Build upstream offline client | Compare and preserve findings, exit 1 |
+| [Windows](https://github.com/rec/safaz/actions/runs/39245504713/job/118036329148) | Install locked reference dependencies | Configure unmodified sfizz, exit 1 |
+| [macOS](https://github.com/rec/safaz/actions/runs/39245504713/job/118036329289) | Configure unmodified sfizz | Build upstream offline client, exit 2 |
+
+Every job successfully uploaded its evidence artifact. However, this session
+can read run/job metadata and annotations but cannot retrieve the evidence:
+artifact downloads return HTTP 401, `Requires authentication`, and job-log
+requests return HTTP 403, `Must have admin rights to Repository`. Check-run
+annotations contain generic exit codes without the underlying errors.
+
+Windows and macOS did not reach audio comparisons. Linux reached the comparison
+step, but without its output or artifacts, no test counts, render completion,
+onset coordinates or waveform measurements can be established. Its failed step
+alone does not establish that the known local waveform assertions were the
+cause. No cross-platform audio agreement or disagreement is inferred from
+these job conclusions.
+
+Run, job and artifact metadata are retained locally as
+`/private/tmp/safaz-reference-ci-39245504713-{run,jobs,artifacts}.json`.
+Failed-step output and access to the uploaded reports are needed before fixing
+the setup failures or comparing platform results. sfizz, the workflow, fixtures
+and tolerances remain unchanged.
+
 ## Next slice
 
-Collect the unchanged unity case on the existing Linux/Windows/macOS
-matrix before deciding the reference comparison contract: the NEON pan factors
+Retrieve the first matrix run's logs and artifacts, diagnose its Windows/macOS
+setup failures, and collect the unchanged unity case on all three platforms
+before deciding the reference comparison contract: the NEON pan factors
 are architecture-specific, and the pinned client/core timing behavior should
 not be copied into enge. Keep the failing comparisons visible and defer new
 feature families. Any change to accepted playback semantics needs a separate
