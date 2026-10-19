@@ -6,9 +6,9 @@ backends now complete every baseline render and match the authored oracle;
 comparisons with sfizz still fail. Earlier pinned runs below are retained for
 comparison. Upstream sfizz and SFZ import behavior remain unchanged.
 
-Current CI evidence is recorded under "Evidence collection and matrix rerun,
+Current CI evidence is recorded under "Windows unit-decoding fix and rerun,
 2026-10-19" below. Earlier access failures and pending-build statements describe
-their original sessions and are superseded by that follow-up.
+their original sessions and are superseded by the follow-ups.
 
 ## Local run, 2026-10-09
 
@@ -481,16 +481,80 @@ manifest.
 YAML parsing and `git diff --check` pass. Only workflow and documentation files
 changed, so the Python unit suite was not rerun.
 
+## Windows unit-decoding fix and rerun, 2026-10-19
+
+The Windows preparation failure originates in
+`reccy.configuration.units._registry`, which reads Pint's `default_en.txt` and
+`constants_en.txt` resources without specifying an encoding. Those files are
+UTF-8; decoding them with Windows' default `cp1252` can fail before any quantity
+is parsed. The unit parser wraps that decoding failure as `Invalid quantity`,
+which becomes a Pydantic validation error when uFor revalidates an instrument.
+This is not an SFZ sample-path or sfizz decoding problem.
+
+A local diagnostic made unspecified `Path.read_text` calls use `cp1252` and
+reproduced the exact CI error for `0 s`: byte `0x81` at position `1794`.
+reccy commit `dd24bf880bca44a83903c58ac3780f3939751ecc` changes only those two
+resource reads to `read_text(encoding='utf-8')`. The same diagnostic then parses
+`0 s`, `1 μs` and `1 µs`, preserving exact rational magnitudes. It also passes
+against safaz's installed updated dependency, without a local source override.
+No process-wide encoding setting or parser fallback is added.
+
+reccy's focused unit suite passes 90 tests; its full suite passes 503 tests
+with one skip. Ruff, formatting, `ty check reccy`, changed-file pyupgrade and
+`git diff --check` pass. safaz's separate lockfile commit
+`e43862d` advances only reccy's locked revision to that fix, plus uv's generated
+resolution cutoff timestamp. safaz's 340 unit tests, Ruff, formatting and
+`ty check safaz` pass. No other package version, sfizz source/submodule, build
+option, fixture, oracle equation or comparison tolerance changes.
+
+The updated lockfile was pushed and the unchanged three-platform reference
+workflow was dispatched as
+[run 39269720084](https://github.com/rec/safaz/actions/runs/39269720084).
+All three jobs completed and uploaded their evidence. Each reports **9 failed,
+5 passed**, now with the same causes: eight native/sfizz waveform comparisons
+and the across-block repeatability assertion. The Windows quantity-decoding
+error is gone. All eight Windows native preparations and renders complete,
+both backends pass authored selection and native/authored comparisons, and no
+`failure.json` is present on any platform.
+
+Every platform's artifact contains eight complete reports and 75 readable,
+finite 48 kHz WAVs, including native renders and signed native/reference
+differences. Across all three platforms and both backends, native/authored
+maximum errors are 0 for unity and pitch, `6.979551485375435e-19` for
+gain/velocity, and `1.734723475976807e-18` for regions.
+
+| Unity measurement | Linux | Windows | macOS |
+| --- | --- | --- | --- |
+| Native vs authored maximum error | 0 | 0 | 0 |
+| Native vs sfizz maximum error | 0.10715810568611067 | 0.10715810568611067 | 0.10712758810798567 |
+| Native vs sfizz RMS error | 0.00045359593259165423 | 0.00045359593259165423 | 0.00045428488903197543 |
+| 64 vs 256 reference maximum error | 0.10699462890625 | 0.10699462890625 | 0.10693359375 |
+| 257 vs 256 reference maximum error | 0 | 0 | 0.000030517578125 |
+
+Repeated 256-frame renders agree exactly on each platform. Reference onset and
+last audible frame remain 274 and 24274, versus authored onset 275. Raw lengths
+remain 150016/150016/150016/150088 for the 150000-frame horizon. Unity reference
+PCM is unchanged from the prior run on each platform. Linux and Windows agree
+exactly; macOS differs from them by at most one PCM16 step. Source WAV, MIDI
+and SFZ hashes are unchanged from each platform's previous run, decoded
+authored unity WAV samples are unchanged, and manifests confirm identical sfizz
+revision and submodule state.
+
+Downloaded evidence is at
+`/private/tmp/safaz-ci-39269720084/{linux,macos,windows}`. Artifacts retain the
+workflow's 14-day expiry. This establishes that the Windows encoding blocker
+is fixed and native rendering matches the authored baseline on all three
+platforms. Baseline sfizz equivalence remains unestablished; neither the
+waveform limit nor repeatability checks were relaxed to accept these results.
+
 ## Next slice
 
-Diagnose the Windows quantity-decoding failure before claiming native
-qualification there. The unchanged unity reference has now been collected on
-all three platforms. Decide the reference comparison contract using this
-evidence: the NEON pan factors are architecture-specific, and the pinned
-client/core timing behavior should
-not be copied into enge. Keep the failing comparisons visible and defer new
-feature families. Any change to accepted playback semantics needs a separate
-decision based on that evidence.
+The Windows preparation blocker is resolved. Decide the reference comparison
+contract using the complete three-platform baseline evidence: the NEON pan
+factors are architecture-specific, and the pinned client/core timing behavior
+should not be copied into enge. Keep the failing comparisons visible and defer
+new feature families. Any change to accepted playback semantics needs a
+separate decision based on that evidence.
 
 ## Additional work beyond the prompt
 
