@@ -35,6 +35,7 @@ binding:
       minimum: 0.0
       number: 74
     part: main
+    pitch_bend: null
     repeated_key_release: newest
     tuning: null
 controls:

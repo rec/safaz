@@ -3,13 +3,13 @@ revision = 3
 requires-python = ">=3.13"
 
 [options]
-exclude-newer = "2026-10-12T14:31:04.419446Z"
+exclude-newer = "2026-10-12T17:56:16.507822Z"
 exclude-newer-span = "P1W"
 
 [manifest]
 overrides = [
     { name = "envelfo", git = "ssh://git@github.com/rec/envelfo.git?rev=a9213ce9d99602866022339975ae5469e7784985" },
-    { name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=9b3b0cd6cd65f3af1015ae5b333e1c2e0ee681d6" },
+    { name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=b109c591dac9b87249afa945b571b20985fc09d2" },
 ]
 
 [[package]]
@@ -115,10 +115,10 @@ wheels = [
 [[package]]
 name = "enge"
 version = "0.2.0"
-source = { git = "ssh://git@github.com/rec/enge.git?rev=06cdefe51cd5743cf8829eeff869a0c84e2442b9#06cdefe51cd5743cf8829eeff869a0c84e2442b9" }
+source = { git = "ssh://git@github.com/rec/enge.git?rev=8c93502e4efbecbaf84741aede8f5704c22e8dab#8c93502e4efbecbaf84741aede8f5704c22e8dab" }
 dependencies = [
     { name = "envelfo" },
-    { name = "mido" },
+    { name = "meedee" },
     { name = "numpy" },
     { name = "pydantic" },
     { name = "reccy" },
@@ -175,6 +175,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
 ]
+
+[[package]]
+name = "meedee"
+version = "0.2.0"
+source = { git = "https://github.com/rec/meedee?branch=main#579e661ebd19537762e1bde339a3b8ddb86e012f" }
 
 [[package]]
 name = "mido"
@@ -550,7 +555,7 @@ reference = [
 requires-dist = [
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "soundfile" },
-    { name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=9b3b0cd6cd65f3af1015ae5b333e1c2e0ee681d6" },
+    { name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=b109c591dac9b87249afa945b571b20985fc09d2" },
 ]
 
 [package.metadata.requires-dev]
@@ -564,7 +569,7 @@ dev = [
     { name = "ty" },
 ]
 reference = [
-    { name = "enge", git = "ssh://git@github.com/rec/enge.git?rev=06cdefe51cd5743cf8829eeff869a0c84e2442b9" },
+    { name = "enge", git = "ssh://git@github.com/rec/enge.git?rev=8c93502e4efbecbaf84741aede8f5704c22e8dab" },
     { name = "mido" },
     { name = "numpy" },
 ]
@@ -692,7 +697,7 @@ wheels = [
 [[package]]
 name = "ufor"
 version = "0.2.0"
-source = { git = "ssh://git@github.com/rec/ufor.git?rev=9b3b0cd6cd65f3af1015ae5b333e1c2e0ee681d6#9b3b0cd6cd65f3af1015ae5b333e1c2e0ee681d6" }
+source = { git = "ssh://git@github.com/rec/ufor.git?rev=b109c591dac9b87249afa945b571b20985fc09d2#b109c591dac9b87249afa945b571b20985fc09d2" }
 dependencies = [
     { name = "pydantic" },
     { name = "reccy" },
