@@ -60,12 +60,11 @@ The fixtures also explicitly initialize CC7 to 127; sfizz otherwise inserts a
 volume controller at its default of 100. safaz imports this initialization with
 an explicit MIDI binding request using the `channel-0` part and oldest matching
 release identity. CC10 retains sfizz's center value 0.5 and CC11 its unity value.
-The note-only native path uses enge's existing MIDI reader. Its oscillator
-control initializers are projected onto the imported instrument's declared
-controls. Trigger velocity remains unchanged and feeds the imported native
-EventBinding; the unused horizon controller does not select a voice. Both the
-original and bound event lists are retained. Controller behavior is outside
-these fixtures; a future controller family needs the full binding contract.
+The native path uses enge's MIDI reader with an explicit `MidiConverter` and
+safaz's generated performance binding. Trigger velocity feeds the imported
+native EventBinding; the unused horizon controller does not select a voice.
+The input MIDI and converted native event list are retained. Wider controller
+behavior remains outside these fixtures.
 
 Native region selection is checked against authored note/sample expectations
 before rendering. Audio uses safaz import, uFor preparation and enge's existing
@@ -79,6 +78,12 @@ fixtures use stereo sources, default equal temperament, one-shot playback,
 zero-duration envelope phases, and no authored effects or voice stealing.
 The authored oracle uses source positions, dB equations and `(velocity/127)^2`,
 independently of either engine. Disagreements with that contract remain failures.
+Imported instruments explicitly select `body.pan_law="sfizz"`. For these
+centered stereo fixtures the authored oracle includes `10**(6/20)/2`, derived
+from the two centered pan stages and their declared +6 dB compensation. This
+implements the selected convention without reproducing lookup quantization,
+architecture-dependent coefficients or timing defects. Acceptance limits are
+unchanged.
 
 Reference WAVs retain their original block-rounded duration. Comparisons use
 the explicitly authored MIDI horizon and separately check that remaining block

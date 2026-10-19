@@ -12,9 +12,9 @@ import mido
 import numpy as np
 import soundfile
 from enge import midi, sample_instrument
+from enge.performance import MidiConverter
 from pydantic import BaseModel
 from ufor.assets import RelativeFileLocation
-from ufor.events import ControlChange, PerformanceEvent, Trigger
 from ufor.instrument_trace import TraceAction
 from ufor.interface import ScoreReference
 from ufor.samples import trace
@@ -26,6 +26,7 @@ RATE = 48_000
 SFIZZ_REVISION = 'f5c6e29f23b8057867c08e88f5f6ac6738baa30b'
 MASTER_DB = -7.35  # SynthPrivate.h / Defaults.h, no client override.
 MASTER_GAIN = 10 ** (MASTER_DB / 20)
+SFIZZ_STEREO_CENTER_GAIN = 10 ** (6 / 20) / 2
 # drwav uses floor((x + 1) * 32767.5) - 32768, bounded by two LSBs.
 PCM_ERROR = 2 / 32768
 FLOAT_ERROR = 2e-6
@@ -124,7 +125,12 @@ def create_inputs(case: Case, folder: Path) -> np.ndarray:
         audio = np.column_stack(
             [np.interp(positions, np.arange(RATE), source[:, c]) for c in range(2)]
         )
-        gain = MASTER_GAIN * 10 ** (note.gain_db / 20) * (note.velocity / 127) ** 2
+        gain = (
+            MASTER_GAIN
+            * SFIZZ_STEREO_CENTER_GAIN
+            * 10 ** (note.gain_db / 20)
+            * (note.velocity / 127) ** 2
+        )
         start = note.tick * 25
         expected[start : start + len(audio)] += audio * gain
     soundfile.write(folder / 'expected.wav', expected, RATE, subtype='FLOAT')
@@ -307,30 +313,15 @@ def run_case(
     (folder / 'instrument.json').write_text(
         document.model_dump_json(indent=2), encoding='utf-8'
     )
-    events = midi.read_midi(folder / 'performance.mid').parts[0]
-    # enge's MIDI reader initializes oscillator controls. Sample velocity is
-    # already carried by Trigger.velocity and consumed by EventBinding.
-    # These fixtures have no controller behavior; the final CC only sets EOT.
-    controls = document.body.settings.controls.keys()
-    bound_events: list[PerformanceEvent] = []
-    for event in events:
-        if isinstance(event, Trigger):
-            bound_events.append(
-                event.model_copy(
-                    update={
-                        'controls': {
-                            n: v for n, v in event.controls.items() if n in controls
-                        },
-                    }
-                )
-            )
-        elif not isinstance(event, ControlChange) or event.control in controls:
-            bound_events.append(event)
-    write_json(folder / 'events.json', [e.model_dump(mode='json') for e in events])
-    write_json(
-        folder / 'bound-events.json', [e.model_dump(mode='json') for e in bound_events]
+    assert compiled.binding is not None
+    converter = MidiConverter(
+        source='reference-test', binding=compiled.binding, instrument=document
     )
-    actions = trace.prepare(document.body, bound_events, seed=0)
+    events = midi.read_midi(folder / 'performance.mid', converters=[converter]).parts[
+        'channel-0'
+    ]
+    write_json(folder / 'events.json', [e.model_dump(mode='json') for e in events])
+    actions = trace.prepare(document.body, events, seed=0)
     (folder / 'actions.json').write_text(
         actions.model_dump_json(indent=2), encoding='utf-8'
     )

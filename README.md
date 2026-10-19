@@ -21,6 +21,11 @@ if result.complete and result.instrument is not None:
 Check `complete` and inspect `unimplemented` before accepting an import or
 export. Import seals existing audio assets; it does not rewrite them. The file
 reader defaults to 48 kHz stereo output, with explicit rate/layout options.
+Imported instruments explicitly select `body.pan_law="sfizz"`, including its
+mathematical mono/stereo compensation. Native-law instruments receive an
+export diagnostic because their pan/balance behavior cannot be silently
+preserved as this SFZ convention. The selector does not reproduce sfizz's
+lookup, architecture or timing defects.
 
 For conversion without file I/O, use `safaz.parser.parse`,
 `safaz.parser.sample_paths`, and `safaz.compiler.compile_instrument` with

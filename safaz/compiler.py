@@ -194,6 +194,7 @@ def compile_instrument(
                     )
                 ],
                 body=SampleInstrument(
+                    pan_law=processing.PanLaw.sfizz,
                     settings=SampleSettings(
                         controls={
                             'sustain': controls.ControlDeclaration(
