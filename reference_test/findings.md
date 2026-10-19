@@ -6,6 +6,10 @@ backends now complete every baseline render and match the authored oracle;
 comparisons with sfizz still fail. Earlier pinned runs below are retained for
 comparison. Upstream sfizz and SFZ import behavior remain unchanged.
 
+Current CI evidence is recorded under "Evidence collection and matrix rerun,
+2026-10-19" below. Earlier access failures and pending-build statements describe
+their original sessions and are superseded by that follow-up.
+
 ## Local run, 2026-10-09
 
 Environment: macOS 14.5 arm64, Python 3.13.12, AppleClang 15, CMake 3.31.10.
@@ -376,12 +380,114 @@ pass; no Python or fixture data changed, so pytest was not rerun. sfizz and
 submodules, dependency pins, DSP build options, fixtures and comparison
 tolerances remain unchanged.
 
+## Evidence collection and matrix rerun, 2026-10-19
+
+GitHub CLI access works with the existing macOS Keychain credentials when run
+outside the execution sandbox. Logs and all three artifacts from
+[run 39264689528](https://github.com/rec/safaz/actions/runs/39264689528) were
+retrieved. Linux and macOS both built sfizz and reported **9 failed, 5 passed**.
+Windows failed during configuration: its actual image was
+`windows-2025-vs2026`, version `20261007.264.1`, and the requested Visual Studio
+2022 installation was absent. This corrects the earlier inventory assumption.
+
+The old artifacts contain only CMake cache/compiler metadata, with no reports
+or WAVs. The macOS ZIP passed integrity verification. Job logs show
+`include-hidden-files: false`; the pinned
+[upload-artifact action](https://github.com/actions/upload-artifact/tree/ea165f8d65b6e75b540449e92b4886f43607fa02#inputs)
+excludes hidden files by default, omitting `.reference-artifacts/` even though
+the upload succeeds.
+
+Revision `e8fd52bab0a66cbe1e304ded2359ccca35436bae` enables hidden-file upload
+only for the existing explicit evidence paths, selects `windows-2022` with
+the existing Visual Studio 2022 generator, and chooses the Windows executable
+path by `runner.os`. The observed Windows 2025
+[image inventory](https://github.com/actions/runner-images/blob/win25-vs2026/20261007.264/images/windows/Windows2025-VS2026-Readme.md)
+lists Visual Studio 2026; the
+[Windows 2022 inventory](https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md#visual-studio-enterprise-2022)
+lists Visual Studio 2022. CMake remains pinned to 3.31.10. No sfizz source,
+submodule, dependency pin, DSP option, fixture, authored equation or tolerance
+changed.
+
+The corrected workflow was dispatched as
+[run 39267848388](https://github.com/rec/safaz/actions/runs/39267848388).
+All three platforms now configure and compile sfizz successfully, upload
+comparison evidence, and report **9 failed, 5 passed**. The failure counts have
+different causes: Linux/macOS fail eight waveform comparisons and repeatability;
+Windows fails eight native preparations and repeatability.
+Downloaded Linux and macOS artifacts now each contain eight comparison reports,
+75 readable 48 kHz WAVs, repeatability results, manifests and compiler metadata.
+Every decoded WAV contains finite samples. Both backends pass authored region
+selection and native/authored comparisons in all four fixture families; all
+eight native/sfizz comparisons fail the unchanged `2/32768 + 2e-6` limit.
+Windows has eight partial reports, eight failure tracebacks and 59 readable
+48 kHz WAVs, including all reference renders and reference/authored differences.
+It has no native renders or native/reference differences. All five passing
+tests are the timing-report test and four injected measurement-fault tests.
+
+Windows fails in `ufor.samples.trace.prepare` when
+`SampleInstrument.model_validate(instrument.model_dump())` validates quantities
+such as `0 s`. The underlying message is `Invalid quantity: 'charmap' codec
+can't decode byte 0x81 in position 1794: character maps to <undefined>`.
+This occurs before authored selection or native rendering, so Windows native
+agreement is unverified. The retained traceback identifies the preparation
+boundary but does not identify which underlying file is decoded incorrectly.
+No dependency or encoding workaround was introduced to bypass this failure.
+
+### Unity evidence
+
+Linux uses x86_64 and GCC 13.3.0; macOS uses arm64 and AppleClang
+16.0.0.16000026 from Xcode 16.2. Both use the clean pinned sfizz revision
+`f5c6e29f23b8057867c08e88f5f6ac6738baa30b` and matching recursive submodules.
+Windows uses x86_64 MSVC 19.44.35229.0 with the same clean source and submodules.
+
+| Measurement | Linux | macOS |
+| --- | --- | --- |
+| Native vs authored maximum error | 0 | 0 |
+| Native vs sfizz maximum error | 0.10715810568611067 | 0.10712758810798567 |
+| Native vs sfizz RMS error | 0.00045359593259165423 | 0.00045428488903197543 |
+| Reference first / last audible frame | 274 / 24274 | 274 / 24274 |
+| Reference absolute left / right peaks | 0.05352783203125 / 0.02679443359375 | 0.053497314453125 / 0.02679443359375 |
+| Reference PCM16 at frame 280, left / right | 1752 / -878 | 1751 / -878 |
+| Repeated 256-frame maximum error | 0 | 0 |
+| 64 vs 256 maximum error | 0.10699462890625 | 0.10693359375 |
+| 257 vs 256 maximum error | 0 | 0.000030517578125 |
+
+Windows reference/authored unity maximum error is `0.10715810568611067`, with
+RMS error `0.00045362001423154233`. Its 256-frame unity reference PCM matches
+Linux exactly, including padding. Its reference onset, final audible frame,
+channel levels and repeatability errors also match Linux. No Windows
+native/authored or native/reference measurement is available.
+
+The authored onset is 275 and last audible frame is 24274. All platforms have
+unity residuals greater than 0.001 only at frames 274, 322, 370, 418 and 466.
+Raw repeatability lengths are 150016/150016/150016/150088 frames for the
+150000-frame declared horizon. The reference WAVs from both backend-parameterized
+cases agree exactly within each platform, including Windows cases whose native
+preparation later failed. Linux and macOS unity reference PCM
+differ by at most one PCM16 step; they are not identical. The odd-block macOS
+residual and channel-level difference are consistent with the previously
+diagnosed architecture-specific panning path, rather than evidence for a
+universal timing or gain correction.
+
+All platforms have identical source WAV and MIDI hashes. The checked-out
+Windows SFZ has a different byte hash due to line endings; decoded authored
+unity WAV samples agree exactly across all three platforms despite differing
+WAV file hashes. No conclusion rests on matching test counts alone.
+
+Artifacts are retained for 14 days by the workflow. Downloaded evidence is at
+`/private/tmp/safaz-ci-39267848388/{linux,macos,windows}`; these local paths are
+temporary conveniences. Executable hashes and all input hashes are in each case
+manifest.
+YAML parsing and `git diff --check` pass. Only workflow and documentation files
+changed, so the Python unit suite was not rerun.
+
 ## Next slice
 
-Rerun the Windows and macOS build configuration fixes, retrieve the Linux
-reports and WAVs, and collect the unchanged unity case on all three platforms
-before deciding the reference comparison contract: the NEON pan factors
-are architecture-specific, and the pinned client/core timing behavior should
+Diagnose the Windows quantity-decoding failure before claiming native
+qualification there. The unchanged unity reference has now been collected on
+all three platforms. Decide the reference comparison contract using this
+evidence: the NEON pan factors are architecture-specific, and the pinned
+client/core timing behavior should
 not be copied into enge. Keep the failing comparisons visible and defer new
 feature families. Any change to accepted playback semantics needs a separate
 decision based on that evidence.
