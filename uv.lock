@@ -9,6 +9,7 @@ exclude-newer-span = "P1W"
 [manifest]
 overrides = [
     { name = "envelfo", git = "ssh://git@github.com/rec/envelfo.git?rev=a9213ce9d99602866022339975ae5469e7784985" },
+    { name = "meedee", git = "ssh://git@github.com/rec/meedee.git?rev=26e3891546efeb3cda8c570f0d4fdb72b74985b7" },
     { name = "ufor", git = "ssh://git@github.com/rec/ufor.git?rev=b109c591dac9b87249afa945b571b20985fc09d2" },
 ]
 
@@ -179,7 +180,7 @@ wheels = [
 [[package]]
 name = "meedee"
 version = "0.2.0"
-source = { git = "https://github.com/rec/meedee?branch=main#579e661ebd19537762e1bde339a3b8ddb86e012f" }
+source = { git = "ssh://git@github.com/rec/meedee.git?rev=26e3891546efeb3cda8c570f0d4fdb72b74985b7#26e3891546efeb3cda8c570f0d4fdb72b74985b7" }
 
 [[package]]
 name = "mido"
