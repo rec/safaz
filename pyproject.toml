@@ -27,6 +27,7 @@ reference = ["enge", "numpy", "mido"]
 
 [tool.uv]
 override-dependencies = [
+    "meedee @ git+ssh://git@github.com/rec/meedee.git@26e3891546efeb3cda8c570f0d4fdb72b74985b7",
     "ufor @ git+ssh://git@github.com/rec/ufor.git@b109c591dac9b87249afa945b571b20985fc09d2",
     "envelfo @ git+ssh://git@github.com/rec/envelfo.git@a9213ce9d99602866022339975ae5469e7784985",
 ]
