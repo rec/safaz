@@ -969,6 +969,7 @@ def _instrument(
             )
         ],
         body=instrument.SampleInstrument(
+            pan_law=processing.PanLaw.sfizz,
             settings=instrument.SampleSettings(
                 envelope=compiler.amplitude_envelope({'ampeg_release': '0'}),
                 controls={'sustain': controls.ControlDeclaration()},

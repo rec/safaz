@@ -37,6 +37,13 @@ fractions. Export accepts that representable shape and reports general envelopes
 as unsupported. Velocity response becomes the shared typed multiplier route.
 SFZ inclusive endpoints become exclusive native slice/loop ends and reverse on
 export. Imported channel maps are identity or the standard mono-to-stereo law.
+Each imported instrument selects `body.pan_law="sfizz"`. Mono `pan` and stereo
+`stereo_balance` positions retain SFZ `pan / 100`; the selected law supplies the
+audited cosine/sine gains and +3/+6 dB compensation once at rendering. Static
+channel routes remain the canonical maps, not baked copies of the pan gain.
+Export diagnoses `pan_law="native"` rather than silently changing its law.
+The convention does not include sfizz's lookup quantization, SIMD differences,
+master volume, width/position controls or client timing.
 SFZ `off_by` identifies the existing voice to stop when a new region in the
 named `group` starts. Import maps this victim-side rule to native trigger-side
 `chokes`; export reverses that mapping and diagnoses graphs SFZ cannot express.

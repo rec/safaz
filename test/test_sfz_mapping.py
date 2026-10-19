@@ -9,11 +9,47 @@ from ufor.samples import trace
 from ufor.samples.enums import ChokeMode, VoiceOverflow
 from ufor.samples.instrument import SampleInstrumentScore
 from ufor.samples.metadata import AudioMetadata
-from ufor.samples.processing import ChannelRoute
+from ufor.samples.processing import ChannelRoute, PanLaw
 from ufor.time import Rate, Timebase
 
 from safaz import compiler, exporter, parser
 from safaz.model import SfzCompileResult, SfzMidiBindingRequest
+
+
+@pytest.mark.parametrize('pan', [-100, -50, 0, 50, 100])
+@pytest.mark.parametrize('sample_channels', [1, 2])
+def test_sfz_selects_its_pan_convention_and_preserves_position(
+    pan: int, sample_channels: int
+) -> None:
+    result = _compile(
+        f'<region> sample=sample.wav pan={pan}',
+        output_channels=['left', 'right'],
+        sample_channels=sample_channels,
+    )
+    assert result.complete and result.instrument is not None
+    assert result.instrument.body.pan_law == PanLaw.sfizz
+    parameter = 'pan' if sample_channels == 1 else 'stereo_balance'
+    assert getattr(result.instrument.body.slots[0].processing, parameter) == pan / 100
+    exported = exporter.write(result.instrument)
+    assert exported.complete
+    restored = _compile(
+        exported.contents,
+        output_channels=['left', 'right'],
+        sample_channels=sample_channels,
+    )
+    assert restored.instrument is not None
+    assert restored.instrument.body.pan_law == PanLaw.sfizz
+    assert getattr(restored.instrument.body.slots[0].processing, parameter) == pan / 100
+
+
+def test_sfz_export_reports_a_native_pan_convention() -> None:
+    result = _compile('<region> sample=sample.wav', output_channels=['left', 'right'])
+    assert result.instrument is not None
+    raw = result.instrument.model_dump(mode='json')
+    raw['body']['pan_law'] = 'native'
+    exported = exporter.write(SampleInstrumentScore.model_validate(raw))
+    assert not exported.complete
+    assert any(i.location.path == 'body.pan_law' for i in exported.unimplemented)
 
 
 def test_initial_controllers_select_per_part_until_overridden(

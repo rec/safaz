@@ -82,6 +82,13 @@ def _instrument_issues(
     document: SampleInstrumentScore, issues: list[UnimplementedFeature]
 ) -> None:
     instrument = document.body.settings
+    if document.body.pan_law != processing.PanLaw.sfizz:
+        _issue(
+            issues,
+            'body.pan_law',
+            document.body.pan_law,
+            'SFZ playback uses the sfizz pan convention, not the native pan law',
+        )
     for i, pool in enumerate(document.body.voice_pools):
         _issue(
             issues,

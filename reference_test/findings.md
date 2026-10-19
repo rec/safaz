@@ -9,6 +9,8 @@ comparison. Upstream sfizz and SFZ import behavior remain unchanged.
 Current CI evidence is recorded under "Windows unit-decoding fix and rerun,
 2026-10-19" below; the subsequent "Gain and off-center pan equation audit"
 separates conventions, numerical differences and implementation defects.
+"Per-instrument pan-law implementation" records the later accepted convention
+and local verification; earlier baseline numbers used the previous gain model.
 Earlier access failures and pending-build statements describe
 their original sessions and are superseded by the follow-ups.
 
@@ -707,6 +709,66 @@ Only this findings document changed in the repository. No accepted baseline,
 sfizz source/build, native playback, dependency pin or tolerance was changed;
 the Python suites were not rerun for this documentation-only update.
 
+## Per-instrument pan-law implementation, 2026-10-19
+
+The user selected explicit per-instrument laws, native defaults and the sfizz
+convention for SFZ import. uFor commit `b109c59` adds serialized
+`SampleInstrument.pan_law`, default `native`, and the portable `PanLaw` equations
+and conformance examples. Native mono uses unboosted cosine/sine pan; native
+stereo uses unity-centered attenuation-only linear balance. `sfizz` selects the
+audited +3 dB mono and +6 dB stereo mathematical equations. It does not select
+the pinned renderer's quantization, architecture differences or timing defects.
+
+enge commit `8c93502` supports static pan and balance through those equations.
+Instrument and effective slot/group positions add before one application of
+the law. Prepared channel gains are shared by NumPy/native offline rendering,
+persistent rendering and the native live block engine. Canonical centered mono
+routes are accounted for rather than attenuated twice. Snapshot restoration
+retains the serialized law. Position modulation remains explicitly unsupported;
+no new width or position controls were added.
+
+safaz imports explicitly select `pan_law="sfizz"`; SFZ `pan` remains mono pan
+or stereo balance according to source layout. Export of `pan_law="native"`
+reports a located diagnostic instead of silently claiming equivalent SFZ
+playback. Metadata comment syntax is unchanged. The dependency update also
+brings enge's existing meedee-based MIDI reader; the reference harness now uses
+its explicit `MidiConverter` with safaz's generated performance binding,
+replacing the obsolete oscillator-initializer projection path.
+
+The authored reference equation deliberately changes for the accepted SFZ
+convention: centered stereo now includes `10**(6/20)/2`. This factor is derived
+from the declared pan/position stages and compensation, not fitted to output.
+The SFZ fixtures, upstream source/build, event alignment rules, master gain and
+comparison limits remain unchanged. Historical pre-convention error values
+are not directly interchangeable with the following local rerun.
+
+Local macOS arm64 verification uses the existing unmodified pinned sfizz build
+and retains evidence at `/private/tmp/safaz-pan-laws-reference-20261019`:
+
+- All eight native renders complete, pass authored selection and match the new
+  independently authored gain equations; maximum native/authored error across
+  the cases is `6.938893903907228e-18`.
+- The reference suite still reports **9 failed, 5 passed**: all eight
+  native/reference waveform assertions and across-block repeatability fail.
+- Unity native/reference maximum error is `0.10700054643563092`, RMS error
+  `0.00045132311630947394`; the maximum-error limit remains
+  `0.00006303515625`. sfizz onset remains frame 274 versus authored 275.
+- The unity reference WAV is byte-identical to the previously retained local
+  reference WAV. No upstream output was changed to achieve these results.
+
+uFor's full suite passes 1,284 tests. enge's full suite passes 1,241 tests with
+21 optional skips, including 44 focused one-second 48 kHz audio tests for both
+laws, mono/stereo, endpoints/off-center positions, composition, restoration and
+persistent/native-live consistency. Its dependency-only state separately passes
+1,197 tests with 21 skips. uFor and changed enge files pass Ruff, formatting,
+type checking and pyupgrade. Whole-package `ty check enge` still reports the two
+previously recorded return-type errors in unchanged `enge/native.py`; they were
+not broadened into this task. These are local mathematical/audio checks, not a
+new three-platform qualification or a claim of sfizz waveform equivalence.
+safaz's full suite passes 351 tests, including mono/stereo SFZ law selection
+and round trips at both endpoints, center and off-center positions. Ruff,
+formatting, `ty check safaz`, changed-file pyupgrade and `git diff --check` pass.
+
 ## Next slice
 
 The Windows preparation blocker is resolved. Decide the reference comparison
@@ -715,9 +777,9 @@ factors are architecture-specific, and the pinned client/core timing behavior
 should not be copied into enge. Keep the failing comparisons visible and defer
 new feature families. Any change to accepted playback semantics needs a
 separate decision based on that evidence.
-Before proposing off-center playback equivalence, specify the intended mono
-normalization and stereo balance law; the pinned native sample renderer does
-not yet implement those controls. Treat sfizz's compensation convention
+The mono normalization and stereo balance laws are now explicit and static
+off-center playback is implemented. Cross-platform qualification of the new
+law selection is still pending. Treat sfizz's compensation convention
 separately from its inconsistent scalar/NEON lookup coordinates.
 
 ## Additional work beyond the prompt
