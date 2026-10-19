@@ -4,13 +4,14 @@ The harness is implemented, but baseline audio equivalence is **not established*
 The envelope and sample-velocity binding blockers are fixed in enge. Both
 backends now complete every baseline render and match the authored oracle;
 comparisons with sfizz still fail. Earlier pinned runs below are retained for
-comparison. Upstream sfizz and SFZ import behavior remain unchanged.
+comparison. Upstream sfizz remains unchanged; the accepted SFZ pan convention
+is explicit in the later implementation and qualification records.
 
-Current CI evidence is recorded under "Windows unit-decoding fix and rerun,
-2026-10-19" below; the subsequent "Gain and off-center pan equation audit"
-separates conventions, numerical differences and implementation defects.
-"Per-instrument pan-law implementation" records the later accepted convention
-and local verification; earlier baseline numbers used the previous gain model.
+Current pan-law CI evidence is recorded under "Three-platform pan-law rerun"
+below. "Gain and off-center pan equation audit" separates conventions,
+numerical differences and implementation defects. "Per-instrument pan-law
+implementation" records the accepted convention and local verification;
+earlier baseline numbers used the previous gain model.
 Earlier access failures and pending-build statements describe
 their original sessions and are superseded by the follow-ups.
 
@@ -769,19 +770,150 @@ safaz's full suite passes 351 tests, including mono/stereo SFZ law selection
 and round trips at both endpoints, center and off-center positions. Ruff,
 formatting, `ty check safaz`, changed-file pyupgrade and `git diff --check` pass.
 
+## Three-platform pan-law rerun, 2026-10-19
+
+[Run 39301752498](https://github.com/rec/safaz/actions/runs/39301752498) tested
+the new pan-law implementation at `cd1e6dde3b950a5972fd5d896a9d6c3cbe880a9a`.
+All three platforms failed at `Install locked reference dependencies` before
+sfizz configuration or comparisons. The newly locked meedee revision
+`579e661ebd19537762e1bde339a3b8ddb86e012f` declares `rust-version = "1.87"`
+in its root Cargo manifest. Linux, Windows and macOS logs all report that
+the workflow's Rust 1.85.0 cannot build `meedee`/`meedee-python`.
+
+The upload steps ran but found no evidence paths, and `gh run download`
+confirmed there were no valid artifacts. This run produced no reports or WAVs;
+it provides no new audio agreement or disagreement evidence.
+
+Commit `fa3b1b9` raises only the reference workflow's Rust build toolchain pin
+and its README to 1.87.0, the locked dependency's declared minimum. YAML parsing
+and `git diff --check` pass; no Python or fixture data changed, so the Python
+suite was not rerun. Dependency revisions, sfizz source/submodules, CMake,
+sfizz compiler selection and DSP options, fixtures, master gain, accepted
+equations and tolerances remain unchanged. The corrected workflow was dispatched
+as [run 39302089462](https://github.com/rec/safaz/actions/runs/39302089462), at
+`fa3b1b97c32d9970ed90bf32be44c121947a5656`.
+
+That run exposed two further dependency-build prerequisites. Linux lacked
+ALSA headers, which the locked meedee build requires. Windows configured
+WinMM successfully, but MSBuild failed to open libremidi source files with
+paths beginning `///?/D:/...`. Rust's `canonicalize()` supplied the extended
+Windows path prefix through `MEEDEE_VENDOR`; the generated project could not
+consume it. Neither platform reached sfizz configuration or produced reports
+or WAVs. These are build blockers, separate from the audio failures.
+
+macOS completed comparisons: **9 failed, 5 passed**, eight complete reports,
+75 finite 48 kHz WAVs and no renderer-exception reports. Both native backends
+pass selection and the accepted authored equations in every fixture; their
+largest native/authored error is `6.938893903907228e-18`. Unity's maximum
+native/reference error remains `0.10700054643563092`, RMS
+`0.00045132311630947394`. Unity onset is 274 in sfizz versus authored 275.
+The unchanged sfizz source, submodules and fixture hashes were checked against
+the previous three-platform evidence.
+
+This run also provides a same-block-size variability observation outside the
+explicit unity repeat test. The separately invoked sfizz gain-fixture WAVs for
+the two native-backend cases differ at 15,809 frames, from 8,466 through 24,274,
+with maximum difference `0.02679443359375`. Their SFZ, MIDI and sample hashes
+and renderer options match; input/output paths use separate case directories.
+The backend selects enge's implementation, not sfizz's rendering.
+Seven of the eight reference WAVs exactly match their earlier platform
+counterparts; `gain-native-256` does not. This establishes an observed output
+difference, not its root cause or frequency. The explicit unity repeat is exact
+at block size 256, fails 64-versus-256 at `0.10693359375`, and passes
+257-versus-256 at `0.000030517578125`.
+
+The Linux workflow now installs `libasound2-dev` and `pkg-config`. With explicit
+user approval, meedee commit `26e3891` fixes only its build-script vendor path:
+CMake normalizes the absolute path's parent components, without Rust adding
+the extended prefix. It retains the missing-vendor check. The commit is based
+directly on locked revision `579e661`, isolating unrelated meedee work, and
+passes local `cargo check --locked -p meedee`, rustfmt and diff checks. safaz
+overrides only this transitive dependency to the fixed revision; uFor, enge,
+sfizz, fixture equations and tolerances are unchanged. The dependency state
+passes safaz's 351 tests, Ruff, formatting and `ty check safaz`; no Python source
+changed, so changed-file pyupgrade has no targets. The following CI rerun
+verifies the Windows build correction.
+
+[Run 39303334993](https://github.com/rec/safaz/actions/runs/39303334993), at
+`2bff0452859078ec4ba45d9cd939acfa6eaa2dfa`, includes both build corrections.
+Its locked meedee revision is `26e3891546efeb3cda8c570f0d4fdb72b74985b7`;
+uFor remains `b109c591dac9b87249afa945b571b20985fc09d2` and enge remains
+`8c93502e4efbecbaf84741aede8f5704c22e8dab`.
+
+All three jobs build successfully through comparison and artifact upload. Each
+reports **9 failed, 5 passed**, with eight complete reports, 75 finite 48 kHz
+WAVs and no `failure.json`. All 24 native renders pass selection and the accepted
+authored equations. The maximum native/authored error is
+`6.938893903907228e-18` on Linux/macOS and `6.962610826430349e-19` on Windows.
+The failures are the eight native/reference waveform comparisons and the
+across-block repeatability assertion on each platform, not setup failures.
+
+Both native backends give the same following native/reference measurements
+within each platform. Values are maximum absolute error / RMS error; the
+unchanged maximum-error limit is `0.00006303515625`.
+
+| Platform | Unity | Gain / velocity | Pitch | Region boundaries |
+| --- | --- | --- | --- | --- |
+| Linux x86_64 | 0.1070310640 / 0.0004513171 | 0.2135339884 / 0.0048998488 | 0.1070310640 / 0.0045064706 | 0.1070310640 / 0.0035459192 |
+| Windows x86_64 | 0.1070310640 / 0.0004513171 | 0.2135339884 / 0.0048998488 | 0.1070310640 / 0.0045064706 | 0.1070310640 / 0.0035459192 |
+| macOS arm64 | 0.1070005464 / 0.0004513231 | 0.2135034708 / 0.0048995785 | 0.1070005464 / 0.0045054586 | 0.1070005464 / 0.0035451353 |
+
+Compilers recorded by the artifacts are GCC 13.3.0, MSVC 19.44.35229.0 and
+AppleClang 16.0.0.16000026, respectively. Every manifest retains sfizz revision
+`f5c6e29f23b8057867c08e88f5f6ac6738baa30b`, clean source/submodule evidence
+and the earlier SFZ/MIDI/sample input hashes. All eight decoded reference WAVs
+on each platform exactly match the corresponding earlier pre-pan-law baseline.
+The anomalous gain invocation in run 39302089462 did not recur in this run.
+
+Decoded native and authored unity WAVs are identical across all three platforms.
+Linux and Windows sfizz unity WAVs also match exactly; macOS differs from those
+by at most one PCM16 step, `0.000030517578125`. sfizz onset remains 274 versus
+authored/native 275. The large unity residuals occur at frames 274, 322, 370,
+418 and 466. Outside those frames, maximum decoded-WAV residual is
+`0.00004281848669052124` on Linux/Windows and `0.00006695091724395752` on macOS.
+These are direct FLOAT-WAV inspections, distinct from the reports' float64
+native comparisons. They separate the large edge/timing errors from smaller
+platform-dependent numerical differences; adopting the explicit compensation
+convention did not remove the previously diagnosed timing/lookup behavior.
+
+| Platform | Repeated 256 | 64 versus 256 | 257 versus 256 |
+| --- | --- | --- | --- |
+| Linux / Windows | Exact | Fail: max 0.10699462890625 | Exact |
+| macOS | Exact | Fail: max 0.10693359375 | Pass: max 0.000030517578125 |
+
+Repeat lengths are 150,016, 150,016, 150,016 and 150,088 frames for the declared
+150,000-frame horizon. Comparisons retain the original horizon and silent-tail
+checks, without aligning or trimming attacks. Complete reports, inputs, process
+records and WAVs are in the run's three artifacts; downloaded evidence and
+`analysis.json` are under `/private/tmp/safaz-ci-39303334993`. The numerical
+inspection script is `/private/tmp/safaz-pan-ci-audit.py`, invoked with that
+directory and the run's full safaz revision. These are temporary local paths;
+the uploaded evidence has the workflow's 14-day retention.
+
+This completes three-platform qualification of the existing centered-stereo
+reference fixtures under the new explicit SFZ convention. It does not qualify
+off-center or mono behavior against upstream on all platforms: those remain
+covered by the focused local law tests and earlier local equation audit.
+No sfizz source, submodule, DSP setting, fixture, authored equation, alignment
+rule or tolerance changed during this rerun.
+
 ## Next slice
 
-The Windows preparation blocker is resolved. Decide the reference comparison
-contract using the complete three-platform baseline evidence: the NEON pan
-factors are architecture-specific, and the pinned client/core timing behavior
+Decide the reference comparison contract using the complete three-platform
+centered-fixture evidence: the NEON pan factors are architecture-specific,
+and the pinned client/core timing behavior
 should not be copied into enge. Keep the failing comparisons visible and defer
 new feature families. Any change to accepted playback semantics needs a
 separate decision based on that evidence.
 The mono normalization and stereo balance laws are now explicit and static
-off-center playback is implemented. Cross-platform qualification of the new
-law selection is still pending. Treat sfizz's compensation convention
-separately from its inconsistent scalar/NEON lookup coordinates.
+off-center playback is implemented. The centered fixtures qualify the explicit
+law selection on all three platforms; wider pan/mono reference coverage remains
+a separate slice. Treat sfizz's compensation convention separately from its
+inconsistent scalar/NEON lookup coordinates. Investigate the observed
+same-input gain variability before treating repeated unity alone as evidence
+of general determinism.
 
 ## Additional work beyond the prompt
 
-None.
+The user approved an isolated meedee Windows build-path fix and safaz lock
+update after the reference run exposed the dependency build blocker.
