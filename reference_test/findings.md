@@ -263,11 +263,41 @@ explain every other fixture, qualify Linux/Windows, or resolve the previously
 observed larger 257-frame differences from older invocations. Those remain
 unverified. No upstream patch or importer/renderer behavior change was made.
 
+## Onset reporting follow-up, 2026-10-19
+
+The reporting fix in safaz revision `92b5848` searches timing windows separated
+by midpoints between authored note starts, beginning at frame zero and ending
+at the declared horizon. Reports include each expected onset and the half-open
+timing window. These fixtures have separated audible notes; the method does
+not claim to attribute overlapping voices. Existing channel-level windows,
+audibility threshold and whole-horizon acceptance limits are unchanged.
+
+The new focused case covers an early first note, a later note, PCM16 silence,
+window boundaries and unchanged RMS measurement. It writes a 150000-frame,
+48 kHz WAV. That case and the four injected measurement-fault cases pass.
+All 340 normal unit tests, Ruff, formatting, type checking, pyupgrade and
+`git diff --check` pass.
+
+A fresh local run, retaining the same sfizz build, reports **5 passed, 9 failed**.
+The unity report now correctly records reference onset **274**, authored onset
+**275**, and final audible frame 24274 for both. Its native/reference maximum
+error remains `0.10712758810798567` and RMS error `0.00045428488903197543`.
+All eight native/authored comparisons still pass; the eight reference waveform
+comparisons and across-block repeatability still fail. Reports and WAVs are
+retained under `/private/tmp/safaz-onset-reporting-20261019`.
+
+The fix was pushed before attempting the existing Linux/Windows/macOS workflow
+on `main`. GitHub rejected `gh workflow run reference-test.yml --ref main` with
+HTTP 401, `Requires authentication`. No matrix run was created, and the workflow
+run list remains empty. Restoring Actions dispatch access, or manually running
+[SFZ reference comparisons](https://github.com/rec/safaz/actions/workflows/reference-test.yml)
+on this revision, is required to collect that evidence. No cross-platform
+qualification is claimed. sfizz, fixtures, dependency pins and tolerances
+remain unchanged.
+
 ## Next slice
 
-Correct the harness's onset reporting so it exposes audio before the authored
-note window, while retaining the whole-horizon assertions and thresholds.
-Then collect the unchanged unity case on the existing Linux/Windows/macOS
+Collect the unchanged unity case on the existing Linux/Windows/macOS
 matrix before deciding the reference comparison contract: the NEON pan factors
 are architecture-specific, and the pinned client/core timing behavior should
 not be copied into enge. Keep the failing comparisons visible and defer new
