@@ -33,6 +33,15 @@ jobs:
         run: rustup toolchain install 1.85.0 --profile minimal
       - name: Install locked reference dependencies
         run: uv sync --frozen --group reference
+      - name: Select macOS reference toolchain
+        if: runner.os == 'macOS'
+        env:
+          DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+        run: |
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
+          echo "CC=$(xcrun --find clang)" >> "$GITHUB_ENV"
+          echo "CXX=$(xcrun --find clang++)" >> "$GITHUB_ENV"
+          xcrun clang --version
       - name: Configure unmodified sfizz
         run: >-
           uv run --no-project --with cmake==3.31.10 cmake
