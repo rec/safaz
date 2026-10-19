@@ -36,6 +36,7 @@ jobs:
       - name: Configure unmodified sfizz
         run: >-
           uv run --no-project --with cmake==3.31.10 cmake
+          ${{ runner.os == 'Windows' && '-G "Visual Studio 17 2022" -A x64' || '' }}
           -S .reference/sfizz -B .reference/build
           -DCMAKE_BUILD_TYPE=Release -DSFIZZ_JACK=OFF -DSFIZZ_SHARED=OFF
           -DSFIZZ_TESTS=OFF -DSFIZZ_RENDER=ON -DENABLE_LTO=OFF

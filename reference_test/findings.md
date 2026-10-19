@@ -327,10 +327,32 @@ Failed-step output and access to the uploaded reports are needed before fixing
 the setup failures or comparing platform results. sfizz, the workflow, fixtures
 and tolerances remain unchanged.
 
+## Windows generator follow-up, 2026-10-19
+
+The user supplied the Windows configuration failure from run 39245504713.
+CMake selected `NMake Makefiles`, but `nmake -?` failed because the executable
+was unavailable; CMake then reported unset C and C++ compilers. This failure
+occurred before sfizz compilation or audio comparisons.
+
+The workflow now explicitly passes `-G "Visual Studio 17 2022" -A x64` on
+Windows, using the installed Visual Studio build system and the existing
+`--config Release` build command and `Release/sfizz_render.exe` path. Linux
+and macOS retain their existing generator selection. The installed generator
+is listed in the
+[Windows 2025 image inventory](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md#visual-studio-enterprise-2022),
+and its platform flag is documented by
+[CMake 3.31](https://cmake.org/cmake/help/v3.31/generator/Visual%20Studio%2017%202022.html).
+
+YAML parsing and `git diff --check` pass. Windows execution remains pending a
+new workflow run; these local checks do not establish that sfizz builds or
+renders successfully on that platform. No sfizz source, dependency pin,
+comparison fixture or tolerance changed.
+
 ## Next slice
 
-Retrieve the first matrix run's logs and artifacts, diagnose its Windows/macOS
-setup failures, and collect the unchanged unity case on all three platforms
+Rerun the Windows configuration fix, retrieve the Linux comparison output,
+resolve the macOS build failure, and collect the unchanged unity case on all
+three platforms
 before deciding the reference comparison contract: the NEON pan factors
 are architecture-specific, and the pinned client/core timing behavior should
 not be copied into enge. Keep the failing comparisons visible and defer new
