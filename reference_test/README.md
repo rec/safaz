@@ -83,6 +83,16 @@ absolute channel levels and audible frame coordinates. Velocity 1's gain ratio
 is explicitly unresolved at PCM16 precision, although its absolute residual is
 still recorded. No passing residual establishes its relative gain accuracy.
 
+Timing reports search from frame zero for the first note, then partition the
+declared horizon at midpoints between expected note starts. These fixtures have
+separated audible notes and intervening silence; this search includes early
+starts without assigning a previous note's tail to the following note. Each
+measurement records `expected_onset_frame` and the half-open
+`timing_window_frames` alongside the first and last audible frames. These timing
+windows are not an overlap-aware note detector. Channel levels retain their
+original expected-onset-to-next-onset windows. Neither measurement changes the
+whole-horizon waveform comparisons or their acceptance limits.
+
 Failure directories contain input hashes, pinned revisions, platform, build
 cache, executable hash and arguments, process logs, imported document, events,
 available actions, reports and WAVs. Native and native/reference difference
