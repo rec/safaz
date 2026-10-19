@@ -187,7 +187,7 @@ def compare(actual: np.ndarray, expected: np.ndarray) -> dict[str, object]:
 
 
 def measure_notes(case: Case, audio: np.ndarray) -> list[dict[str, object]]:
-    """Report absolute levels and frame coordinates, without correcting them."""
+    """Measure separated fixtures, including audio before expected note starts."""
     measurements = []
     for index, note in enumerate(case.notes):
         start = note.tick * 25
@@ -195,17 +195,24 @@ def measure_notes(case: Case, audio: np.ndarray) -> list[dict[str, object]]:
             case.notes[index + 1].tick if index + 1 < len(case.notes) else case.end_tick
         ) * 25
         window = audio[start:end]
-        audible = np.flatnonzero(np.max(np.abs(window), axis=1) > PCM_ERROR)
+        timing_start = (case.notes[index - 1].tick * 25 + start) // 2 if index else 0
+        timing_end = (
+            (start + end) // 2 if index + 1 < len(case.notes) else case.end_tick * 25
+        )
+        timing_window = audio[timing_start:timing_end]
+        audible = np.flatnonzero(np.max(np.abs(timing_window), axis=1) > PCM_ERROR)
         measurements.append(
             {
                 'key': note.key,
                 'velocity': note.velocity,
                 'peak_channels': np.max(np.abs(window), axis=0).tolist(),
                 'rms_channels': np.sqrt(np.mean(window**2, axis=0)).tolist(),
-                'first_audible_frame': int(start + audible[0])
+                'expected_onset_frame': start,
+                'timing_window_frames': [timing_start, timing_end],
+                'first_audible_frame': int(timing_start + audible[0])
                 if len(audible)
                 else None,
-                'last_audible_frame': int(start + audible[-1])
+                'last_audible_frame': int(timing_start + audible[-1])
                 if len(audible)
                 else None,
                 'audibility_threshold': PCM_ERROR,

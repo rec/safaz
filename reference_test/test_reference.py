@@ -9,6 +9,32 @@ import pytest
 import soundfile
 
 
+def test_note_timing_reports_early_late_and_silent_notes(tmp_path: Path) -> None:
+    case = harness.Case(
+        name='timing',
+        notes=[harness.Note(tick=t) for t in [11, 2000, 4000]],
+        end_tick=6000,
+    )
+    audio = np.full((150_000, 2), -1 / 32768)
+    audio[274:1000, 0] = 0.125
+    audio[50_003:51_000, 1] = -0.125
+    soundfile.write(tmp_path / 'timing.wav', audio, 48_000, subtype='FLOAT')
+
+    measurements = harness.measure_notes(case, audio)
+
+    assert [m['first_audible_frame'] for m in measurements] == [274, 50_003, None]
+    assert [m['last_audible_frame'] for m in measurements] == [999, 50_999, None]
+    assert [m['expected_onset_frame'] for m in measurements] == [275, 50_000, 100_000]
+    assert measurements[0]['timing_window_frames'] == [0, 25_137]
+    assert measurements[1]['timing_window_frames'] == [25_137, 75_000]
+    assert measurements[2]['timing_window_frames'] == [75_000, 150_000]
+    # Timing inspection must not change the existing level measurement window.
+    assert (
+        measurements[0]['rms_channels']
+        == np.sqrt(np.mean(audio[275:50_000] ** 2, axis=0)).tolist()
+    )
+
+
 @pytest.mark.parametrize('case', harness.CASES, ids=[c.name for c in harness.CASES])
 @pytest.mark.parametrize('backend', ['numpy', 'native'])
 def test_imported_playback_matches_reference(
