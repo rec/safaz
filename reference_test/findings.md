@@ -348,11 +348,38 @@ new workflow run; these local checks do not establish that sfizz builds or
 renders successfully on that platform. No sfizz source, dependency pin,
 comparison fixture or tolerance changed.
 
+## macOS compiler follow-up, 2026-10-19
+
+The supplied macOS log identifies four fatal errors in the pinned bundled
+`external/atomic_queue/include/atomic_queue/atomic_queue.h`, at lines 403, 409,
+532 and 538: `template` precedes a function name without a template argument
+list. The same header is included by multiple translation units, repeating
+these errors. The unused-variable and NaN warnings did not stop the build.
+[Clang 19's release notes](https://releases.llvm.org/19.1.0/tools/clang/docs/ReleaseNotes.html#resolutions-to-c-defect-reports)
+document the stricter template syntax check.
+
+The workflow now selects the installed Xcode 16.2 developer directory before
+sfizz configuration. `xcrun --find clang` and `xcrun --find clang++` set `CC` and
+`CXX`, while `DEVELOPER_DIR` keeps SDK discovery on that Xcode installation.
+The compiler version is printed in the job log. This selection happens after
+installing the locked Python dependencies; it applies to the reference build
+without changing its source or disabling the diagnostic. Xcode 16.2 is listed
+in the
+[macOS 15 ARM64 runner inventory](https://github.com/actions/runner-images/blob/main/images/macos/macos-15-arm64-Readme.md#xcode).
+
+Local verification compiles the unchanged atomic_queue header in syntax-only
+C++17 mode: Apple Clang 15 accepts it, while Homebrew Clang 23.1.3 reproduces
+the same four errors. The existing complete local sfizz build also uses Apple
+Clang 15. Xcode 16.2 is unavailable locally, so its complete hosted build remains
+pending a fresh workflow run. YAML parsing, shell syntax and `git diff --check`
+pass; no Python or fixture data changed, so pytest was not rerun. sfizz and
+submodules, dependency pins, DSP build options, fixtures and comparison
+tolerances remain unchanged.
+
 ## Next slice
 
-Rerun the Windows configuration fix, retrieve the Linux comparison output,
-resolve the macOS build failure, and collect the unchanged unity case on all
-three platforms
+Rerun the Windows and macOS build configuration fixes, retrieve the Linux
+reports and WAVs, and collect the unchanged unity case on all three platforms
 before deciding the reference comparison contract: the NEON pan factors
 are architecture-specific, and the pinned client/core timing behavior should
 not be copied into enge. Keep the failing comparisons visible and defer new

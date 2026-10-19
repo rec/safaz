@@ -28,6 +28,10 @@ for each run so evidence cannot be overwritten. No audio device is required.
 On Windows with Visual Studio 2022, add `-G "Visual Studio 17 2022" -A x64` to
 the configure command. The workflow selects this generator explicitly instead
 of relying on NMake or a preinitialized compiler shell.
+The macOS workflow selects the installed Xcode 16.2 toolchain and SDK through
+`DEVELOPER_DIR`, `CC` and `CXX` before configuring sfizz. Newer Clang versions
+reject template syntax in sfizz's pinned bundled `atomic_queue` header. No
+third-party source is patched and no compiler diagnostic is disabled.
 With the optional dependencies installed, omitting the runner options skips
 external comparisons locally. `--require-reference` turns missing configuration
 into a failure. Configured missing files, build failures, subprocess errors and
