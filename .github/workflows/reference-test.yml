@@ -31,6 +31,9 @@ jobs:
         run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
       - name: Install native renderer build toolchain
         run: rustup toolchain install 1.87.0 --profile minimal
+      - name: Install Linux MIDI build prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
       - name: Install locked reference dependencies
         run: uv sync --frozen --group reference
       - name: Select macOS reference toolchain

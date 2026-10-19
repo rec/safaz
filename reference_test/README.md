@@ -13,6 +13,8 @@ playback already agrees. See [current findings](findings.md).
 Install the optional group with `uv sync --frozen --group reference`.
 Building enge and its meedee dependency requires Rust; CI pins its build
 toolchain to 1.87.0, meedee's declared minimum.
+Linux also requires ALSA development headers and pkg-config; the workflow
+installs `libasound2-dev` and `pkg-config` before building the locked dependencies.
 Check out sfizz separately at the revision above and initialize its recursive
 submodules. Build outside its source tree, without changing upstream files:
 
