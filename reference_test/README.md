@@ -28,6 +28,8 @@ for each run so evidence cannot be overwritten. No audio device is required.
 On Windows with Visual Studio 2022, add `-G "Visual Studio 17 2022" -A x64` to
 the configure command. The workflow selects this generator explicitly instead
 of relying on NMake or a preinitialized compiler shell.
+It uses the `windows-2022` runner, whose image includes Visual Studio 2022;
+the observed `windows-2025` image instead contains Visual Studio 2026.
 The macOS workflow selects the installed Xcode 16.2 toolchain and SDK through
 `DEVELOPER_DIR`, `CC` and `CXX` before configuring sfizz. Newer Clang versions
 reject template syntax in sfizz's pinned bundled `atomic_queue` header. No
@@ -41,6 +43,8 @@ The manual [reference workflow](../.github/workflows/reference-test.yml) builds
 the same upstream revision on Linux, Windows and macOS. Each job uploads its
 inputs, logs and available comparison evidence, including on failure. It runs
 serially and independently of the fast unit workflow.
+Hidden-file upload is enabled for the explicitly listed evidence paths so
+`.reference-artifacts/` reports and WAVs are included alongside build metadata.
 
 ## Fixtures and comparisons
 
