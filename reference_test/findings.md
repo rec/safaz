@@ -12,6 +12,8 @@ below. "Gain and off-center pan equation audit" separates conventions,
 numerical differences and implementation defects. "Per-instrument pan-law
 implementation" records the accepted convention and local verification;
 earlier baseline numbers used the previous gain model.
+"Intermittent gain-output investigation" below traces the anomalous first-note
+cutoff to output from the pinned sfizz executable, independently of our harness.
 Earlier access failures and pending-build statements describe
 their original sessions and are superseded by the follow-ups.
 
@@ -897,6 +899,97 @@ covered by the focused local law tests and earlier local equation audit.
 No sfizz source, submodule, DSP setting, fixture, authored equation, alignment
 rule or tolerance changed during this rerun.
 
+## Intermittent gain-output investigation, 2026-10-20
+
+**The intermittent difference originates in the pinned sfizz client/core output,
+not safaz's comparison harness or enge's gain/pan implementation.** It is a
+premature first-note cutoff, not a variable gain curve. Direct subprocess
+repetition without importing safaz, enge or the reference harness reproduced
+both CI output files byte-for-byte from identical inputs.
+
+The original case directories in run 39302089462 have identical SFZ, MIDI and
+sample bytes, verified against their manifests. Both native-backend WAVs also
+match exactly. The harness closes generated inputs before invoking sfizz,
+uses distinct output paths for cases, waits for successful process termination,
+and only reads `reference.wav`; enge runs afterward and writes `native.wav`.
+There is no shared writable output, background Python render, fitted gain or
+residual calculation that can explain the already-different reference WAVs.
+
+The local experiment copied those four CI inputs into one fixed directory and
+launched the retained unmodified sfizz executable 60 times serially, with fresh
+output filenames and the same options: 48 kHz, block 256, quality 1, polyphony
+64 and `--use-eot`. Inputs were hashed before and after every invocation. The
+standalone script imports NumPy and soundfile for inspection, but no project
+or harness modules; sfizz itself performs every render in a separate process.
+59 outputs match the usual CI WAV; invocation 12 (zero-based) exactly matches
+the anomalous CI WAV. A further 60 launches directly from a shell, without
+Python launching or capturing the renderer, all match the usual WAV. These
+counts establish reproduction, not a stable failure-rate estimate.
+
+| Output | Full WAV SHA-256, matching both local repetition and CI |
+| --- | --- |
+| Usual | `2cd305ad9abe5c20bcdc1a7cd55c04b1158840670a2a40aecce3fb883a8d533a` |
+| Truncated | `a69a01977f8152ccaa7d9082c611d36f443ba26a584c1846c0eaffbc49918d8d` |
+
+The retained local executable SHA-256 is
+`9cfe47514f8e968aa1660a3f06e8d4c8b446b42a6b421afc8b210818be2a59d0`, verified
+against the earlier local pan-law manifest. That manifest records the same
+pinned sfizz revision/submodules and macOS 14.5 arm64 build provenance. This is
+not a rebuilt executable or the macOS CI binary; reproducing the exact CI WAV
+bytes with this separate retained build strengthens the attribution. It does
+not establish incidence on other architectures or other sfizz revisions.
+
+Both reference files match through frame 8,465 and again from frame 24,275
+onward. Only frames 8,466 through 24,274 differ, in both channels: 15,809 frames,
+maximum difference `0.02679443359375`. The anomalous interval is constant
+`-1/32768`, the pinned client's PCM16 encoding of digital silence. The first
+note starts at frame 274; frame 8,466 is exactly 8,192 samples later. The normal
+first note remains audible through frame 24,274. All later notes are unchanged.
+
+The pinned source contains a matching loading/synchronization defect:
+
+- [`Config.h`](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Config.h#L29)
+  sets the default preload to 8,192 frames with full RAM loading disabled.
+- [`getFilePromise` and `dispatchingJob`](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/FilePool.cpp)
+  enqueue a request, then a separate dispatcher creates the loading future.
+  `waitForBackgroundLoading` at lines 593-600 locks the jobs mutex and waits
+  only for futures already in `loadingJobs`. It does not drain or wait for
+  requests still in `filesToLoad`. An empty jobs vector can therefore let an
+  offline render continue before its queued request has been dispatched.
+- [`Synth::renderBlock`](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Synth.cpp#L1117)
+  calls that wait in freewheeling mode. The upstream offline client already
+  enables freewheeling; this is not a harness omission of an offline flag.
+- [`FileData::getData`](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/FilePool.h#L77)
+  can still return the preload alone. [`Voice::Impl::fillWithData`](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Voice.cpp#L1165)
+  bounds `sampleEnd` by the currently available source length and calls `off`
+  when a one-shot reaches that boundary. It can terminate the voice instead
+  of waiting for the remaining sample data.
+
+That mechanism explains the exact preload-boundary cutoff and intermittency.
+The output attribution is demonstrated by reproduction; the specific thread
+interleaving is inferred from source and the boundary measurement, not proved
+by a debugger trace or an instrumented/patched sfizz build. It is separate from
+the deliberate compensation convention and the earlier scalar/NEON lookup and
+MIDI/block timing differences. The harness correctly preserves and rejects the
+bad output. Its unity-only repeat test is limited coverage, not the cause.
+
+Evidence is retained under `/private/tmp/safaz-gain-investigation-20261020`:
+the copied inputs, 120 full WAVs, `repeat-analysis.json`, channel/provenance
+analysis and three listening excerpts. Reproduction and inspection scripts are
+`/private/tmp/safaz-gain-repeat-20261020.py` and
+`/private/tmp/safaz-gain-inspect-20261020.py`. The excerpts retain the first
+48,000 frames at 48 kHz, without gain normalization or time shifting. They
+compare the existing safaz-imported/enge-rendered first note with normal and
+truncated sfizz output. Expect a 500 Hz square-wave tone lasting approximately
+half a second, followed by silence; the anomalous sfizz note lasts only about
+0.171 seconds. No hearing judgment is needed to establish the cutoff, but these
+files make its audible consequence directly checkable.
+
+Only this findings document changed in the repository. sfizz, playback code,
+fixtures, dependencies, accepted equations and tolerances remain unchanged.
+No new unit tests were added for an external renderer; the Python suites were
+not rerun for a documentation-only change. `git diff --check` passes.
+
 ## Next slice
 
 Decide the reference comparison contract using the complete three-platform
@@ -909,11 +1002,13 @@ The mono normalization and stereo balance laws are now explicit and static
 off-center playback is implemented. The centered fixtures qualify the explicit
 law selection on all three platforms; wider pan/mono reference coverage remains
 a separate slice. Treat sfizz's compensation convention separately from its
-inconsistent scalar/NEON lookup coordinates. Investigate the observed
-same-input gain variability before treating repeated unity alone as evidence
-of general determinism.
+inconsistent scalar/NEON lookup coordinates. The intermittent first-note cutoff
+is now reproduced outside the harness and attributed to pinned sfizz output;
+the loader's offline synchronization needs an upstream fix before treating
+repeated unity alone as evidence of general determinism. No such fix or
+workaround has been applied here.
 
 ## Additional work beyond the prompt
 
-The user approved an isolated meedee Windows build-path fix and safaz lock
-update after the reference run exposed the dependency build blocker.
+None for this investigation. The preceding three-platform rerun separately
+included the user-approved meedee Windows build-path fix and safaz lock update.
