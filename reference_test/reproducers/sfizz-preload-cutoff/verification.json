@@ -1,0 +1,133 @@
+{
+  "date": "2026-10-20",
+  "sfizz_revision": "f5c6e29f23b8057867c08e88f5f6ac6738baa30b",
+  "submodules": [
+    " 4a2c63365eff8823a5221db86ef490e828306f9d external/abseil-cpp (20240116.0)",
+    " 8a2edd6d92ed820521d42c94d179462bf06b5ed3 external/filesystem (v1.5.14)",
+    " 2c1eabc2e20ab02961f95c704ff0c0818671ddd1 external/invoke.hpp (heads/main)",
+    " 86892fc480f80fb57d9a3926cb506c0e974489d8 external/invoke.hpp/vendors/doctest (86892fc)",
+    " 2bf459d4ed6d7ed6b9f31bd9e07c91bace5009e0 external/simde (2bf459d)",
+    " da8f73412998e4f1adf1100dc187533a51af77fd external/simde/test/munit (da8f734)",
+    " e4a7765e598e9e54dc0f520b7e4416359bee80cc external/st_audiofile/thirdparty/dr_libs (e4a7765)",
+    " d1a166c83ab445b1c14bc83d37c84e18d172e5f5 external/st_audiofile/thirdparty/dr_libs/tests/external/miniaudio (d1a166c)",
+    " 78864a4a2e769e426be8cfd78ae7f5f72e236c33 external/st_audiofile/thirdparty/libaiff (heads/master)",
+    " 07ffb331d23c16e2d2979370441f63ea722760bc external/st_audiofile/thirdparty/wavpack (07ffb33)"
+  ],
+  "executable_sha256": "9cfe47514f8e968aa1660a3f06e8d4c8b446b42a6b421afc8b210818be2a59d0",
+  "platform": "macOS-14.5-arm64-arm-64bit-Mach-O",
+  "compiler": [
+    "AppleClang",
+    "15.0.0.15000309"
+  ],
+  "render_arguments": [
+    "sfizz_render",
+    "--sfz",
+    "instrument.sfz",
+    "--midi",
+    "note.mid",
+    "--wav",
+    "output.wav",
+    "--samplerate",
+    "48000",
+    "--blocksize",
+    "256",
+    "--quality",
+    "1",
+    "--polyphony",
+    "64",
+    "--use-eot"
+  ],
+  "working_directory": "directory containing instrument.sfz, a.wav and note.mid",
+  "input_and_output_sha256": {
+    "instrument.sfz": "5096d40b74b64b4ce65d5cec18dca34c3aabd04d845df29bb45f3d62c329d2fd",
+    "a.wav": "03338fdac9010c786b2e1849b27565545208254d51bd6ae611f1936ff0fab04f",
+    "note.mid": "ae3a27406f89e76894a4907713b1af2388be2c5a90decbdfd76b84415336270a",
+    "normal.wav": "9cf45d1ce61b8d259f47da500cfac1c05f9d31eb634d1e6c60094078b5bbae6c",
+    "truncated.wav": "69d92fa02c5ae2611a8aa7d80999d6f452fa439462f830e91abf8d3cab9820a1"
+  },
+  "measurements": {
+    "rate": 48000,
+    "frames": 48128,
+    "first_different_frame": 8192,
+    "last_different_frame": 48127,
+    "different_frames": 39936,
+    "maximum_absolute_difference": 0.033203125,
+    "truncated_tail_value": -3.0517578125e-05
+  },
+  "selected_runs": {
+    "normal.wav": {
+      "index": 0,
+      "sha256": "9cf45d1ce61b8d259f47da500cfac1c05f9d31eb634d1e6c60094078b5bbae6c",
+      "frames": 48128,
+      "first_audible": 0,
+      "last_audible": 48127,
+      "exit_status": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "truncated.wav": {
+      "index": 81,
+      "sha256": "69d92fa02c5ae2611a8aa7d80999d6f452fa439462f830e91abf8d3cab9820a1",
+      "frames": 48128,
+      "first_audible": 0,
+      "last_audible": 8191,
+      "exit_status": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  "reduction_batches": [
+    {
+      "sfz": "<region> sample=a.wav key=60 loop_mode=one_shot\n",
+      "runs": 200,
+      "output_hash_counts": {
+        "9cf45d1ce61b8d259f47da500cfac1c05f9d31eb634d1e6c60094078b5bbae6c": 199,
+        "69d92fa02c5ae2611a8aa7d80999d6f452fa439462f830e91abf8d3cab9820a1": 1
+      },
+      "last_audible_frame_counts": {
+        "48127": 199,
+        "8191": 1
+      }
+    },
+    {
+      "sfz": "<region> sample=a.wav\n",
+      "runs": 1000,
+      "output_hash_counts": {
+        "9cf45d1ce61b8d259f47da500cfac1c05f9d31eb634d1e6c60094078b5bbae6c": 1000
+      },
+      "last_audible_frame_counts": {
+        "48127": 1000
+      }
+    },
+    {
+      "sfz": "<region> sample=a.wav loop_mode=one_shot\n",
+      "runs": 300,
+      "output_hash_counts": {
+        "9cf45d1ce61b8d259f47da500cfac1c05f9d31eb634d1e6c60094078b5bbae6c": 300
+      },
+      "last_audible_frame_counts": {
+        "48127": 300
+      }
+    },
+    {
+      "sfz": "<region> sample=a.wav key=60\n",
+      "runs": 300,
+      "output_hash_counts": {
+        "9cf45d1ce61b8d259f47da500cfac1c05f9d31eb634d1e6c60094078b5bbae6c": 300
+      },
+      "last_audible_frame_counts": {
+        "48127": 300
+      }
+    }
+  ],
+  "packaged_input_recheck": {
+    "runs": 200,
+    "output_hash_counts": {
+      "9cf45d1ce61b8d259f47da500cfac1c05f9d31eb634d1e6c60094078b5bbae6c": 200
+    },
+    "last_audible_frame_counts": {
+      "48127": 200
+    }
+  },
+  "direct_command_recheck_sha256": "9cf45d1ce61b8d259f47da500cfac1c05f9d31eb634d1e6c60094078b5bbae6c"
+}
