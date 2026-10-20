@@ -7,9 +7,9 @@ comparisons with sfizz still fail. Earlier pinned runs below are retained for
 comparison. Upstream sfizz remains unchanged; the accepted SFZ pan convention
 is explicit in the later implementation and qualification records.
 
-Current pan-law CI evidence is recorded under "Three-platform pan-law rerun"
-below. "Gain and off-center pan equation audit" separates conventions,
-numerical differences and implementation defects. "Per-instrument pan-law
+Current pan-law CI evidence is recorded under "Independent authored checks and
+pan qualification" below. "Gain and off-center pan equation audit" separates
+conventions, numerical differences and implementation defects. "Per-instrument pan-law
 implementation" records the accepted convention and local verification;
 earlier baseline numbers used the previous gain model.
 "Intermittent gain-output investigation" below traces the anomalous first-note
@@ -1037,25 +1037,119 @@ experiment. The existing 351 unit tests, Ruff, formatting, `ty check safaz`
 and `git diff --check` pass. No Python source changed, so changed-file
 pyupgrade has no targets.
 
+## Independent authored checks and pan qualification, 2026-10-20
+
+The first two follow-up slices separate our correctness contract from external
+equivalence, and extend pan coverage without changing playback behavior.
+Native cases render from the independently authored horizon before any sfizz
+invocation. Separate tests assert selection, waveform and audible timing with
+silent block padding. The two external waveform comparisons share one sfizz
+invocation but have independent assertions; known mismatches remain ordinary
+failures. Exceptions during native rendering or reference invocation record
+their stage and cannot short-circuit independent authored tests. No xfail, retry,
+outlier removal, alignment, gain fitting or tolerance change was introduced.
+JUnit results are retained with the existing artifacts.
+
+Twenty additional cases cover source mono/stereo and positions -100, -50, 0,
+50 and 100 under each declared law, through both enge backends. The 40 new
+native renders use independently written cosine/sine, dB compensation and
+linear stereo-balance equations, not uFor's pan helper. SFZ conversion must
+explicitly select the sfizz convention. Generic native-law cases then select
+that law in their test instrument, with the original import retained separately;
+their external tests are explicitly inapplicable because they make no SFZ
+equivalence claim. No failed sfizz comparison is skipped on that account.
+
+Local execution without a configured sfizz runner passes **150 tests**, with
+97 external tests skipped. This includes all 144 native checks over 48 renders
+(eight original baseline and 40 new pan variants), five deliberate measurement
+mutations including channel routing, and the timing-measurement check. This
+establishes that missing reference configuration does not gate native checks.
+The existing unit suite passes 351 tests. Ruff, formatting, type checks for
+safaz and the reference harness, changed-file pyupgrade, workflow YAML parsing
+and diff checks pass. The optional dependencies and upstream build pins are
+unchanged.
+
+[Run 39422527853](https://github.com/rec/safaz/actions/runs/39422527853) tests
+commit `7760a747b77f0f27e857328b24218d774c42f6e4` on Linux x86_64, Windows x86_64
+and macOS arm64. All three jobs complete rendering and artifact upload. Each
+reports **150 passed, 57 failed, 40 skipped**, with no test-setup/renderer errors:
+
+| Independent result, per platform | Passed | Failed | Inapplicable |
+| --- | ---: | ---: | ---: |
+| Native region selection | 48 | 0 | 0 |
+| Native/authored waveform | 48 | 0 | 0 |
+| Native authored timing and silent padding | 48 | 0 | 0 |
+| Native/reference waveform | 0 | 28 | 20 |
+| Authored/reference waveform | 0 | 28 | 20 |
+| Reference block repeatability | 0 | 1 | 0 |
+| Measurement fault/timing checks | 6 | 0 | 0 |
+
+The 40 skips are exclusively the two external assertions on each generic
+native-law variant. All 28 sfizz case-comparison invocations per platform have both
+waveform assertions evaluated. The higher failure count than the earlier
+nine-failure suite reflects added cases and two independent external assertions
+instead of one short-circuiting test, not an inferred playback regression.
+
+Each artifact contains 48 complete reports and 295 readable, finite 48 kHz
+WAVs, with no `failure.json`: 144 native renders and 885 inspected WAVs across
+the platforms. The maximum native/authored error is
+`3.469446951953614e-18` on each platform. Both backends' decoded native WAVs
+match exactly for every case, and all 48 decoded native WAVs also match exactly
+between platforms. For the eight original baseline variants, both native and
+sfizz decoded WAVs match run 39303334993 on their respective platforms. Their
+SFZ, MIDI and sample hashes are unchanged.
+
+Every SFZ-convention manifest records the unchanged sfizz source/submodule
+revisions; uFor remains `b109c591dac9b87249afa945b571b20985fc09d2`, enge remains
+`8c93502e4efbecbaf84741aede8f5704c22e8dab`, and the meedee/toolchain pins remain
+unchanged. All waveform limits remain `0.00006303515625`. No renderer or
+importer playback code changed.
+
+The pan comparisons retain the previously diagnosed timing difference: all
+20 pan reference renders on each platform first exceed the existing audibility
+threshold at frame 274, versus authored/native 275, and last exceed it at
+24,274. No preload-boundary cutoff was observed in these pan invocations.
+Full-waveform pan maximum errors range from approximately 0.0699 to 0.15153;
+all remain failing. These are separate from much smaller absolute channel-peak
+differences:
+
+| Platform | Largest pan channel-peak difference from authored | Case |
+| --- | --- | --- |
+| Linux / Windows | `0.00004955562350905662` | Mono, sfizz law, pan -50 |
+| macOS | `0.00005099140460925605` | Stereo, sfizz law, pan +50 |
+
+Those peak differences are diagnostics from the retained levels, not new
+acceptance limits or a fitted compensation curve. They preserve visibility of
+lookup/quantization differences apart from the large timing/edge residuals.
+The new failures have not been assigned wholesale to the intermittent loader
+bug. Reference repeatability remains unchanged: repeated 256-frame output is
+exact; 64 versus 256 fails at `0.10699462890625` on Linux/Windows and
+`0.10693359375` on macOS; 257 versus 256 is exact on Linux/Windows and differs
+by one PCM16 step on macOS, within the unchanged limit.
+
+The run's artifacts retain JUnit results, equations/gains, imported and rendered
+instruments, reports, WAVs, source/build manifests and subprocess records.
+Downloaded evidence and `analysis.json` are under
+`/private/tmp/safaz-ci-39422527853`; the numerical inspection script is
+`/private/tmp/safaz-pan-qualification-audit-20261020.py`. These are temporary
+paths; CI artifacts retain the workflow's 14-day lifetime. This qualifies the
+declared static mono/stereo laws at the tested center, endpoints and off-center
+positions on both backends and all three platforms. It does not claim sfizz
+waveform equivalence, dynamic pan modulation, width/position controls or arbitrary
+voice interactions. The upstream report remains parked for the user's review.
+
 ## Next slice
 
-Decide the reference comparison contract using the complete three-platform
-centered-fixture evidence: the NEON pan factors are architecture-specific,
-and the pinned client/core timing behavior
-should not be copied into enge. Keep the failing comparisons visible and defer
-new feature families. Any change to accepted playback semantics needs a
-separate decision based on that evidence.
-The mono normalization and stereo balance laws are now explicit and static
-off-center playback is implemented. The centered fixtures qualify the explicit
-law selection on all three platforms; wider pan/mono reference coverage remains
-a separate slice. Treat sfizz's compensation convention separately from its
-inconsistent scalar/NEON lookup coordinates. The intermittent first-note cutoff
-is now reproduced outside the harness and attributed to pinned sfizz output;
-the loader's offline synchronization needs an upstream fix before treating
-repeated unity alone as evidence of general determinism. No such fix or
-workaround has been applied here.
+The two slices are complete: authored correctness is independent, and the
+expanded pan matrix passes its native contract on all three platforms.
+The next feature family is static filters
+under the accepted `sfizz_rbj` response profile, with independently specified
+frequency-response and processing-order checks. Preserve the failing external
+waveform/repeatability evidence; do not copy scalar/NEON lookup or pinned-client
+timing defects into enge. The upstream cutoff report remains parked for human
+review. No sfizz fix or workaround has been applied here.
 
 ## Additional work beyond the prompt
 
-None for this investigation. The preceding three-platform rerun separately
+None for these two slices. The preceding three-platform rerun separately
 included the user-approved meedee Windows build-path fix and safaz lock update.

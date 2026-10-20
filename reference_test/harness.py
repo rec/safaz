@@ -5,6 +5,7 @@ import platform
 import subprocess
 from hashlib import sha256
 from importlib.metadata import distribution
+from math import cos, pi, sin, sqrt
 from pathlib import Path
 from typing import Literal
 
@@ -18,6 +19,7 @@ from ufor.assets import RelativeFileLocation
 from ufor.instrument_trace import TraceAction
 from ufor.interface import ScoreReference
 from ufor.samples import trace
+from ufor.samples.processing import PanLaw
 
 from safaz import reader
 from safaz.model import SfzMidiBindingRequest
@@ -26,7 +28,6 @@ RATE = 48_000
 SFIZZ_REVISION = 'f5c6e29f23b8057867c08e88f5f6ac6738baa30b'
 MASTER_DB = -7.35  # SynthPrivate.h / Defaults.h, no client override.
 MASTER_GAIN = 10 ** (MASTER_DB / 20)
-SFIZZ_STEREO_CENTER_GAIN = 10 ** (6 / 20) / 2
 # drwav uses floor((x + 1) * 32767.5) - 32768, bounded by two LSBs.
 PCM_ERROR = 2 / 32768
 FLOAT_ERROR = 2e-6
@@ -45,6 +46,26 @@ class Case(BaseModel, frozen=True):
     name: str
     notes: list[Note]
     end_tick: int
+    source_channels: Literal[1, 2] = 2
+    pan: int | None = None
+    pan_law: PanLaw = PanLaw.sfizz
+
+
+def authored_pan_gains(case: Case) -> list[float]:
+    """Independent equations, never the renderer's pan_gains implementation."""
+    position = (case.pan or 0) / 100
+    if case.pan_law == PanLaw.native and case.source_channels == 2:
+        return [min(1.0, 1 - position), min(1.0, 1 + position)]
+    angle = (position + 1) * pi / 4
+    compensation = 1.0
+    if case.pan_law == PanLaw.sfizz:
+        compensation = (
+            10 ** (3 / 20) if case.source_channels == 1 else 10 ** (6 / 20) / sqrt(2)
+        )
+    return [
+        0.0 if position == 1 else compensation * cos(angle),
+        0.0 if position == -1 else compensation * sin(angle),
+    ]
 
 
 def write_json(path: Path, value: object) -> None:
@@ -79,15 +100,18 @@ def package_revision(name: str) -> object:
 def create_inputs(case: Case, folder: Path) -> np.ndarray:
     """Use integer-valued PCM sources, distinct periods, and a silent tail."""
     folder.mkdir(parents=True)
-    (folder / 'instrument.sfz').write_bytes(
-        (Path(__file__).parent / 'fixtures' / f'{case.name}.sfz').read_bytes()
-    )
+    fixture = 'pan' if case.pan is not None else case.name
+    sfz = (Path(__file__).parent / 'fixtures' / f'{fixture}.sfz').read_text()
+    if case.pan is not None:
+        sfz = sfz.format(pan=case.pan)
+    (folder / 'instrument.sfz').write_text(sfz)
     sources: dict[str, np.ndarray] = {}
     for name, period in [('a.wav', 96), ('b.wav', 64)]:
-        audio = np.zeros((RATE, 2))
+        audio = np.zeros((RATE, case.source_channels))
         phase = np.arange(RATE // 2) % period
         audio[: RATE // 2, 0] = np.where(phase < period // 2, 0.125, -0.125)
-        audio[: RATE // 2, 1] = -audio[: RATE // 2, 0] / 2
+        if case.source_channels == 2:
+            audio[: RATE // 2, 1] = -audio[: RATE // 2, 0] / 2
         soundfile.write(folder / name, audio, RATE, subtype='PCM_16')
         sources[name] = audio
     performance = mido.MidiFile(type=0, ticks_per_beat=960)
@@ -123,16 +147,14 @@ def create_inputs(case: Case, folder: Path) -> np.ndarray:
         source = sources[note.sample]
         positions = np.arange(int(RATE / note.step)) * note.step
         audio = np.column_stack(
-            [np.interp(positions, np.arange(RATE), source[:, c]) for c in range(2)]
+            [
+                np.interp(positions, np.arange(RATE), source[:, c])
+                for c in range(case.source_channels)
+            ]
         )
-        gain = (
-            MASTER_GAIN
-            * SFIZZ_STEREO_CENTER_GAIN
-            * 10 ** (note.gain_db / 20)
-            * (note.velocity / 127) ** 2
-        )
+        gain = MASTER_GAIN * 10 ** (note.gain_db / 20) * (note.velocity / 127) ** 2
         start = note.tick * 25
-        expected[start : start + len(audio)] += audio * gain
+        expected[start : start + len(audio)] += audio * gain * authored_pan_gains(case)
     soundfile.write(folder / 'expected.wav', expected, RATE, subtype='FLOAT')
     return expected
 
@@ -228,22 +250,16 @@ def measure_notes(case: Case, audio: np.ndarray) -> list[dict[str, object]]:
     return measurements
 
 
-def run_case(
+def run_native_case(
     case: Case,
     folder: Path,
-    executable: Path,
-    source: Path,
-    build: Path,
     backend: Literal['numpy', 'native'],
     block: int,
-) -> dict[str, object]:
+) -> tuple[np.ndarray, np.ndarray]:
     expected = create_inputs(case, folder)
-    cache = build / 'CMakeCache.txt'
-    (folder / 'CMakeCache.txt').write_bytes(cache.read_bytes())
     write_json(
         folder / 'manifest.json',
         {
-            'reference': verify_source(source),
             'platform': platform.platform(),
             'python': platform.python_version(),
             'safaz_revision': subprocess.check_output(
@@ -258,14 +274,9 @@ def run_case(
             'channels': ['left', 'right'],
             'master_db': MASTER_DB,
             'interpolation': 'linear',
-            'reference_executable_sha256': sha256(executable.read_bytes()).hexdigest(),
-            'compiler_metadata': {
-                p.name: p.read_text(encoding='utf-8')
-                for p in (build / 'CMakeFiles').glob('*/CMake*Compiler.cmake')
-            },
             'voices': 64,
             'initial_cc': {'7': 127, '10': 'sfizz default 0.5', '11': 127},
-            'case': case.model_dump(),
+            'case': case.model_dump(mode='json'),
             'input_sha256': {
                 p.name: sha256(p.read_bytes()).hexdigest()
                 for p in folder.iterdir()
@@ -274,27 +285,15 @@ def run_case(
             'unresolved': ['velocity 1 gain ratio below useful PCM16 precision'],
         },
     )
-    reference = render_reference(executable, folder, block)
     horizon = len(expected)
-    if not horizon <= len(reference) < horizon + block:
-        raise ValueError(f'Reference horizon {len(reference)} outside EOT block bounds')
-    if np.any(np.abs(reference[horizon:]) > PCM_ERROR):
-        raise ValueError('Reference block padding contains sound')
-    # Compare the declared EOT interval; raw reference WAV retains its padding.
     report: dict[str, object] = {
-        'reference_frames': len(reference),
         'declared_frames': horizon,
-        'padding_frames': len(reference) - horizon,
-        'reference_vs_authored': compare(reference[:horizon], expected),
-        'reference_notes': measure_notes(case, reference[:horizon]),
         'authored_notes': measure_notes(case, expected),
+        'authored_pan_gains': authored_pan_gains(case),
+        'reference_comparison': 'pending'
+        if case.pan_law == PanLaw.sfizz
+        else 'not applicable: generic native law, no SFZ equivalence claim',
     }
-    soundfile.write(
-        folder / 'reference-authored-difference.wav',
-        reference[:horizon] - expected,
-        RATE,
-        subtype='FLOAT',
-    )
     write_json(folder / 'report.json', report)
     compiled = reader.read(
         folder / 'instrument.sfz',
@@ -310,6 +309,12 @@ def run_case(
     if not compiled.complete or compiled.instrument is None:
         raise ValueError('Positive fixture did not import completely; see import.json')
     document = compiled.instrument
+    if document.body.pan_law != PanLaw.sfizz:
+        raise ValueError('SFZ import must explicitly select the sfizz pan law')
+    if case.pan_law == PanLaw.native:
+        document = document.model_copy(
+            update={'body': document.body.model_copy(update={'pan_law': PanLaw.native})}
+        )
     (folder / 'instrument.json').write_text(
         document.model_dump_json(indent=2), encoding='utf-8'
     )
@@ -345,8 +350,6 @@ def run_case(
         'expected': expected_starts,
     }
     write_json(folder / 'report.json', report)
-    if starts != expected_starts:
-        raise ValueError('Prepared region selection disagrees with authored notes')
     decoded: dict[str, np.ndarray] = {}
     for asset in document.assets:
         location = asset.location
@@ -355,7 +358,7 @@ def run_case(
         decoded[asset.name] = soundfile.read(folder / location.path, always_2d=True)[0]
     prepared = sample_instrument.prepare(document, decoded)
     sampler = sample_instrument.OfflineSampler(prepared, backend, control_interval=1)
-    native = np.zeros(reference.shape)
+    native = np.zeros((((horizon + block - 1) // block) * block, 2))
     for start in range(0, len(native), block):
         end = min(start + block, len(native))
         selected: list[TraceAction] = [
@@ -363,11 +366,62 @@ def run_case(
         ]
         native[start:end] = sampler.advance(selected, start, end) * MASTER_GAIN
     soundfile.write(folder / 'native.wav', native, RATE, subtype='FLOAT')
+    report['native_frames'] = len(native)
+    report['native_padding_silent'] = bool(
+        np.all(np.abs(native[horizon:]) <= PCM_ERROR)
+    )
+    report['native_vs_authored'] = compare(native[:horizon], expected)
+    report['native_notes'] = measure_notes(case, native[:horizon])
+    write_json(folder / 'report.json', report)
+    return native, expected
+
+
+def run_reference_case(
+    case: Case,
+    folder: Path,
+    executable: Path,
+    source: Path,
+    build: Path,
+    native: np.ndarray,
+    expected: np.ndarray,
+    block: int,
+) -> dict[str, object]:
+    """Add reference evidence after native rendering, without gating its checks."""
+    manifest = json.loads((folder / 'manifest.json').read_text())
+    manifest.update(
+        reference=verify_source(source),
+        reference_executable_sha256=sha256(executable.read_bytes()).hexdigest(),
+        compiler_metadata={
+            p.name: p.read_text()
+            for p in (build / 'CMakeFiles').glob('*/CMake*Compiler.cmake')
+        },
+    )
+    write_json(folder / 'manifest.json', manifest)
+    (folder / 'CMakeCache.txt').write_bytes((build / 'CMakeCache.txt').read_bytes())
+    reference = render_reference(executable, folder, block)
+    horizon = len(expected)
+    if not horizon <= len(reference) < horizon + block:
+        raise ValueError(f'Reference horizon {len(reference)} outside EOT block bounds')
+    if np.any(np.abs(reference[horizon:]) > PCM_ERROR):
+        raise ValueError('Reference block padding contains sound')
+    report = json.loads((folder / 'report.json').read_text())
+    report.update(
+        reference_frames=len(reference),
+        padding_frames=len(reference) - horizon,
+        reference_comparison='measured; failures remain failures',
+        reference_vs_authored=compare(reference[:horizon], expected),
+        reference_notes=measure_notes(case, reference[:horizon]),
+        native_vs_reference=compare(native, reference),
+    )
+    soundfile.write(
+        folder / 'reference-authored-difference.wav',
+        reference[:horizon] - expected,
+        RATE,
+        subtype='FLOAT',
+    )
     soundfile.write(
         folder / 'difference.wav', native - reference, RATE, subtype='FLOAT'
     )
-    report['native_vs_reference'] = compare(native, reference)
-    report['native_vs_authored'] = compare(native[:horizon], expected)
     write_json(folder / 'report.json', report)
     return report
 
@@ -406,4 +460,18 @@ CASES = [
         ],
         end_tick=29000,
     ),
+]
+
+PAN_CASES = [
+    Case(
+        name=f'pan-{s.value}-{c}-{p}',
+        notes=[Note(tick=11)],
+        end_tick=6000,
+        source_channels=c,
+        pan=p,
+        pan_law=s,
+    )
+    for s in PanLaw
+    for c in (1, 2)
+    for p in (-100, -50, 0, 50, 100)
 ]

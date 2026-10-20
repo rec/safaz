@@ -12,7 +12,16 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 
 @pytest.fixture(scope='session')
-def reference_paths(request: pytest.FixtureRequest) -> tuple[Path, Path, Path, Path]:
+def reference_output(request: pytest.FixtureRequest) -> Path:
+    output = Path(request.config.getoption('--reference-output')).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    return output
+
+
+@pytest.fixture(scope='session')
+def reference_paths(
+    request: pytest.FixtureRequest, reference_output: Path
+) -> tuple[Path, Path, Path, Path]:
     options = [
         request.config.getoption(n)
         for n in (
@@ -28,6 +37,4 @@ def reference_paths(request: pytest.FixtureRequest) -> tuple[Path, Path, Path, P
     paths = [Path(p).resolve() for p in options]
     if not paths[0].is_dir() or not paths[1].is_file() or not paths[2].is_dir():
         pytest.fail('Configured reference paths are missing')
-    output = Path(request.config.getoption('--reference-output')).resolve()
-    output.mkdir(parents=True, exist_ok=True)
-    return paths[0], paths[1], paths[2], output
+    return paths[0], paths[1], paths[2], reference_output

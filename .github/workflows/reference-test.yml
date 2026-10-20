@@ -58,7 +58,7 @@ jobs:
           uv run --no-project --with cmake==3.31.10 cmake
           --build .reference/build --config Release --target sfizz_render --parallel 4
       - name: Compare and preserve findings
-        run: uv run --no-sync pytest -q reference_test --require-reference --sfizz-source .reference/sfizz --sfizz-build .reference/build --sfizz-render .reference/build/library/bin/${{ runner.os == 'Windows' && 'Release/sfizz_render.exe' || 'sfizz_render' }}
+        run: uv run --no-sync pytest -q reference_test --junitxml=.reference-artifacts/results.xml --require-reference --sfizz-source .reference/sfizz --sfizz-build .reference/build --sfizz-render .reference/build/library/bin/${{ runner.os == 'Windows' && 'Release/sfizz_render.exe' || 'sfizz_render' }}
       - name: Upload reference evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
