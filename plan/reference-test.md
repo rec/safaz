@@ -217,10 +217,11 @@ and packaged for later human review. sfizz remains unchanged.
 
 Native selection, waveform and timing/padding now have independent assertions;
 external comparisons cannot short-circuit them. Twenty mono/stereo pan cases
-cover both laws at five positions through both backends. Local native checks
-pass; the expanded three-platform qualification is recorded in
-`reference_test/findings.md` when its run completes. This does not claim sfizz
-waveform equivalence.
+cover both laws at five positions through both backends. Run 39422527853 passes
+all 144 native checks per platform, with identical decoded native WAVs across
+Linux, Windows and macOS. Each platform retains 56 external waveform failures
+and one reference-repeatability failure. See `reference_test/findings.md` for
+the complete qualification; this does not claim sfizz waveform equivalence.
 
 ## Additional work beyond the prompt
 

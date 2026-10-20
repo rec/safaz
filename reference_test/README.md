@@ -123,8 +123,8 @@ Two separate external tests then assert native/reference and
 authored/reference waveform agreement, sharing one sfizz invocation per case.
 Those assertions remain ordinary failures at the unchanged numerical limits;
 known sfizz defects are not xfailed, retried, aligned away or filtered out.
-Reference exceptions preserve a stage-labelled `failure.json` alongside the
-already completed native evidence. Native preparation exceptions are also
+Exceptions from reference invocation preserve a stage-labelled `failure.json`
+alongside the completed native evidence. Native preparation exceptions are also
 stage-labelled. The workflow retains JUnit `results.xml` so authored results
 remain individually visible even while the external comparisons fail.
 
