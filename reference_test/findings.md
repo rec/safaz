@@ -990,6 +990,53 @@ fixtures, dependencies, accepted equations and tolerances remain unchanged.
 No new unit tests were added for an external renderer; the Python suites were
 not rerun for a documentation-only change. `git diff --check` passes.
 
+## Reduced upstream reproducer, 2026-10-20
+
+The suggested single-region case now reproduces with a simpler sample and MIDI.
+The complete verified SFZ is:
+
+```sfz
+<region> sample=a.wav key=60 loop_mode=one_shot
+```
+
+It uses a generated one-second, mono PCM16 500 Hz square wave at 48 kHz and a
+35-byte format-0 MIDI file containing one C4 note from tick 0 to 960 at 480 PPQN
+and the implicit standard tempo. There are no controllers, gain/pan settings,
+envelope overrides or extra regions. One of the first 200 serial invocations
+of the same retained unmodified sfizz executable produces a cutoff. Invocation
+81 (zero-based) matches the normal WAV through frame 8,191, then becomes
+constant `-1/32768` in both channels from frame 8,192 through 48,127. Both raw
+WAVs contain 48,128 frames; the sound, not the file length, is truncated.
+The normal result remains audible through frame 48,127, including the
+end-of-sample release in the final block. Maximum difference is `0.033203125`.
+
+Further reductions were tested with the same sample, MIDI and renderer options:
+`<region> sample=a.wav` gave 1,000 identical normal outputs; adding only
+`loop_mode=one_shot` gave 300 normal outputs, and adding only `key=60` also gave
+300 normal outputs. Thus the three-opcode form is the smallest **verified**
+reproducer in this experiment. These finite negative batches do not establish
+that either extra opcode is necessary. Another 200 runs from the packaged
+directory were normal; a direct shell render also matched the usual output.
+No stable failure-rate estimate or deterministic reproduction is claimed.
+
+The self-contained [upstream report package](reproducers/sfizz-preload-cutoff/README.md)
+includes the SFZ, sample, MIDI, exact render command/repetition loop, unmodified
+normal and failing output WAVs, source/build provenance, hashes, reduction
+counts and measurements in `verification.json`. It needs only upstream
+`sfizz_render` to run. The uploadable archive is retained at
+`/private/tmp/sfizz-preload-cutoff-20261020.zip`; its seven members were checked
+byte-for-byte against the committed package files. Full experiment outputs and
+batch records remain under `/private/tmp/safaz-minimal-20261020`.
+
+The sample, MIDI messages, SFZ bytes, output layouts, finite samples, exact
+8,192-frame agreement boundary, silent truncated tail and executable hash
+were independently checked while packaging. No sfizz source/binary, playback
+behavior, dependency or comparison tolerance changed. No renderer test was
+added to the unit suite; the external reproducer remains an explicit manual
+experiment. The existing 351 unit tests, Ruff, formatting, `ty check safaz`
+and `git diff --check` pass. No Python source changed, so changed-file
+pyupgrade has no targets.
+
 ## Next slice
 
 Decide the reference comparison contract using the complete three-platform
