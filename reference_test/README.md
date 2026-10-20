@@ -37,8 +37,9 @@ The macOS workflow selects the installed Xcode 16.2 toolchain and SDK through
 `DEVELOPER_DIR`, `CC` and `CXX` before configuring sfizz. Newer Clang versions
 reject template syntax in sfizz's pinned bundled `atomic_queue` header. No
 third-party source is patched and no compiler diagnostic is disabled.
-With the optional dependencies installed, omitting the runner options skips
-external comparisons locally. `--require-reference` turns missing configuration
+With the optional dependencies installed, omitting the runner options runs the
+native/authored checks and skips only external comparisons locally.
+`--require-reference` turns missing configuration
 into a failure. Configured missing files, build failures, subprocess errors and
 renderer exceptions always fail.
 
@@ -69,15 +70,15 @@ native EventBinding; the unused horizon controller does not select a voice.
 The input MIDI and converted native event list are retained. Wider controller
 behavior remains outside these fixtures.
 
-Native region selection is checked against authored note/sample expectations
-before rendering. Audio uses safaz import, uFor preparation and enge's existing
+Native region selection is checked against authored note/sample expectations.
+Audio uses safaz import, uFor preparation and enge's existing
 OfflineSampler with `control_interval=1`, through both NumPy and native backends.
 It does not edit the imported envelope to bypass renderer restrictions.
 
 The client fixes master gain at −7.35 dB in `Defaults.h` and exposes no override.
 The native output receives that same declared multiplier. Quality 1 selects
 linear interpolation in the pinned `Voice.cpp`; capacity is 64 voices. These
-fixtures use stereo sources, default equal temperament, one-shot playback,
+baseline fixtures use stereo sources, default equal temperament, one-shot playback,
 zero-duration envelope phases, and no authored effects or voice stealing.
 The authored oracle uses source positions, dB equations and `(velocity/127)^2`,
 independently of either engine. Disagreements with that contract remain failures.
@@ -87,6 +88,52 @@ from the two centered pan stages and their declared +6 dB compensation. This
 implements the selected convention without reproducing lookup quantization,
 architecture-dependent coefficients or timing defects. Acceptance limits are
 unchanged.
+
+Twenty pan cases add mono/stereo sources at SFZ pan -100, -50, 0, 50 and 100
+for both declared instrument laws, through both backends. One handwritten SFZ
+template supplies the pan value; all source files still contain one second at
+48 kHz with a silent second half. Every import must explicitly select the sfizz
+law. Generic native-law cases then explicitly select `PanLaw.native` in the
+test document; `import.json` retains the original SFZ conversion and
+`instrument.json` records the instrument actually rendered. Native-law cases
+make no SFZ equivalence claim, so their two external comparison tests are
+explicitly inapplicable; no sfizz mismatch is skipped on this account.
+
+The independent oracle uses `p = pan/100`, `a = (p+1)*pi/4`:
+
+| Law | Mono source-to-L/R gains | Stereo L/R gains, retaining original channels |
+| --- | --- | --- |
+| Native | `cos(a), sin(a)` | `min(1,1-p), min(1,1+p)` |
+| sfizz | `10**(3/20) * [cos(a), sin(a)]` | `10**(6/20)/sqrt(2) * [cos(a), sin(a)]` |
+
+Hard-muted endpoints are exactly zero. The oracle does not call uFor/enge's
+pan helper. Reports retain its gains and authored/native/reference channel
+levels and timing, without estimating or fitting gains from sfizz output.
+
+## Independent checks and reference status
+
+Each case/backend renders natively once before any sfizz invocation. Native
+length comes from the authored horizon rounded to the native block size,
+independently of reference output. Separate tests assert prepared selection,
+native/authored waveform agreement, and exact authored audible coordinates
+with silent block padding. Missing or failing sfizz configuration does not
+prevent those tests from running.
+
+Two separate external tests then assert native/reference and
+authored/reference waveform agreement, sharing one sfizz invocation per case.
+Those assertions remain ordinary failures at the unchanged numerical limits;
+known sfizz defects are not xfailed, retried, aligned away or filtered out.
+Reference exceptions preserve a stage-labelled `failure.json` alongside the
+already completed native evidence. Native preparation exceptions are also
+stage-labelled. The workflow retains JUnit `results.xml` so authored results
+remain individually visible even while the external comparisons fail.
+
+The original eight baseline variants and 40 pan variants provide 144 native
+checks. The 28 SFZ-convention variants provide 56 external waveform checks;
+40 generic-native-law external checks are explicitly inapplicable. One
+reference-repeatability test and six measurement checks complete the suite.
+The workflow remains failing while genuine reference comparisons fail; native
+correctness and sfizz waveform equivalence are distinct claims.
 
 Reference WAVs retain their original block-rounded duration. Comparisons use
 the explicitly authored MIDI horizon and separately check that remaining block
@@ -112,16 +159,18 @@ windows are not an overlap-aware note detector. Channel levels retain their
 original expected-onset-to-next-onset windows. Neither measurement changes the
 whole-horizon waveform comparisons or their acceptance limits.
 
-Failure directories contain input hashes, pinned revisions, platform, build
-cache, executable hash and arguments, process logs, imported document, events,
-available actions, reports and WAVs. Native and native/reference difference
-WAVs exist only if native rendering succeeds. Preparation failures preserve
-their traceback and reference/authored difference instead of fabricated audio.
+Case directories contain input hashes, instrument revisions, platform,
+imported document, events, available actions, reports and native/authored WAVs.
+External cases add pinned reference revisions, build cache, executable hash,
+arguments, process logs, reference WAV and signed residual WAVs. Missing
+reference evidence does not erase native results. Preparation failures preserve
+their traceback instead of fabricated audio.
 Differences retain their original signed scale.
 
 Repeatability checks use two identical 256-frame renders and 64/257-frame
-renders over the same declared interval. Four measurement tests deliberately
-alter gain, pitch, onset or source eligibility to ensure those errors are caught.
+renders over the same declared interval. Five measurement tests deliberately
+alter gain, pitch, onset, source eligibility or channel routing to ensure those
+errors are caught, plus the existing early/late/silent timing measurement test.
 
 ## Additional work beyond the prompt
 

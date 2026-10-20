@@ -1037,23 +1037,47 @@ experiment. The existing 351 unit tests, Ruff, formatting, `ty check safaz`
 and `git diff --check` pass. No Python source changed, so changed-file
 pyupgrade has no targets.
 
+## Independent authored checks and pan qualification, 2026-10-20
+
+The first two follow-up slices separate our correctness contract from external
+equivalence, and extend pan coverage without changing playback behavior.
+Native cases render from the independently authored horizon before any sfizz
+invocation. Separate tests assert selection, waveform and audible timing with
+silent block padding. The two external waveform comparisons share one sfizz
+invocation but have independent assertions; known mismatches remain ordinary
+failures. Setup/renderer exceptions preserve their native/reference stage and
+cannot short-circuit already independent authored tests. No xfail, retry,
+outlier removal, alignment, gain fitting or tolerance change was introduced.
+JUnit results are retained with the existing artifacts.
+
+Twenty additional cases cover source mono/stereo and positions -100, -50, 0,
+50 and 100 under each declared law, through both enge backends. The 40 new
+native renders use independently written cosine/sine, dB compensation and
+linear stereo-balance equations, not uFor's pan helper. SFZ conversion must
+explicitly select the sfizz convention. Generic native-law cases then select
+that law in their test instrument, with the original import retained separately;
+their external tests are explicitly inapplicable because they make no SFZ
+equivalence claim. No failed sfizz comparison is skipped on that account.
+
+Local execution without a configured sfizz runner passes **150 tests**, with
+97 external tests skipped. This includes all 144 native checks over 48 renders
+(eight original baseline and 40 new pan variants), five deliberate measurement
+mutations including channel routing, and the timing-measurement check. This
+establishes that missing reference configuration does not gate native checks.
+The existing unit suite passes 351 tests. Ruff, formatting, type checks for
+safaz and the reference harness, changed-file pyupgrade, workflow YAML parsing
+and diff checks pass. The optional dependencies and upstream build pins are
+unchanged. Three-platform execution of the expanded suite follows below.
+
 ## Next slice
 
-Decide the reference comparison contract using the complete three-platform
-centered-fixture evidence: the NEON pan factors are architecture-specific,
-and the pinned client/core timing behavior
-should not be copied into enge. Keep the failing comparisons visible and defer
-new feature families. Any change to accepted playback semantics needs a
-separate decision based on that evidence.
-The mono normalization and stereo balance laws are now explicit and static
-off-center playback is implemented. The centered fixtures qualify the explicit
-law selection on all three platforms; wider pan/mono reference coverage remains
-a separate slice. Treat sfizz's compensation convention separately from its
-inconsistent scalar/NEON lookup coordinates. The intermittent first-note cutoff
-is now reproduced outside the harness and attributed to pinned sfizz output;
-the loader's offline synchronization needs an upstream fix before treating
-repeated unity alone as evidence of general determinism. No such fix or
-workaround has been applied here.
+Complete the expanded pan-law qualification, keeping authored correctness and
+sfizz waveform equivalence distinct. The next feature family is static filters
+under the accepted `sfizz_rbj` response profile, with independently specified
+frequency-response and processing-order checks. Preserve the failing external
+waveform/repeatability evidence; do not copy scalar/NEON lookup or pinned-client
+timing defects into enge. The upstream cutoff report remains parked for human
+review. No sfizz fix or workaround has been applied here.
 
 ## Additional work beyond the prompt
 

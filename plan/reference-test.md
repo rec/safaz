@@ -168,7 +168,20 @@ Repeat a representative render and compare it across block sizes, including
 an irregular size, before declaring the runner stable. Check cross-platform
 measurement consistency without assuming identical floating-point WAV bytes.
 
-## 7. Expand After the Baseline Passes
+## 7. Expand After the Authored Baseline Is Qualified
+
+Native/authored correctness and sfizz waveform equivalence are separate
+results. Each baseline case asserts native selection, waveform, timing and
+padding independently of reference setup or waveform mismatches. Keep both
+external waveform comparisons and reference-repeatability checks as visible
+failures at the existing limits. A known external defect does not establish
+that other discrepancies are explained or permit automatic acceptance.
+
+Before new feature families, qualify mono/stereo pan at center, both endpoints
+and off-center positions on both backends and all three platforms. Test both
+declared laws against independent equations. SFZ-convention cases additionally
+compare with unchanged sfizz; generic native-law cases make no SFZ equivalence
+claim. Preserve source, conversion, channel-level and signed-residual evidence.
 
 Add static filters, keyboard/velocity tracking, and the accepted triangle LFO
 profiles next. Then extend to loops, envelopes, chokes, keyswitches, controller
@@ -195,15 +208,19 @@ Keep unsupported features and richer SFZ 2 modulation outside the first slice.
 
 ## Implementation Status
 
-The optional dependency group, four baseline fixture families, failure artifacts,
-measurement fault checks and manual three-platform workflow are implemented in
-`reference_test/`. Separate enge follow-ups now support the imported envelopes
-and voice-scoped sample-velocity EventBindings. Both backends complete the
-unchanged macOS fixtures and pass their authored-oracle comparisons. The eight
-native/reference waveform assertions and reference repeatability assertion still
-fail. Audio equivalence and cross-platform consistency remain unestablished;
-see `reference_test/findings.md` for the original and follow-up evidence.
-No SFZ importer behavior or third-party source was changed.
+The four baseline fixture families, artifacts and manual three-platform
+workflow are implemented in `reference_test/`. Their three-platform rerun
+passes authored comparisons and retains external waveform/repeatability
+failures. The accepted per-instrument laws and explicit SFZ convention are
+implemented; the intermittent sfizz preload cutoff is reproduced independently
+and packaged for later human review. sfizz remains unchanged.
+
+Native selection, waveform and timing/padding now have independent assertions;
+external comparisons cannot short-circuit them. Twenty mono/stereo pan cases
+cover both laws at five positions through both backends. Local native checks
+pass; the expanded three-platform qualification is recorded in
+`reference_test/findings.md` when its run completes. This does not claim sfizz
+waveform equivalence.
 
 ## Additional work beyond the prompt
 
