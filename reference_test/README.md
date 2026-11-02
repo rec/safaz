@@ -240,12 +240,23 @@ Ten modulation profiles cover signed pitch LFOs, signed amplitude LFOs, their
 delay/fade and combination, symmetric/asymmetric pitch bend, and bend combined
 with both LFOs. The independent oracle integrates cents-derived playback
 increments and linearly samples the authored PCM source; amplitude modulation
-uses `10 ** (depth_db * triangle / 20)`. Pitch wheel events occur during held
+uses `10 ** (depth_db * signal / 20)`. Pitch wheel events occur during held
 notes, covering both endpoints, center and intermediate negative/positive values.
 The explicit `sfizz_symmetric` bend profile maps the native negative half-range
 to sfizz's 8191-step denominator, including the bottom-end plateau. A separate
 two-part audio regression checks held-note control isolation and snapshot restore,
 with its WAVs and `parts-report.json` retained in the reference output folder.
+
+The pitch and amplitude profiles explicitly select `sfizz_parabolic`: for cycle
+phase `p`, the pinned sfizz v1 waveform is `-4*x*(1-abs(x))`, with `x=2*p-1`.
+The importer composes this from two correlated triangles and an affine/product
+operation, then applies the activation gate before cents/dB conversion. Its
+conservative declared source interval is [-2, 2], because generic interval
+analysis does not know the triangles are correlated; the actual signal is
+bounded by [-1, 1]. Tests include positions between extrema.
+
+The older filter choice remains explicitly `sfizz_triangle`. It is a different
+waveform convention from sfizz's default v1 LFO, not evidence of a sfizz defect.
 
 ## Additional work beyond the prompt
 

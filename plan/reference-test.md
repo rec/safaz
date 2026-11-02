@@ -242,6 +242,15 @@ sfizz, reference fixtures and numerical tolerances remain unchanged. The
 upstream cutoff report stays parked
 for human review.
 
+The next approved batch adds filter LFO delay/fade, pitch and amplitude LFOs,
+and explicit continuous pitch bend. The local matrix reports 327 passed,
+269 reference-related skips and zero failures/errors. New audio checks include
+held-note bend, part isolation and snapshot restoration. Workflow 41453952151
+qualifies these additions against the unchanged pinned sfizz client. The
+filter-envelope implementation was held back after the source audit exposed
+unrepresented threshold/release semantics; the user requested the separate
+`plan/filter-envelope.md` design proposal before implementation.
+
 ## Additional work beyond the prompt
 
 None.

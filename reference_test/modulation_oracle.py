@@ -33,8 +33,10 @@ def render(profile: ModulationProfile, source: np.ndarray, rate: int) -> np.ndar
     gate = (age >= delay).astype(float)
     if profile.fade:
         gate *= np.minimum(1, active / profile.fade)
-    triangle = (1 - 4 * np.abs((profile.frequency * active + 0.25) % 1 - 0.5)) * gate
-    cents = profile.pitch_depth * triangle
+    phase = (profile.frequency * active) % 1
+    x = 2 * phase - 1
+    signal = -4 * x * (1 - np.abs(x)) * gate
+    cents = profile.pitch_depth * signal
     if profile.bend_up is not None:
         bend = np.select(
             [
@@ -60,4 +62,4 @@ def render(profile: ModulationProfile, source: np.ndarray, rate: int) -> np.ndar
             for c in range(source.shape[1])
         ]
     )
-    return audio * 10 ** (profile.amplitude_depth * triangle[:, None] / 20)
+    return audio * 10 ** (profile.amplitude_depth * signal[:, None] / 20)

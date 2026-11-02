@@ -20,8 +20,8 @@ def read(
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
     filter_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
-    pitch_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
-    amplitude_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
+    pitch_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
+    amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
     pitch_bend_response: Literal['diagnose', 'sfizz_symmetric'] = 'diagnose',
     midi_binding: SfzMidiBindingRequest | None = None,
 ) -> SfzCompileResult:

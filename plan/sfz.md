@@ -99,9 +99,9 @@ at use sites with recursive and undefined variables rejected. Unsupported
 `<curve>`, `<effect>`, and `<sample>` sections have located diagnostics.
 
 Pitch LFO frequency, signed depth, delay and fade now import with explicit
-`pitch_lfo_response="sfizz_triangle"`. Existing tuning and key/velocity pitch
+`pitch_lfo_response="sfizz_parabolic"`. Existing tuning and key/velocity pitch
 routes add in cents. Nonordinary triggers, richer LFOs and export remain diagnosed.
-Amplitude LFOs similarly use `amplitude_lfo_response="sfizz_triangle"`, with
+Amplitude LFOs similarly use `amplitude_lfo_response="sfizz_parabolic"`, with
 signed dB depth converted to multiplicative gain after delay/fade shaping.
 Velocity gain and amplitude LFO gain multiply without clamping the LFO peaks.
 Explicit pitch-bend declarations now import through a MIDI binding with
@@ -134,16 +134,19 @@ and playback.
    schedules controllers.
 2. **Basic filters and their musical controls.** Cutoff and resonance have a
    large audible effect. The verified static two-pole response subset now
-   imports with an explicit choice and filtering after amplitude. Next consider
-   filter envelopes and LFO delay/fade semantics; diagnose
-   responses that are not equivalent rather than approximating them.
+   imports with an explicit choice and filtering after amplitude. Filter LFO
+   delay/fade is implemented. Filter envelopes need the separate
+   [portable envelope proposal](filter-envelope.md), requested for review before
+   implementation; non-equivalent curves remain diagnosed.
 3. **Pitch bend and aftertouch.** These make an imported instrument expressive
-   under performance. Define their transport-neutral event and binding rules,
-   then map the SFZ ranges and modulation targets that those rules can express.
+   under performance. Continuous unsmoothed pitch bend is implemented through
+   the existing transport-neutral binding. Aftertouch, stepped bend and
+   smoothing remain separate work requiring verified contracts.
 4. **Amplitude and pitch LFOs, plus richer envelopes.** Vibrato, tremolo and
-   evolving patches are more compelling than another static mapping. Reuse
-   uFor's shared envelope/LFO semantics, including fade-in, and declare any
-   SFZ timing or shape mismatch explicitly.
+   evolving patches are more compelling than another static mapping. Fixed
+   parabolic pitch/amplitude LFOs, delay and fade are implemented with explicit
+   choices. Richer shapes, controller modulation and envelopes remain separate
+   work; declare timing or shape mismatches explicitly.
 5. **Repeated-note and release behavior.** Repeated-trigger masking and
    release-tail termination matter for drums and realistic legato. Specify
    portable rules beyond the existing voice limits and oldest-immediate

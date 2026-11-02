@@ -15,8 +15,8 @@ from safaz.model import SfzCompileResult, SfzMidiBindingRequest
 
 def compile_modulation(
     text: str,
-    pitch: Literal['diagnose', 'sfizz_triangle'] = 'sfizz_triangle',
-    amplitude: Literal['diagnose', 'sfizz_triangle'] = 'sfizz_triangle',
+    pitch: Literal['diagnose', 'sfizz_parabolic'] = 'sfizz_parabolic',
+    amplitude: Literal['diagnose', 'sfizz_parabolic'] = 'sfizz_parabolic',
     midi: bool = False,
     bend: Literal['diagnose', 'sfizz_symmetric'] = 'sfizz_symmetric',
 ) -> SfzCompileResult:
@@ -82,7 +82,8 @@ def test_pitch_lfo_uses_signed_cents_and_delayed_voice_phase(
             ).value
         age = max(0, float(at) - delay)
         gate = 0 if float(at) < delay else min(1, age / fade) if fade else 1
-        triangle = (1 - 4 * abs((2 * age + 0.25) % 1 - 0.5)) * gate
+        x = 2 * ((2 * age) % 1) - 1
+        signal = -4 * x * (1 - abs(x)) * gate
         observed = modulation.evaluate(
             slot.modulation,
             {
@@ -94,7 +95,7 @@ def test_pitch_lfo_uses_signed_cents_and_delayed_voice_phase(
         )
         assert next(
             v.value for v in observed if v.target.parameter == 'tuning_cents'
-        ) == pytest.approx(17 + 50 + depth * triangle)
+        ) == pytest.approx(17 + 50 + depth * signal)
 
 
 @pytest.mark.parametrize(
@@ -128,14 +129,14 @@ def test_amplitude_lfo_fades_decibels_before_gain_conversion(depth: float) -> No
     assert result.instrument is not None
     slot = result.instrument.body.slots[0]
     oscillator = slot.envelfos['sfz-amplitude-lfo']
-    at = Fraction(1, 8)
+    at = Fraction(1, 16)
     signal = patch.advance_patch(
         oscillator,
         patch.initial_patch(oscillator, Fraction(0)),
         at,
         next_delivery=at + 1,
     ).values['signal']
-    assert signal == 0.25
+    assert signal == 0.75 / 8
     observed = modulation.evaluate(
         slot.modulation,
         {
@@ -150,7 +151,7 @@ def test_amplitude_lfo_fades_decibels_before_gain_conversion(depth: float) -> No
     )
     assert next(
         v.value for v in observed if v.target.parameter == 'amplitude'
-    ) == pytest.approx(velocity * 10 ** (depth * 0.25 / 20))
+    ) == pytest.approx(velocity * 10 ** (depth * 0.75 / 8 / 20))
 
 
 @pytest.mark.parametrize(

@@ -154,15 +154,15 @@ def support_table() -> str:
         'Nonordinary triggers remain diagnosed. Combined cutoff modulation '
         'outside bounds retains only the static filter. Export is unsupported.',
         '',
-        'Pitch LFOs require `pitch_lfo_response="sfizz_triangle"`. '
+        'Pitch LFOs require `pitch_lfo_response="sfizz_parabolic"`. '
         'Fixed frequency (0-20 Hz), signed depth (-1200 to 1200 cents), delay '
-        'and fade use the same delayed zero-rising triangle. Pitch, key and '
-        'velocity contributions add in cents. Other triggers and export remain '
-        'diagnosed.',
+        'and fade use the delayed zero-rising parabolic sine approximation. '
+        'Pitch, key and velocity contributions add in cents. Other triggers '
+        'and export remain diagnosed.',
         '',
-        'Amplitude LFOs require `amplitude_lfo_response="sfizz_triangle"`. '
+        'Amplitude LFOs require `amplitude_lfo_response="sfizz_parabolic"`. '
         'Signed depth (-10 to 10 dB) becomes multiplicative gain, including '
-        'velocity gain. Delay and fade shape the triangle before the dB-to-gain '
+        'velocity gain. Delay and fade shape the parabolic signal before dB-to-gain '
         'conversion. Other triggers and export remain diagnosed.',
         '',
         'Pitch bend requires an explicit MIDI binding and '

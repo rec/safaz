@@ -14,7 +14,7 @@ def accepted_lfo(
     values: dict[str, str],
     declarations: dict[str, ParsedOpcode],
     prefix: str,
-    response: Literal['diagnose', 'sfizz_triangle'],
+    response: Literal['diagnose', 'sfizz_parabolic'],
     depth_limit: float,
     control_triggered: bool,
     unimplemented: list[UnimplementedFeature],
@@ -51,7 +51,7 @@ def accepted_lfo(
             'pitch_lfo_response' if prefix == 'pitchlfo' else 'amplitude_lfo_response'
         )
         reason = (
-            f'SFZ LFO requires {choice}="sfizz_triangle" '
+            f'SFZ LFO requires {choice}="sfizz_parabolic" '
             'to accept waveform, phase and depth conventions'
         )
     if reason is not None:
@@ -88,4 +88,32 @@ def triangle_lfo(
             'signal': envelfo.Product(inputs=['oscillator', 'activation']),
         },
         outputs={'signal': 'signal'},
+    )
+
+
+def parabolic_lfo(
+    values: dict[str, str], prefix: str, output_rate: float
+) -> envelfo.Patch:
+    """Compose sfizz's v1 sine approximation, u * (2 - abs(u))."""
+    rate = Fraction(values[f'{prefix}_freq'])
+    delay = Fraction(
+        ceil(Fraction(values.get(f'{prefix}_delay', '0')) * output_rate)
+    ) / Fraction(output_rate)
+    triangle = triangle_lfo(values, prefix, output_rate)
+    bodies = (
+        triangle.model_dump()['envelfos']
+        if isinstance(triangle, envelfo.Patch)
+        else {'oscillator': triangle}
+    )
+    triangle_output = 'signal' if isinstance(triangle, envelfo.Patch) else 'oscillator'
+    return envelfo.Patch(
+        envelfos=bodies
+        | {
+            'double': envelfo.LFO(
+                shape='triangle', rate=2 * rate, phase=(-2 * rate * delay) % 1
+            ),
+            'factor': envelfo.Affine(input='double', scale=-0.5, offset=1.5),
+            'parabolic': envelfo.Product(inputs=[triangle_output, 'factor']),
+        },
+        outputs={'signal': 'parabolic'},
     )

@@ -357,8 +357,8 @@ def run_native_case(
         pitch_bend_response='sfizz_symmetric'
         if case.modulation_profile
         else 'diagnose',
-        pitch_lfo_response='sfizz_triangle' if case.modulation_profile else 'diagnose',
-        amplitude_lfo_response='sfizz_triangle'
+        pitch_lfo_response='sfizz_parabolic' if case.modulation_profile else 'diagnose',
+        amplitude_lfo_response='sfizz_parabolic'
         if case.modulation_profile
         else 'diagnose',
         filter_response='sfizz_rbj' if case.filter_profile else 'diagnose',

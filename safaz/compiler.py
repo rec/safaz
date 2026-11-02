@@ -37,7 +37,7 @@ from .model import (
     UnimplementedFeature,
     _channel_routes,
 )
-from .modulators import accepted_lfo, triangle_lfo
+from .modulators import accepted_lfo, parabolic_lfo, triangle_lfo
 from .parser import (
     NOTE,
     NOTES,
@@ -66,8 +66,8 @@ def compile_instrument(
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
     filter_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
-    pitch_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
-    amplitude_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
+    pitch_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
+    amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
     pitch_bend_response: Literal['diagnose', 'sfizz_symmetric'] = 'diagnose',
     midi_binding: SfzMidiBindingRequest | None = None,
 ) -> SfzCompileResult:
@@ -80,9 +80,9 @@ def compile_instrument(
         raise ValueError(f'Unknown SFZ filter response: {filter_response}')
     if filter_lfo_response not in ('diagnose', 'sfizz_triangle'):
         raise ValueError(f'Unknown SFZ filter LFO response: {filter_lfo_response}')
-    if pitch_lfo_response not in ('diagnose', 'sfizz_triangle'):
+    if pitch_lfo_response not in ('diagnose', 'sfizz_parabolic'):
         raise ValueError(f'Unknown SFZ pitch LFO response: {pitch_lfo_response}')
-    if amplitude_lfo_response not in ('diagnose', 'sfizz_triangle'):
+    if amplitude_lfo_response not in ('diagnose', 'sfizz_parabolic'):
         raise ValueError(
             f'Unknown SFZ amplitude LFO response: {amplitude_lfo_response}'
         )
@@ -589,8 +589,8 @@ def _slot(
     output_rate: float,
     filter_response: Literal['diagnose', 'sfizz_rbj'],
     filter_lfo_response: Literal['diagnose', 'sfizz_triangle'],
-    pitch_lfo_response: Literal['diagnose', 'sfizz_triangle'],
-    amplitude_lfo_response: Literal['diagnose', 'sfizz_triangle'],
+    pitch_lfo_response: Literal['diagnose', 'sfizz_parabolic'],
+    amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'],
     midi_available: bool,
     pitch_bend_response: Literal['diagnose', 'sfizz_symmetric'],
 ) -> tuple[SampleSlot, playback.Slice] | None:
@@ -974,10 +974,11 @@ def _slot(
             unimplemented,
         ):
             continue
-        oscillator = triangle_lfo(values, prefix, output_rate)
+        oscillator = parabolic_lfo(values, prefix, output_rate)
         generators[f'sfz-{source}'] = oscillator
         sources.append(
-            modulation.Source(name=source, scope='voice', minimum=-1, maximum=1)
+            # Interval bounds do not capture correlation between the two triangles.
+            modulation.Source(name=source, scope='voice', minimum=-2, maximum=2)
         )
         bindings.append(
             processing.GeneratorBinding(
