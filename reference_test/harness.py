@@ -143,7 +143,21 @@ def create_inputs(case: Case, folder: Path) -> np.ndarray:
     performance.tracks.append(track)
     track.append(mido.MetaMessage('set_tempo', tempo=500_000))
     previous = 0
+    bend_events = []
     for note in case.notes:
+        if case.modulation_profile and case.modulation_profile.bend_up is not None:
+            bend_events.extend(
+                (note.tick + t, mido.Message('pitchwheel', pitch=v))
+                for t, v in [
+                    (-1, 0),
+                    (192, 8191),
+                    (384, 0),
+                    (576, -8192),
+                    (768, -4096),
+                    (864, 4096),
+                    (960, 0),
+                ]
+            )
         track.append(
             mido.Message(
                 'note_on',
@@ -154,6 +168,18 @@ def create_inputs(case: Case, folder: Path) -> np.ndarray:
         )
         track.append(mido.Message('note_off', note=note.key, velocity=0, time=1920))
         previous = note.tick + 1920
+    if bend_events:
+        absolute = []
+        at = 0
+        for message in track:
+            at += message.time
+            absolute.append((at, message))
+        absolute.extend(bend_events)
+        track.clear()
+        at = 0
+        for tick, message in sorted(absolute, key=lambda x: x[0]):
+            track.append(message.copy(time=tick - at))
+            at = tick
     # fmidi ignores delayed EOT metadata. A final unused control sets the horizon.
     track.append(
         mido.Message(
@@ -328,6 +354,9 @@ def run_native_case(
     write_json(folder / 'report.json', report)
     compiled = reader.read(
         folder / 'instrument.sfz',
+        pitch_bend_response='sfizz_symmetric'
+        if case.modulation_profile
+        else 'diagnose',
         pitch_lfo_response='sfizz_triangle' if case.modulation_profile else 'diagnose',
         amplitude_lfo_response='sfizz_triangle'
         if case.modulation_profile

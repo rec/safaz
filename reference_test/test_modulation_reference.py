@@ -17,7 +17,12 @@ from modulation_oracle import ModulationProfile
         ModulationProfile(amplitude_depth=d, delay=t, fade=f)
         for d, t, f in [(6, 0, 0), (-6, 0, 0), (10, 0.1, 0.2)]
     ]
-    + [ModulationProfile(pitch_depth=100, amplitude_depth=6, delay=0.1, fade=0.2)],
+    + [ModulationProfile(pitch_depth=100, amplitude_depth=6, delay=0.1, fade=0.2)]
+    + [
+        ModulationProfile(bend_up=200),
+        ModulationProfile(bend_up=1200, bend_down=-300),
+        ModulationProfile(bend_up=200, pitch_depth=100, amplitude_depth=6),
+    ],
     ids=[
         'pitch-positive',
         'pitch-negative',
@@ -26,12 +31,15 @@ from modulation_oracle import ModulationProfile
         'amplitude-negative',
         'amplitude-delay-fade',
         'combined',
+        'bend-symmetric',
+        'bend-asymmetric',
+        'bend-and-lfos',
     ],
 )
 def case(request: pytest.FixtureRequest) -> harness.Case:
     profile = request.param
     return harness.Case(
-        name=f'modulation-{profile.pitch_depth}-{profile.amplitude_depth}-{profile.delay}-{profile.fade}',
+        name=f'modulation-{profile.pitch_depth}-{profile.amplitude_depth}-{profile.delay}-{profile.fade}-{profile.bend_up}',
         notes=[harness.Note(tick=11), harness.Note(tick=5001)],
         end_tick=10000,
         source_channels=1,

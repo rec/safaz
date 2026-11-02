@@ -12,6 +12,8 @@ Pitch LFOs require `pitch_lfo_response="sfizz_triangle"`. Fixed frequency (0-20 
 
 Amplitude LFOs require `amplitude_lfo_response="sfizz_triangle"`. Signed depth (-10 to 10 dB) becomes multiplicative gain, including velocity gain. Delay and fade shape the triangle before the dB-to-gain conversion. Other triggers and export remain diagnosed.
 
+Pitch bend requires an explicit MIDI binding and `pitch_bend_response="sfizz_symmetric"`. `bend_up` and `bend_down` map signed cents with center zero; the bottom two MIDI wheel values share the negative endpoint, matching sfizz. Unsmoothed continuous bend (`bend_smooth=0`, `bend_step=1`) is supported. Other smoothing, steps, nonordinary triggers and mixed channel ranges remain diagnosed. No bend is added to instruments without explicit bend declarations.
+
 `set_ccN` imports under `<control>` as a named-control default, including sustain for CC 64. It remains classified as `controller_binding`: without an explicit MIDI binding request or a shared channel range, the default is retained with a diagnostic. Conflicting initial values remain diagnosed. Export is unsupported.
 
 `sw_down` and `sw_up` require a shared consumed switch range; `sw_previous` tracks every prior note-on in the part. Release-region history combinations remain diagnosed. `on_loccN`/`on_hiccN` import only the explicit one-shot, note-independent subset with a MIDI binding; uncertain combinations remain diagnosed. These features have no implemented export.

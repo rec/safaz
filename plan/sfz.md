@@ -104,6 +104,11 @@ routes add in cents. Nonordinary triggers, richer LFOs and export remain diagnos
 Amplitude LFOs similarly use `amplitude_lfo_response="sfizz_triangle"`, with
 signed dB depth converted to multiplicative gain after delay/fade shaping.
 Velocity gain and amplitude LFO gain multiply without clamping the LFO peaks.
+Explicit pitch-bend declarations now import through a MIDI binding with
+`pitch_bend_response="sfizz_symmetric"`. The negative endpoint plateau is
+expressed in the route; the generic MIDI converter is unchanged. Unsmoothed
+continuous bend supports signed asymmetric ranges, held notes and part-local
+state. Stepped/smoothed bend and mixed channel ranges remain diagnosed.
 
 The remaining goal is a lossless, well-diagnosed import of useful,
 non-vendor-specific SFZ 1 and SFZ 2 behavior. Unsupported behavior must remain

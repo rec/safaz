@@ -7,18 +7,23 @@ from pydantic import BaseModel
 class ModulationProfile(BaseModel, frozen=True):
     pitch_depth: float = 0
     amplitude_depth: float = 0
+    bend_up: float | None = None
+    bend_down: float = -200
     frequency: float = 2
     delay: float = 0
     fade: float = 0
 
 
 def declarations(profile: ModulationProfile) -> str:
-    return (
+    result = (
         f'pitchlfo_freq={profile.frequency:g} pitchlfo_depth={profile.pitch_depth:g} '
         f'pitchlfo_delay={profile.delay:g} pitchlfo_fade={profile.fade:g} '
         f'amplfo_freq={profile.frequency:g} amplfo_depth={profile.amplitude_depth:g} '
         f'amplfo_delay={profile.delay:g} amplfo_fade={profile.fade:g}'
     )
+    if profile.bend_up is not None:
+        result += f' bend_up={profile.bend_up:g} bend_down={profile.bend_down:g}'
+    return result
 
 
 def render(profile: ModulationProfile, source: np.ndarray, rate: int) -> np.ndarray:
@@ -29,7 +34,25 @@ def render(profile: ModulationProfile, source: np.ndarray, rate: int) -> np.ndar
     if profile.fade:
         gate *= np.minimum(1, active / profile.fade)
     triangle = (1 - 4 * np.abs((profile.frequency * active + 0.25) % 1 - 0.5)) * gate
-    increments = 2 ** (profile.pitch_depth * triangle / 1200)
+    cents = profile.pitch_depth * triangle
+    if profile.bend_up is not None:
+        bend = np.select(
+            [
+                (age >= 0.1) & (age < 0.2),
+                (age >= 0.3) & (age < 0.4),
+                (age >= 0.4) & (age < 0.45),
+                (age >= 0.45) & (age < 0.5),
+            ],
+            [
+                profile.bend_up,
+                profile.bend_down,
+                profile.bend_down * 4096 / 8191,
+                profile.bend_up * 4096 / 8191,
+            ],
+            default=0,
+        )
+        cents = cents + bend
+    increments = 2 ** (cents / 1200)
     positions = np.concatenate(([0], np.cumsum(increments[:-1])))
     audio = np.column_stack(
         [

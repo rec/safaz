@@ -12,6 +12,7 @@ from ufor.interface import AudioBinding, EventType, Input, Output, PerformanceBi
 from ufor.performance_binding import (
     MidiController,
     MidiPerformanceInput,
+    MidiPitchBend,
     PerformanceBindingScore,
     PerformanceInputBinding,
 )
@@ -67,6 +68,7 @@ def compile_instrument(
     filter_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
     pitch_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
     amplitude_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
+    pitch_bend_response: Literal['diagnose', 'sfizz_symmetric'] = 'diagnose',
     midi_binding: SfzMidiBindingRequest | None = None,
 ) -> SfzCompileResult:
     """Build a native document from parsed text and caller-supplied asset facts."""
@@ -84,6 +86,8 @@ def compile_instrument(
         raise ValueError(
             f'Unknown SFZ amplitude LFO response: {amplitude_lfo_response}'
         )
+    if pitch_bend_response not in ('diagnose', 'sfizz_symmetric'):
+        raise ValueError(f'Unknown SFZ pitch bend response: {pitch_bend_response}')
     paths = sample_paths(source)
     if missing := [p for p in paths if p not in assets]:
         raise ValueError(f'Missing audio metadata for SFZ samples: {missing}')
@@ -134,6 +138,9 @@ def compile_instrument(
     controller_numbers.update(controller_defaults)
     if any(number > 127 for number in controller_numbers):
         raise ValueError('SFZ controller number must be between 0 and 127')
+    binding = _midi_binding(
+        source, name, title, midi_binding, unimplemented, controller_numbers
+    )
     slots: list[SampleSlot] = []
     slices: list[playback.Slice] = []
     slot_regions: list[ParsedRegion] = []
@@ -166,6 +173,8 @@ def compile_instrument(
                 filter_lfo_response,
                 pitch_lfo_response,
                 amplitude_lfo_response,
+                binding is not None,
+                pitch_bend_response,
             )
         ) is not None:
             slot, sample_slice = result
@@ -178,6 +187,24 @@ def compile_instrument(
         slots, slot_regions, unimplemented, polyphony_overflow
     )
     document = None
+    has_bend = any(b.name == 'pitch-bend' for s in slots for b in s.bindings)
+    if has_bend and binding is not None:
+        binding = binding.model_copy(
+            update={
+                'body': binding.body.model_copy(
+                    update={
+                        'midi': [
+                            m.model_copy(
+                                update={
+                                    'pitch_bend': MidiPitchBend(control='pitch-bend')
+                                }
+                            )
+                            for m in binding.body.midi
+                        ],
+                    }
+                )
+            }
+        )
     if slots:
         document = SampleInstrumentScore.model_validate(
             dict(
@@ -218,7 +245,16 @@ def compile_instrument(
                             )
                             for number in controller_numbers
                             if number != 64
-                        },
+                        }
+                        | (
+                            {
+                                'pitch-bend': controls.ControlDeclaration(
+                                    polarity='bipolar'
+                                )
+                            }
+                            if has_bend
+                            else {}
+                        ),
                         sustain=selection.Sustain(control='sustain'),
                         articulations=articulations,
                     ),
@@ -229,9 +265,6 @@ def compile_instrument(
             )
             | source.instrument_metadata
         )
-    binding = _midi_binding(
-        source, name, title, midi_binding, unimplemented, controller_numbers
-    )
     unimplemented.sort(key=_sfz_issue_position)
     return SfzCompileResult(
         instrument=document,
@@ -558,6 +591,8 @@ def _slot(
     filter_lfo_response: Literal['diagnose', 'sfizz_triangle'],
     pitch_lfo_response: Literal['diagnose', 'sfizz_triangle'],
     amplitude_lfo_response: Literal['diagnose', 'sfizz_triangle'],
+    midi_available: bool,
+    pitch_bend_response: Literal['diagnose', 'sfizz_symmetric'],
 ) -> tuple[SampleSlot, playback.Slice] | None:
     control_trigger = None
     if any(CONTROLLER_TRIGGER.fullmatch(o.opcode) for o in region.opcodes):
@@ -993,6 +1028,23 @@ def _slot(
                 else modulation.Interpolation.linear,
             )
         )
+    if bend := _pitch_bend(
+        values,
+        declarations,
+        midi_available,
+        control_trigger is not None,
+        pitch_bend_response,
+        unimplemented,
+    ):
+        sources.append(
+            modulation.Source(name='pitch-bend', scope='part', minimum=-1, maximum=1)
+        )
+        bindings.append(
+            processing.ControlBinding(
+                name='pitch-bend', control='pitch-bend', smoothing=Fraction(0)
+            )
+        )
+        routes.append(bend)
     pitch_routes = [r for r in routes if r.target.parameter == 'tuning_cents']
     if pitch_routes:
         base = slot_processing.tuning_cents
@@ -1664,6 +1716,56 @@ def _trigger(
         )
         return None
     raise ValueError(f'Unsupported SFZ trigger: {value}')
+
+
+def _pitch_bend(
+    values: dict[str, str],
+    declarations: dict[str, ParsedOpcode],
+    midi_available: bool,
+    control_triggered: bool,
+    response: Literal['diagnose', 'sfizz_symmetric'],
+    unimplemented: list[UnimplementedFeature],
+) -> modulation.Route | None:
+    names = [
+        n for n in ('bend_up', 'bend_down', 'bend_step', 'bend_smooth') if n in values
+    ]
+    if not names:
+        return None
+    up = _number(values.get('bend_up', '200'), 'bend_up')
+    down = _number(values.get('bend_down', '-200'), 'bend_down')
+    step = _number(values.get('bend_step', '1'), 'bend_step')
+    smooth = _number(values.get('bend_smooth', '0'), 'bend_smooth')
+    reason = None
+    if not -12000 <= up <= 12000 or not -12000 <= down <= 12000:
+        reason = 'SFZ pitch bend is outside the verified -12000 to 12000 cents range'
+    elif step != 1 or smooth != 0:
+        reason = 'SFZ stepped or smoothed pitch bend has no verified native equivalent'
+    elif not midi_available:
+        reason = 'SFZ pitch bend requires a shared MIDI channel binding request'
+    elif response == 'diagnose':
+        reason = (
+            'SFZ pitch bend requires pitch_bend_response="sfizz_symmetric" '
+            'to accept its negative-endpoint convention'
+        )
+    elif control_triggered or values.get('trigger', 'attack') != 'attack':
+        reason = 'SFZ pitch bend supports only ordinary note-on regions in this profile'
+    if reason is not None:
+        for name in names:
+            _add_unimplemented(unimplemented, declarations[name], reason)
+        return None
+    return modulation.Route(
+        name='pitch-bend',
+        source='pitch-bend',
+        target=modulation.Target(name='processing', parameter='tuning_cents'),
+        operation=modulation.Operation.add,
+        unit=modulation.Unit.cents,
+        points=[
+            modulation.Point(input=-1, amount=down),
+            modulation.Point(input=-8191 / 8192, amount=down),
+            modulation.Point(input=0, amount=0),
+            modulation.Point(input=1, amount=up),
+        ],
+    )
 
 
 def _velocity_modulation(values: dict[str, str]) -> modulation.Route | None:

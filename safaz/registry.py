@@ -165,6 +165,14 @@ def support_table() -> str:
         'velocity gain. Delay and fade shape the triangle before the dB-to-gain '
         'conversion. Other triggers and export remain diagnosed.',
         '',
+        'Pitch bend requires an explicit MIDI binding and '
+        '`pitch_bend_response="sfizz_symmetric"`. `bend_up` and `bend_down` '
+        'map signed cents with center zero; the bottom two MIDI wheel values '
+        'share the negative endpoint, matching sfizz. Unsmoothed continuous '
+        'bend (`bend_smooth=0`, `bend_step=1`) is supported. Other smoothing, '
+        'steps, nonordinary triggers and mixed channel ranges remain diagnosed. '
+        'No bend is added to instruments without explicit bend declarations.',
+        '',
         '`set_ccN` imports under `<control>` as a named-control default, '
         'including sustain for CC 64. It remains classified as '
         '`controller_binding`: without an explicit MIDI binding request or '
@@ -212,6 +220,10 @@ STANDARD_HEADERS = {
     'sample': 'SFZ v2',
 }
 PARSABLE_OPCODES = {
+    'bend_up',
+    'bend_down',
+    'bend_step',
+    'bend_smooth',
     '#define',
     'default_path',
     'ampeg_attack',
@@ -364,7 +376,14 @@ AMBIGUOUS_OPCODES = {
     'seq_length',
     'seq_position',
 }
-CONDITIONAL_BINDING_OPCODES = {'lochan', 'hichan'}
+CONDITIONAL_BINDING_OPCODES = {
+    'lochan',
+    'hichan',
+    'bend_up',
+    'bend_down',
+    'bend_step',
+    'bend_smooth',
+}
 AMP_VELOCITY_CURVE = re.compile(r'amp_velcurve_(\d+)')
 CONTROLLER_CONDITION = re.compile(r'(lo|hi)cc(\d+)')
 CONTROLLER_TRIGGER = re.compile(r'(on_lo|on_hi)cc(\d+)')
