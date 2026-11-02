@@ -207,3 +207,52 @@ change is the boundary to review after enge's current work finishes.
 ## Additional work beyond the prompt
 
 None. enge changes require the user's explicit go-ahead after its current work.
+
+## Review against completed enge work, 2026-11-02
+
+The user confirmed enge is ready for integration review. Its worktree is clean
+at `a853abcbd654cd7b92d82e78e301f389e547803d`. In particular, `cc3aeaf`
+preserves normalized exponential curves through NumPy sampling, native span
+rows and persistent amplitude conversion. The later sampler alignment,
+retiming and crossfade changes do not supply captured-duration stages.
+
+This permits a smaller implementation than adding another DSP segment shape.
+For captured level `v`, asymptote `a`, reachable threshold `h` and time constant
+`tau`, resolve the approach at stage entry to an existing Segment with:
+
+- `to = h`
+- `curve = log((h-a)/(v-a))`
+- `duration = -tau * curve`
+
+The existing normalized exponential interpolation then equals
+`a + (v-a)*exp(-elapsed/tau)` throughout that segment. Resolve the terminal
+transition to a second ordinary linear Segment using the speed rule above.
+Already-crossed and zero-time cases omit the exponential segment. This is a
+runtime resolution operation, not compilation at instrument load: release
+levels depend on the actual note-off time.
+
+An independent local calculation compared the existing portable curve evaluator
+with the direct exponential equation at 5,005 points, including nonzero
+asymptotes, bipolar decay and rising approaches. The maximum error is recorded
+in the integration review findings. This establishes the interpolation identity;
+it does not validate state capture, event ordering, snapshots or audio.
+
+Keep one shared resolution contract in uFor/enveLFO. Python and Rust need
+equivalent resolution and continuation state. enge's current NumPy sampler
+(`synth._envelope_values`), native spans (`native.envelope_spans`) and persistent
+conversion (`src/amplitude.rs`) all assume authored segment lists. They must
+consume the resolved list and its captured entry state rather than each
+independently deriving durations. Preserve their existing curve evaluators.
+
+Two details remain to specify in the implementation: logarithmic crossing
+times are generally irrational while current boundaries use rational Time;
+choose one documented conversion at resolution and persist it, rather than
+recomputing it per block. Also retain authored-stage identity separately from
+the two resolved segments, so stage interruption and snapshot continuation do
+not confuse authored indices with resolved indices.
+
+Recommended implementation batch: shared stage model and resolution contract;
+Python/Rust entry-state resolution with conformance and snapshot tests; enge
+adapters consuming that state; finally explicit safaz filter-envelope mapping.
+The review does not require pinning enge's unrelated sampler additions into
+safaz. No enge or shared runtime files were changed during this review.

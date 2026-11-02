@@ -251,7 +251,7 @@ WAV inspection exposed a triangle/parabolic waveform mistake in the new
 pitch/amplitude profiles, corrected in `f535c4a`. Replacement run 41456697605
 has completed on Linux and Windows with all native checks passing, identical
 native WAVs and retained external failures; corrected macOS qualification is
-pending while its job is queued. The
+incomplete because its job was cancelled before producing comparison evidence. The
 filter-envelope implementation was held back after the source audit exposed
 unrepresented threshold/release semantics; the user requested the separate
 `plan/filter-envelope.md` design proposal before implementation.

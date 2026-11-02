@@ -1493,5 +1493,23 @@ restrictions, interruption/snapshot rules and analytic conformance examples.
 Shared model/runtime implementation and safaz filter-envelope import remain
 pending that coordinated consumer integration; no enge files were changed.
 
+## Completed enge integration review, 2026-11-02
+
+The user confirmed enge was ready for review. Its clean head is
+`a853abcbd654cd7b92d82e78e301f389e547803d`; `cc3aeaf` now preserves envelope
+curves across NumPy, native spans and persistent runtime amplitude conversion.
+The proposed exponential approach can resolve at stage entry into an existing
+curved segment and a terminal linear segment. A 5,005-point local comparison
+against the direct exponential equation has maximum error
+`2.220446049250313e-16`. This is mathematical validation, not an audio or
+snapshot qualification. See `plan/filter-envelope.md` for the revised design,
+adapter touchpoints, rational-time boundary issue and authored/resolved index
+requirements. No shared runtime, dependency pin or enge code changed.
+
+The corrected reference workflow's macOS job ultimately finished as
+**cancelled**, without producing corrected comparison evidence. The reason for
+cancellation was not established. Linux/Windows qualification above remains
+valid; corrected three-platform qualification is incomplete.
+
 sfizz, its source inputs, and all numerical tolerances remain unchanged. The
 upstream cutoff report remains parked for the user's human review.
