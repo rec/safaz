@@ -33,7 +33,7 @@ override-dependencies = [
 ]
 
 [tool.uv.sources]
-enge = { git = "ssh://git@github.com/rec/enge.git", rev = "e879eb642378b71da919fc24190fd4e5e194523b" }
+enge = { git = "ssh://git@github.com/rec/enge.git", rev = "5a7c2bce6fcbffbaa667058dc9ed108b312010c8" }
 ufor = { git = "ssh://git@github.com/rec/ufor.git", rev = "b109c591dac9b87249afa945b571b20985fc09d2" }
 envelfo = { git = "ssh://git@github.com/rec/envelfo.git", rev = "a9213ce9d99602866022339975ae5469e7784985" }
 

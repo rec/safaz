@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.13"
 
 [options]
-exclude-newer = "2026-10-26T12:07:25.258616Z"
+exclude-newer = "2026-10-26T13:15:49.70309Z"
 exclude-newer-span = "P1W"
 
 [manifest]
@@ -116,7 +116,7 @@ wheels = [
 [[package]]
 name = "enge"
 version = "0.2.0"
-source = { git = "ssh://git@github.com/rec/enge.git?rev=e879eb642378b71da919fc24190fd4e5e194523b#e879eb642378b71da919fc24190fd4e5e194523b" }
+source = { git = "ssh://git@github.com/rec/enge.git?rev=5a7c2bce6fcbffbaa667058dc9ed108b312010c8#5a7c2bce6fcbffbaa667058dc9ed108b312010c8" }
 dependencies = [
     { name = "envelfo" },
     { name = "meedee" },
@@ -570,7 +570,7 @@ dev = [
     { name = "ty" },
 ]
 reference = [
-    { name = "enge", git = "ssh://git@github.com/rec/enge.git?rev=e879eb642378b71da919fc24190fd4e5e194523b" },
+    { name = "enge", git = "ssh://git@github.com/rec/enge.git?rev=5a7c2bce6fcbffbaa667058dc9ed108b312010c8" },
     { name = "mido" },
     { name = "numpy" },
 ]
