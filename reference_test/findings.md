@@ -7,7 +7,8 @@ comparisons with sfizz still fail. Earlier pinned runs below are retained for
 comparison. Upstream sfizz remains unchanged; the accepted SFZ pan convention
 is explicit in the later implementation and qualification records.
 
-Current filter CI evidence is recorded under "Key event binding follow-up"
+The latest batch and LFO waveform correction are recorded under "Modulation
+batch and waveform correction" below. Earlier filter CI evidence is recorded under "Key event binding follow-up"
 below; "Filter, tracking and triangle LFO qualification" records the initial
 filter matrix; the preceding "Independent authored checks and pan
 qualification" records the pan matrix. "Gain and off-center pan equation audit" separates
@@ -1384,3 +1385,99 @@ the successful authored native contracts do not prove that sfizz is wrong.
 
 None for this follow-up. The preceding three-platform rerun separately
 included the user-approved meedee Windows build-path fix and safaz lock update.
+
+## Modulation batch and waveform correction, 2026-11-02
+
+The approved batch implemented filter LFO delay/fade, signed pitch and amplitude
+LFOs, and explicit continuous pitch bend. Filter-envelope import remains
+unimplemented: the user requested a portable design proposal before any shared
+model/runtime changes. See `plan/filter-envelope.md`.
+
+The sampler needed to expand composed Patch generators and preserve their state
+in snapshots. enge `5a7c2bce6fcbffbaa667058dc9ed108b312010c8` implements this using
+its existing Patch preparation path. safaz pins that revision; uFor, enveLFO,
+meedee and sfizz remain at their previous revisions. The enge suite reported
+1248 passed and 21 skipped. The safaz unit suite reports 386 passed.
+
+### First expanded three-platform run
+
+[Run 41453952151](https://github.com/rec/safaz/actions/runs/41453952151) used safaz
+`a944c997ffab56f9264eff0527a9de20991029d5`. Linux, Windows and macOS each report
+**359 passed, 181 failed, 56 skipped and zero errors**. Each platform retains
+112 case reports and 753 WAV files. All WAVs are finite and 48 kHz.
+
+- All 132 native filter assertions, 40 native modulation assertions, two
+  held-note/part-isolation/snapshot checks, and 144 baseline/pan native checks
+  pass. The 112 native case WAVs are identical across platforms, and all 56
+  backend pairs agree exactly. All 86 pre-batch native WAVs remain identical.
+- The maximum native/authored waveform error is below `7.78e-10`. The separate
+  two-part pitch-bend regression's maximum error is below `1.86e-10`.
+- The 181 failures consist of 84 filter waveform comparisons, 40 new modulation
+  waveform comparisons, 56 baseline/pan waveform comparisons, and one
+  repeatability assertion. No native failure is hidden by an external failure.
+- Linux and Windows retain the previous reference WAVs for all 66 comparable
+  older cases. macOS has two baseline/pan changes beginning at frame 8466,
+  consistent with the previously observed first-note cutoff, and an extra
+  repeat-render difference. This run does not resolve reference repeatability.
+
+These native passes verified our authored equations, not the chosen waveform's
+agreement with sfizz. Inspection between LFO peaks exposed an implementation
+mistake in the new pitch/amplitude profiles: they used a triangle.
+
+### Pinned-source waveform audit and correction
+
+Pinned sfizz's `Region::parseLFOOpcode` selects `LFOWave::Sine` for the v1
+`pitchlfo_*`, `amplfo_*`, and `fillfo_*` families. Its `LFO::eval<Sine>` is a
+parabolic approximation, **not an exact sine and not a triangle**:
+
+`x = 2 * phase - 1; signal = -4 * x * (1 - abs(x))`.
+
+Source: [Region.cpp](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Region.cpp)
+and [LFO.cpp](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/LFO.cpp).
+
+safaz `f535c4af43801cfebf360eac68ab7c5108f27802` corrects the new pitch/amplitude
+choices to `sfizz_parabolic`. Existing triangle, affine and product generators
+express the equation without shared model or DSP changes. Delay freezes the
+initial audible phase; fade multiplies the signal before cents/dB conversion.
+Unit checks now include between-peak positions. The independent audio oracle
+uses the pinned-source phase equation, not the importer's composition formula.
+
+As an explanatory diagnostic only, compare absolute sample magnitudes over
+first-note relative frames 1024 through 22999 against the Linux run above:
+
+| Amplitude profile | Previous maximum magnitude error | Corrected maximum magnitude error |
+| --- | ---: | ---: |
+| +6 dB | 0.01470564 | 0.00005745 |
+| -6 dB | 0.01470189 | 0.00005421 |
+| +10 dB, 100 ms delay, 200 ms fade | 0.02851710 | 0.00005987 |
+
+There is no gain fit or time shift. This magnitude diagnostic removes sign and
+excludes boundaries, so it is **not** a replacement for the full signed waveform
+acceptance test. It demonstrates why checking only peaks missed the waveform
+mistake. Remaining signed waveform failures must still be retained.
+
+The older explicit `filter_lfo_response="sfizz_triangle"` behavior is unchanged.
+It selects a convention different from the default v1 sfizz waveform. Its
+reference mismatch is therefore partly a known convention difference and must
+not be presented as evidence that sfizz is wrong. Changing that existing filter
+profile is a separate playback decision.
+
+After correction, the local matrix reports **327 passed, 269 reference-related
+skips and zero failures/errors**; focused modulation audio checks report 40
+passed and 40 external-reference skips. Ruff, formatting, safaz type checking,
+pyupgrade and whitespace checks pass. The replacement three-platform run is
+[41456697605](https://github.com/rec/safaz/actions/runs/41456697605), at the
+correction revision above. Its results will be recorded below.
+
+The corrected Linux job has completed and its reports and WAVs are inspected:
+359 passed, 181 failed, 56 skipped, zero errors. All 112 native cases pass their
+authored checks, 56 backend pairs agree exactly, and all 86 older native WAVs
+remain identical. All 66 comparable older reference WAVs are also unchanged.
+The maximum native/authored error remains below `7.78e-10`; no native or
+reference render failures are present. The 181 external failures retain the
+same categories listed above. Correcting the LFO shape does not by itself fix
+the full signed waveform differences. At this checkpoint Windows is building
+and macOS is queued; their corrected results are not yet qualified.
+
+sfizz, its source inputs, and all numerical tolerances remain unchanged. The
+upstream cutoff report remains parked for the user's human review.

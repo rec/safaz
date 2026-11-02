@@ -246,7 +246,11 @@ The next approved batch adds filter LFO delay/fade, pitch and amplitude LFOs,
 and explicit continuous pitch bend. The local matrix reports 327 passed,
 269 reference-related skips and zero failures/errors. New audio checks include
 held-note bend, part isolation and snapshot restoration. Workflow 41453952151
-qualifies these additions against the unchanged pinned sfizz client. The
+records the first expanded three-platform evidence against unchanged sfizz.
+WAV inspection exposed a triangle/parabolic waveform mistake in the new
+pitch/amplitude profiles, corrected in `f535c4a`. Replacement run 41456697605
+has completed on Linux with all native checks passing and retained external
+failures; corrected Windows/macOS qualification is pending. The
 filter-envelope implementation was held back after the source audit exposed
 unrepresented threshold/release semantics; the user requested the separate
 `plan/filter-envelope.md` design proposal before implementation.
