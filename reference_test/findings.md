@@ -1479,5 +1479,19 @@ same categories listed above. Correcting the LFO shape does not by itself fix
 the full signed waveform differences. At this checkpoint Windows is building
 and macOS is queued; their corrected results are not yet qualified.
 
+Follow-up checkpoint: corrected Windows evidence is now downloaded and audited.
+It also reports 359 passed, 181 failed, 56 skipped and zero errors. Its 753 WAVs
+are finite and 48 kHz, all 112 native case WAVs match Linux exactly, all 56
+backend pairs agree, and all 86 older native WAVs remain identical. Maximum
+native/authored error is below `7.78e-10`. The sfizz pin, input hashes and
+numerical limits are verified by the artifact audit. macOS remains queued.
+
+The user authorized further work up to, but not including, enge changes, then
+requested a stop for coordination with enge's separate work. The envelope
+proposal now includes the captured-duration and observation contract, one-shot
+restrictions, interruption/snapshot rules and analytic conformance examples.
+Shared model/runtime implementation and safaz filter-envelope import remain
+pending that coordinated consumer integration; no enge files were changed.
+
 sfizz, its source inputs, and all numerical tolerances remain unchanged. The
 upstream cutoff report remains parked for the user's human review.

@@ -1,8 +1,9 @@
 # Portable filter-envelope proposal
 
-Status: proposed for review, not approved or implemented. The user requested
-this design after the 2026-11-02 modulation audit. Existing filter-envelope
-diagnostics and playback remain unchanged.
+Status: authorized to progress up to the enge integration boundary on
+2026-11-02. Stop and ask before changing enge, whose separate work must finish
+first. The contract below is prepared for that integration review; runtime
+implementation and filter-envelope import remain pending.
 
 ## Problem and evidence
 
@@ -137,10 +138,72 @@ existing numerical limits and retain any differences.
 
 ## Decision requested
 
-Approve a separate shared-envelope implementation batch along the ownership
-order above. Until then, leave filter-envelope import diagnosed. The completed
-LFO and pitch-bend work does not depend on this proposal.
+Review the sample-observation and captured-duration contract below with the
+completed enge work before changing its adapter. Existing filter-envelope
+diagnostics remain in place. The completed LFO and pitch-bend work does not
+depend on this proposal.
+
+## Integration contract prepared before enge changes
+
+The audit found that both the portable Envelope and Rust core Segment assume
+authored durations. Python evaluation subtracts each authored duration; native
+definitions expose `Segment { duration, to, curve }`. Normalized markers and
+loops also depend on total duration. A captured-level stage cannot be inserted
+by merely adding fields to that Segment without changing those contracts.
+
+The proposed first version therefore has these explicit restrictions and rules:
+
+- Only one-shot envelopes may contain the new stage. Normalized markers,
+  looping and ping-pong are rejected for such envelopes until their meaning
+  for captured durations is separately designed.
+- The stage captures the incoming value at its actual activation time, not
+  envelope preparation time. Its duration is resolved from that captured value.
+- For initial `v`, asymptote `a`, threshold `h`, and time constant `tau`, a
+  reachable threshold has `(h-a)/(v-a)` strictly between zero and one. Its
+  crossing time is `-tau * log((h-a)/(v-a))`. Threshold equal to the asymptote
+  is rejected because it is never reached in finite time. An already-crossed
+  starting level enters the terminal transition immediately.
+- Portable evaluation is continuous in elapsed time. At the exact analytic
+  crossing, the terminal transition starts from `h`. It does not capture the
+  first observed sample after the crossing, because that would make output
+  depend on observation partitions. Zero time starts that transition from `v`.
+- Terminal speed is `max(abs(start-transition_to), floor) / transition_seconds`.
+  Its actual duration is remaining distance divided by that speed. Zero
+  remaining distance completes immediately; zero nominal duration jumps.
+- Note-off evaluates the current value at the event time, cancels the active
+  onset stage, and captures that value for the release stage. It does not
+  continue onset delay after note-off. Existing event ordering resolves
+  simultaneous events; the adapter must not invent a second ordering rule.
+- Snapshots must retain the active phase, its activation time, captured level
+  and resolved transition boundary. Restore must not recapture from a later
+  observation. Existing snapshot identity checks must include the new fields.
+- The SFZ adapter may claim only this declared portable convention. sfizz's
+  previous-sample release value and block-observed decay threshold can leave
+  measurable residuals. Neither a hidden sample shift nor a block-dependent
+  default is authorized to erase them.
+
+Conformance examples with `a=0`, `tau=1/9`, `h=0.0001`, terminal target zero,
+nominal transition 0.05 seconds and distance floor 0.0001:
+
+| Captured level | Exponential duration | Terminal duration |
+| --- | --- | --- |
+| 1 | `log(10000)/9` | 0.05 s |
+| 0.1 | `log(1000)/9` | 0.05 s |
+| 0.0001 | 0 | 0.05 s |
+| 0.00001 | 0 | 0.005 s |
+| 0 | 0 | 0 |
+
+For `v=1`, the value at elapsed `1/9` second is `exp(-1)`; at crossing plus
+0.025 seconds it is 0.00005; at crossing plus 0.05 seconds it is zero. These
+values must agree under sparse observations, frame-by-frame observations and
+snapshot continuation. They specify portable behavior, not an sfizz regression.
+
+The next implementation must update the shared model and both standalone
+evaluators coherently, then adapt enge's wire conversion and audio sampling.
+Do not land a new union member while consumers still silently treat every
+finite segment as an endpoint/duration segment. That coordinated consumer
+change is the boundary to review after enge's current work finishes.
 
 ## Additional work beyond the prompt
 
-None. This is the requested design proposal; implementing it requires approval.
+None. enge changes require the user's explicit go-ahead after its current work.
