@@ -7,8 +7,9 @@ comparisons with sfizz still fail. Earlier pinned runs below are retained for
 comparison. Upstream sfizz remains unchanged; the accepted SFZ pan convention
 is explicit in the later implementation and qualification records.
 
-Current filter CI evidence is recorded under "Filter, tracking and triangle
-LFO qualification" below; the preceding "Independent authored checks and pan
+Current filter CI evidence is recorded under "Key event binding follow-up"
+below; "Filter, tracking and triangle LFO qualification" records the initial
+filter matrix; the preceding "Independent authored checks and pan
 qualification" records the pan matrix. "Gain and off-center pan equation audit" separates
 conventions, numerical differences and implementation defects. "Per-instrument pan-law
 implementation" records the accepted convention and local verification;
@@ -1264,18 +1265,122 @@ run's artifacts. Downloaded evidence and `analysis.json` are under
 for comparison under `/private/tmp/safaz-filter-prior-39422527853`. These are
 temporary paths; uploaded evidence retains the workflow's 14-day lifetime.
 
-## Next slice
+## Key event binding follow-up, 2026-11-02
 
-The next implementation gap is native key event bindings in enge. Supporting
-the existing declared binding and rerunning this matrix is required before
-keyboard tracking, its velocity combinations and the combined LFO profile can
-be qualified. That playback implementation work is separate from this
-qualification and has not been performed. Keep successful native/response
-contracts distinct from full sfizz waveform equivalence, and preserve the
-remaining external failures. The upstream cutoff report remains parked for
-human review; no sfizz fix or workaround has been applied here.
+The sampler gap is fixed in enge `e879eb642378b71da919fc24190fd4e5e194523b`.
+The offline sampler accepts key EventBindings in instrument and slot settings.
+Each voice captures its prepared onset key, exposes it to routes in MIDI units
+(0 through 127), and retains it across controller changes, later notes and
+snapshot restoration. The existing unit-range control snapshot stores key/127;
+route evaluation restores the key units. Velocity retains its original path.
+Other engines do not gain key-binding support from this change.
+
+The existing velocity regression now also covers keys on both backends and
+both settings locations, with overlapping voices, keys 0/1/64/127, a competing
+control of the same name, independent velocity and fixed pitch, releases, and
+snapshot restoration across rendering partitions. It writes two-second 48 kHz
+WAVs. enge's suite reports **1,244 passed, 21 skipped**. Ruff, formatting,
+changed-file pyupgrade and type checking of the changed production files pass.
+The full enge type check still reports two return-type errors in unchanged
+`enge/native.py` at lines 150 and 170; this task does not repair those unrelated
+annotations.
+
+Safaz `ae412ffbed0d7dacd61c4e1e8473f9fe28180e25` pins that enge revision in a
+separate dependency commit. No other package revision changed; the lock's
+resolver date metadata advanced. The enge revision also includes a preceding
+documentation-only plan reconciliation. sfizz, uFor, meedee, envelfo, reference
+fixtures, DSP equations, workflow configuration and numerical tolerances are
+unchanged. No sfizz workaround was added and no upstream report was sent.
+
+Safaz's unit suite reports **351 passed**, and Ruff, formatting and type checks
+pass. The full local reference suite against the installed locked dependency,
+without configured sfizz, reports **267 passed, 211 skipped, zero errors**.
+All 114 native filter checks now pass, including the previously blocked 24;
+the three cutoff-bound diagnostic regressions also pass. Skipped comparisons
+are not evidence of sfizz equivalence.
+
+### Three-platform rerun
+
+[Run 41442241577](https://github.com/rec/safaz/actions/runs/41442241577) ran at
+safaz `ae412ffbed0d7dacd61c4e1e8473f9fe28180e25`. All platforms built and
+rendered successfully and uploaded complete evidence. The workflows remain red
+because external comparison failures remain failures.
+
+| Platform | Passed | Failed | Skipped | Errors | Native filter checks |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Linux | 299 | 129 | 50 | 0 | 114 passed |
+| Windows | 299 | 129 | 50 | 0 | 114 passed |
+| macOS | 298 | 130 | 50 | 0 | 114 passed |
+
+The original 144 native baseline/pan checks also pass on every platform. The
+previous 24 setup errors are now passes. All 86 native WAVs are identical
+between backends and across platforms, and the 78 previously supported native
+WAVs are unchanged from run 41438715332. There are no native or reference
+rendering-failure records. Each artifact contains 86 case reports and 561 WAVs;
+all **1,683 WAVs** were decoded and checked for 48 kHz rate and finite samples.
+The largest absolute sample across these files is below 0.214.
+
+The maximum native/authored error remains `3.885780586188048e-16`. The largest
+static-response error is `9.839129574045571e-11` dB against `1e-6` dB, the
+largest analytical-null gain is `2.4548418416535968e-15` against `1e-12`, and
+the largest repeated-LFO error is `9.020562075079397e-17` against the unchanged
+waveform bound `6.303515625e-5`. These metrics use float64 render arrays before
+WAV serialization. Keyboard tracking, combined key/velocity tracking,
+second-filter tracking and the combined key/velocity/LFO profile now satisfy
+the authored contract on both backends on all three platforms.
+
+Linux and Windows retain the earlier 129 external failures: 56 baseline/pan
+waveform comparisons, 72 filter waveform comparisons and one repeatability
+comparison. The eight previously unavailable native/reference filter
+comparisons now execute and fail their waveform assertions. Only the two
+amplitude-order filter variants pass full reference waveform comparisons;
+none of the remaining failures has been waived. All 28 applicable reference
+response cases pass on Linux and Windows; macOS passes 27 and fails one.
+The same 50 intentional skips remain: 40 generic native-law comparisons with
+no SFZ-equivalence claim and ten non-steady filter response cases. The earlier
+PCM16 relative-response resolution limits still apply.
+
+### Additional macOS sfizz cutoff observation
+
+Of 70 reference WAVs compared with the previous filter run on each platform,
+all Linux and Windows files and 69 macOS files are identical. The one changed
+file is `filter-tracking-velocity-up-native-256/reference.wav`. Its first note,
+key 60 at velocity 32, diverges at frame 8466, 8191 frames after the authored
+onset at 275. Its audible filter tail ends at 8490. The steady-response window
+12275:24275 contains only a one-PCM16-step floor (peak `3.0517578125e-5`),
+whereas the normal reference render peaks at `0.004547119140625` in that window.
+The resulting projection fails the unchanged absolute amplitude bound. Later
+notes are unchanged.
+
+The independent sfizz invocation for the NumPy-labelled case in the same run
+matches the earlier normal output. The backend label does not select a sfizz
+DSP backend: these are separate upstream render invocations on identical
+inputs. This near-8192-frame truncation is consistent with the previously
+reproduced preload cutoff, rather than evidence of a native tracking defect.
+The loading-race mechanism remains an inference, not a debugger-proven cause.
+The failed render was retained without retrying or replacing it.
+
+The separate block-size repeatability probe is unchanged: repeated 256-frame
+renders agree, 64 versus 256 fails (maximum error about 0.107), and 257 versus
+256 passes, exactly on Linux/Windows and within one PCM16 step on macOS.
+No tolerance, timing alignment, gain fit or reference modification was added.
+
+Downloaded artifacts and `analysis.json` are under
+`/private/tmp/safaz-ci-41442241577`; the audit script is
+`/private/tmp/safaz-key-audit-20261102.py`. It checks input hashes, pinned source
+manifests, ordered filter imports, all WAVs, numerical criteria and prior-run
+comparisons. These local paths are temporary and the workflow artifact
+retention remains 14 days.
+
+### Remaining boundary
+
+The native keyboard-binding gap is closed. Full sfizz waveform equivalence and
+reference repeatability remain unestablished. Keep the upstream report parked
+for human review. Any further waveform investigation should distinguish stable
+filter/transient differences from intermittent truncated reference renders;
+the successful authored native contracts do not prove that sfizz is wrong.
 
 ## Additional work beyond the prompt
 
-None for this qualification. The preceding three-platform rerun separately
+None for this follow-up. The preceding three-platform rerun separately
 included the user-approved meedee Windows build-path fix and safaz lock update.

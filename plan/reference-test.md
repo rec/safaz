@@ -228,15 +228,19 @@ tracking and the accepted triangle LFO profile. Native waveform, static RBJ
 response and amplitude/filter order have independent authored equations;
 reference amplitude checks derive their uncertainty from the existing PCM/float
 budget. Unsupported cutoff ranges have reader-level diagnostic regressions.
-The pinned enge renderer rejects key event bindings, so keyboard tracking and
-profiles combining it with velocity/LFO modulation remain blocked in native
-preparation. Those errors stay visible while independent sfizz evidence is
-collected. No playback implementation or dependency pin was changed to bypass
-that gap. All three platforms pass the static, velocity-only and standalone
-LFO native contracts and the applicable reference amplitude-response checks.
-Full waveform failures remain visible. Native key event binding support is the
-next implementation gap; see the latest findings for the precise qualification
-limits and unresolved PCM16 measurements.
+That initial run exposed missing key event binding support in enge. Follow-up
+revision `e879eb6` implements it for the offline sampler, including voice-local
+values and snapshot restoration; safaz pins it in `ae412ff`. The installed
+local matrix now reports 267 passed, 211 sfizz-related skips and zero errors.
+All 114 native filter checks pass, including the 24 previously blocked checks.
+Workflow 41442241577 confirms all 114 native filter checks on all three
+platforms, with all 86 native WAVs identical across platforms and backends.
+Linux/Windows report 299 passed, 129 failed, 50 skipped and zero errors; macOS
+reports 298 passed, 130 failed, 50 skipped and zero errors because of one extra
+sfizz cutoff observation. See the latest findings for the retained failures.
+sfizz, reference fixtures and numerical tolerances remain unchanged. The
+upstream cutoff report stays parked
+for human review.
 
 ## Additional work beyond the prompt
 

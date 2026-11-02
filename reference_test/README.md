@@ -223,14 +223,14 @@ Three reader-level regression cases verify combined low/high cutoff violations
 and an LFO range violation: located diagnostics remain, the static filter is
 retained, and unverified cutoff routes are absent. No clamping is introduced.
 
-The pinned enge renderer currently rejects key event bindings. Keyboard,
-combined key/velocity, second-filter tracking and the combined LFO profile
-therefore retain native setup errors. Their inputs, imports, original exception
-and independent sfizz comparisons remain available. No bindings are removed or
-pre-evaluated to bypass that limitation, and playback dependencies are unchanged.
+The pinned enge renderer now supports key event bindings for the offline sampler.
+Keyboard, combined key/velocity, second-filter tracking and the combined LFO
+profile execute their original routes. The earlier preparation failures and the
+follow-up qualification are recorded in the findings. No bindings are removed or
+pre-evaluated to bypass the renderer, and sfizz and tolerances remain unchanged.
 
 ## Additional work beyond the prompt
 
-None. Wider event-binding support and an upstream float-output pull request
-remain separate future work. Sample velocity bindings are implemented; the
-remaining baseline differences are recorded in the findings.
+None. Event-binding support in other engines and an upstream float-output pull
+request remain separate future work. Sample key/velocity bindings are implemented;
+the remaining baseline differences are recorded in the findings.
