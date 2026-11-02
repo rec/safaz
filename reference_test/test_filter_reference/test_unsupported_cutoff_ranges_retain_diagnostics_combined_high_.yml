@@ -1,0 +1,31 @@
+diagnostics:
+- location:
+    column: 70
+    header: region
+    kind: sfz
+    line: 1
+    opcode: fil_keytrack
+  reason: Combined SFZ cutoff modulation exceeds the verified unclamped filter range;
+    retaining only the static filter
+  value: '1200'
+- location:
+    column: 88
+    header: region
+    kind: sfz
+    line: 1
+    opcode: fil_veltrack
+  reason: Combined SFZ cutoff modulation exceeds the verified unclamped filter range;
+    retaining only the static filter
+  value: '1200'
+retained_filters:
+- boundary: error
+  cutoff_hz: 6000.0
+  minimum_hz: 1.0
+  name: sfz-filter-1
+  nyquist_ratio: 0.999
+  q: 1.0
+  response: lowpass
+  stages: 1
+  tolerance:
+    coefficient: 1.0e-12
+    response_db: 1.0e-06

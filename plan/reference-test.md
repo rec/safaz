@@ -223,6 +223,21 @@ Linux, Windows and macOS. Each platform retains 56 external waveform failures
 and one reference-repeatability failure. See `reference_test/findings.md` for
 the complete qualification; this does not claim sfizz waveform equivalence.
 
+Run 41438715332 adds the qualification matrix for static filters, keyboard/velocity cutoff
+tracking and the accepted triangle LFO profile. Native waveform, static RBJ
+response and amplitude/filter order have independent authored equations;
+reference amplitude checks derive their uncertainty from the existing PCM/float
+budget. Unsupported cutoff ranges have reader-level diagnostic regressions.
+The pinned enge renderer rejects key event bindings, so keyboard tracking and
+profiles combining it with velocity/LFO modulation remain blocked in native
+preparation. Those errors stay visible while independent sfizz evidence is
+collected. No playback implementation or dependency pin was changed to bypass
+that gap. All three platforms pass the static, velocity-only and standalone
+LFO native contracts and the applicable reference amplitude-response checks.
+Full waveform failures remain visible. Native key event binding support is the
+next implementation gap; see the latest findings for the precise qualification
+limits and unresolved PCM16 measurements.
+
 ## Additional work beyond the prompt
 
 None.

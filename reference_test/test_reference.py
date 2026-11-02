@@ -1,14 +1,10 @@
 import json
-import subprocess
-import traceback
 from pathlib import Path
-from typing import Literal
 
 import harness
 import numpy as np
 import pytest
 import soundfile
-from ufor.samples.processing import PanLaw
 
 
 @pytest.fixture(
@@ -16,62 +12,6 @@ from ufor.samples.processing import PanLaw
 )
 def case(request: pytest.FixtureRequest) -> harness.Case:
     return request.param
-
-
-@pytest.fixture(scope='module', params=['numpy', 'native'])
-def backend(request: pytest.FixtureRequest) -> Literal['numpy', 'native']:
-    return request.param
-
-
-@pytest.fixture(scope='module')
-def native_render(
-    case: harness.Case,
-    backend: Literal['numpy', 'native'],
-    reference_output: Path,
-) -> tuple[Path, np.ndarray, np.ndarray]:
-    folder = reference_output / f'{case.name}-{backend}-256'
-    assert not folder.exists(), f'Choose a new --reference-output: {folder}'
-    try:
-        native, expected = harness.run_native_case(case, folder, backend, 256)
-    except (ValueError, RuntimeError, OSError, subprocess.SubprocessError) as error:
-        harness.write_json(
-            folder / 'failure.json',
-            {
-                'stage': 'native',
-                'error': str(error),
-                'traceback': traceback.format_exc(),
-                'status': 'native rendering incomplete',
-            },
-        )
-        raise
-    return folder, native, expected
-
-
-@pytest.fixture(scope='module')
-def reference_report(
-    case: harness.Case,
-    native_render: tuple[Path, np.ndarray, np.ndarray],
-    reference_paths: tuple[Path, Path, Path, Path],
-) -> dict[str, object]:
-    if case.pan_law == PanLaw.native:
-        pytest.skip('Generic native law has no SFZ equivalence claim')
-    folder, native, expected = native_render
-    source, executable, build, _ = reference_paths
-    try:
-        return harness.run_reference_case(
-            case, folder, executable, source, build, native, expected, 256
-        )
-    except (ValueError, RuntimeError, OSError, subprocess.SubprocessError) as error:
-        harness.write_json(
-            folder / 'failure.json',
-            {
-                'stage': 'reference',
-                'error': str(error),
-                'traceback': traceback.format_exc(),
-                'status': 'reference incomplete; native checks are independent',
-            },
-        )
-        raise
 
 
 def test_note_timing_reports_early_late_and_silent_notes(tmp_path: Path) -> None:

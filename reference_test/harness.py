@@ -9,6 +9,7 @@ from math import cos, pi, sin, sqrt
 from pathlib import Path
 from typing import Literal
 
+import filter_oracle
 import mido
 import numpy as np
 import soundfile
@@ -49,6 +50,7 @@ class Case(BaseModel, frozen=True):
     source_channels: Literal[1, 2] = 2
     pan: int | None = None
     pan_law: PanLaw = PanLaw.sfizz
+    filter_profile: filter_oracle.FilterProfile | None = None
 
 
 def authored_pan_gains(case: Case) -> list[float]:
@@ -100,10 +102,21 @@ def package_revision(name: str) -> object:
 def create_inputs(case: Case, folder: Path) -> np.ndarray:
     """Use integer-valued PCM sources, distinct periods, and a silent tail."""
     folder.mkdir(parents=True)
-    fixture = 'pan' if case.pan is not None else case.name
+    fixture = (
+        'filter'
+        if case.filter_profile
+        else 'pan'
+        if case.pan is not None
+        else case.name
+    )
     sfz = (Path(__file__).parent / 'fixtures' / f'{fixture}.sfz').read_text()
     if case.pan is not None:
         sfz = sfz.format(pan=case.pan)
+    if case.filter_profile:
+        sfz = sfz.format(
+            filters=filter_oracle.declarations(case.filter_profile),
+            attack=case.filter_profile.attack,
+        )
     (folder / 'instrument.sfz').write_text(sfz)
     sources: dict[str, np.ndarray] = {}
     for name, period in [('a.wav', 96), ('b.wav', 64)]:
@@ -112,6 +125,9 @@ def create_inputs(case: Case, folder: Path) -> np.ndarray:
         audio[: RATE // 2, 0] = np.where(phase < period // 2, 0.125, -0.125)
         if case.source_channels == 2:
             audio[: RATE // 2, 1] = -audio[: RATE // 2, 0] / 2
+        if case.filter_profile and case.filter_profile.attack:
+            audio[:] = 0
+            audio[[0, RATE // 4], 0] = 0.125
         soundfile.write(folder / name, audio, RATE, subtype='PCM_16')
         sources[name] = audio
     performance = mido.MidiFile(type=0, ticks_per_beat=960)
@@ -153,8 +169,13 @@ def create_inputs(case: Case, folder: Path) -> np.ndarray:
             ]
         )
         gain = MASTER_GAIN * 10 ** (note.gain_db / 20) * (note.velocity / 127) ** 2
+        audio *= gain
+        if case.filter_profile:
+            audio = filter_oracle.render(
+                case.filter_profile, audio, note.key, note.velocity / 127, RATE
+            )
         start = note.tick * 25
-        expected[start : start + len(audio)] += audio * gain * authored_pan_gains(case)
+        expected[start : start + len(audio)] += audio * authored_pan_gains(case)
     soundfile.write(folder / 'expected.wav', expected, RATE, subtype='FLOAT')
     return expected
 
@@ -255,8 +276,8 @@ def run_native_case(
     folder: Path,
     backend: Literal['numpy', 'native'],
     block: int,
-) -> tuple[np.ndarray, np.ndarray]:
-    expected = create_inputs(case, folder)
+    expected: np.ndarray,
+) -> np.ndarray:
     write_json(
         folder / 'manifest.json',
         {
@@ -297,6 +318,11 @@ def run_native_case(
     write_json(folder / 'report.json', report)
     compiled = reader.read(
         folder / 'instrument.sfz',
+        filter_response='sfizz_rbj' if case.filter_profile else 'diagnose',
+        filter_lfo_response='sfizz_triangle'
+        if case.filter_profile
+        and any(f.lfo_frequency for f in case.filter_profile.filters)
+        else 'diagnose',
         midi_binding=SfzMidiBindingRequest(
             instrument=ScoreReference(path='instrument.json'),
             part='channel-0',
@@ -372,8 +398,10 @@ def run_native_case(
     )
     report['native_vs_authored'] = compare(native[:horizon], expected)
     report['native_notes'] = measure_notes(case, native[:horizon])
+    if case.filter_profile:
+        report['filter_contract'] = filter_contract(case, folder, native, FLOAT_ERROR)
     write_json(folder / 'report.json', report)
-    return native, expected
+    return native
 
 
 def run_reference_case(
@@ -382,7 +410,7 @@ def run_reference_case(
     executable: Path,
     source: Path,
     build: Path,
-    native: np.ndarray,
+    native: np.ndarray | None,
     expected: np.ndarray,
     block: int,
 ) -> dict[str, object]:
@@ -411,19 +439,87 @@ def run_reference_case(
         reference_comparison='measured; failures remain failures',
         reference_vs_authored=compare(reference[:horizon], expected),
         reference_notes=measure_notes(case, reference[:horizon]),
-        native_vs_reference=compare(native, reference),
+        native_vs_reference=compare(native, reference)
+        if native is not None
+        else {
+            'passed': False,
+            'status': 'unavailable: native preparation/rendering failed',
+        },
     )
+    if case.filter_profile:
+        report['reference_filter_contract'] = filter_contract(
+            case, folder, reference, PCM_ERROR + FLOAT_ERROR
+        )
     soundfile.write(
         folder / 'reference-authored-difference.wav',
         reference[:horizon] - expected,
         RATE,
         subtype='FLOAT',
     )
-    soundfile.write(
-        folder / 'difference.wav', native - reference, RATE, subtype='FLOAT'
-    )
+    if native is not None:
+        soundfile.write(
+            folder / 'difference.wav', native - reference, RATE, subtype='FLOAT'
+        )
     write_json(folder / 'report.json', report)
     return report
+
+
+def filter_contract(
+    case: Case, folder: Path, audio: np.ndarray, waveform_budget: float
+) -> dict[str, object]:
+    profile = case.filter_profile
+    assert profile is not None
+    responses = []
+    trajectories = []
+    for note in case.notes:
+        ages = np.array([0, 3000, 6000, 12000, 18000, 24000, 36000])
+        trajectories.append(
+            {
+                'key': note.key,
+                'velocity': note.velocity,
+                'relative_frames': ages.tolist(),
+                'cutoffs_hz': [
+                    filter_oracle.cutoffs(f, note.key, note.velocity / 127, RATE, RATE)[
+                        ages
+                    ].tolist()
+                    for f in profile.filters
+                ],
+            }
+        )
+        if profile.attack or any(f.lfo_frequency for f in profile.filters):
+            continue
+        start = note.tick * 25
+        source = soundfile.read(folder / 'a.wav', always_2d=True)[0]
+        gain = (
+            MASTER_GAIN
+            * 10 ** (note.gain_db / 20)
+            * (note.velocity / 127) ** 2
+            * authored_pan_gains(case)[0]
+        )
+        responses.append(
+            filter_oracle.response_measurements(
+                profile,
+                audio[start : start + RATE],
+                source,
+                note.key,
+                note.velocity / 127,
+                gain,
+                RATE,
+                waveform_budget,
+            )
+        )
+    contract: dict[str, object] = {
+        'steady_responses': responses,
+        'authored_cutoffs': trajectories,
+    }
+    if any(f.lfo_frequency for f in profile.filters) and len(case.notes) == 2:
+        first, second = case.notes
+        if (first.key, first.velocity) == (second.key, second.velocity):
+            a, b = first.tick * 25, second.tick * 25
+            contract['restart_waveform'] = compare(
+                audio[a : a + RATE], audio[b : b + RATE]
+            )
+    return contract
 
 
 CASES = [

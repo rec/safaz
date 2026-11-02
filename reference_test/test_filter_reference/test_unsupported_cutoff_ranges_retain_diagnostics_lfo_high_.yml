@@ -1,0 +1,21 @@
+diagnostics:
+- location:
+    column: 85
+    header: region
+    kind: sfz
+    line: 1
+    opcode: fillfo_depth
+  reason: SFZ filter LFO cutoff exceeds the verified unclamped filter range
+  value: '1200'
+retained_filters:
+- boundary: error
+  cutoff_hz: 12000.0
+  minimum_hz: 1.0
+  name: sfz-filter-1
+  nyquist_ratio: 0.999
+  q: 1.0
+  response: lowpass
+  stages: 1
+  tolerance:
+    coefficient: 1.0e-12
+    response_db: 1.0e-06

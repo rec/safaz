@@ -123,15 +123,17 @@ Two separate external tests then assert native/reference and
 authored/reference waveform agreement, sharing one sfizz invocation per case.
 Those assertions remain ordinary failures at the unchanged numerical limits;
 known sfizz defects are not xfailed, retried, aligned away or filtered out.
-Exceptions from reference invocation preserve a stage-labelled `failure.json`
-alongside the completed native evidence. Native preparation exceptions are also
-stage-labelled. The workflow retains JUnit `results.xml` so authored results
+Exceptions are retained in `native-failure.json` and `reference-failure.json`;
+one stage cannot overwrite the other's failure. Failed native preparation does
+not suppress sfizz/authored evidence. Native/reference waveform comparison is
+explicitly unavailable when no native WAV exists. The workflow retains JUnit
+`results.xml` so authored results
 remain individually visible even while the external comparisons fail.
 
 The original eight baseline variants and 40 pan variants provide 144 native
 checks. The 28 SFZ-convention variants provide 56 external waveform checks;
 40 generic-native-law external checks are explicitly inapplicable. One
-reference-repeatability test and six measurement checks complete the suite.
+reference-repeatability test and six measurement checks complete this baseline/pan section.
 The workflow remains failing while genuine reference comparisons fail; native
 correctness and sfizz waveform equivalence are distinct claims.
 
@@ -171,6 +173,61 @@ Repeatability checks use two identical 256-frame renders and 64/257-frame
 renders over the same declared interval. Five measurement tests deliberately
 alter gain, pitch, onset, source eligibility or channel routing to ensure those
 errors are caught, plus the existing early/late/silent timing measurement test.
+
+## Filters, tracking and triangle LFO qualification
+
+`filter_cases.py` adds 19 profiles through both backends:
+
+- Four two-pole static responses (`lpf_2p`, `hpf_2p`, `bpf_2p`, `brf_2p`) at
+  resonance 0 and 6 dB, a lowpass/highpass cascade, and an amplitude-order probe.
+- Key tracking, positive and negative velocity tracking, their combination,
+  and tracking on the second filter. Three separated notes exercise the
+  authored keys/velocities without pitch transposition.
+- Triangle LFOs at 2 Hz with depths +1200/-1200 cents and 5 Hz/+600 cents,
+  plus a 3 Hz combined tracking/cascade profile. Repeated notes start at
+  different global phases so a global oscillator cannot satisfy the declared
+  voice-local restart. Full audio checks frequency, quarter-cycle initial
+  phase, signed depth and restart; repeated-voice residuals are also retained.
+
+The existing explicit `sfizz_rbj` and `sfizz_triangle` import choices are used.
+`filter_oracle.py` does not call production coefficient, modulation, generator
+or filter functions. It computes cutoff as
+`base * 2**((keytrack*(key-keycenter) + veltrack*velocity + depth*triangle)/1200)`.
+The triangle starts at zero rising. The time-domain oracle solves the coupled
+trapezoidal equations by a 2x2 matrix inverse, retaining independent state for
+each filter and voice. This is the declared native topology, not a claim that
+time-varying RBJ coefficients have the same state behavior. Static response is
+independently specified by the RBJ z-domain equations.
+
+Static and tracking cases measure 500, 1500, 3500 and 7500 Hz in a fixed
+quarter-to-half-second window relative to each authored note start. These are
+integer-cycle harmonics of the source square wave, after settling. Source
+amplitudes come from the exact decoded PCM input, not fitted output gain.
+Native response uses the existing filter defaults of `1e-6` dB and `1e-12`
+gain at analytical nulls. Reference output-amplitude uncertainty is derived
+from the existing pointwise budget: a `2/N` complex projection has error at
+most twice that budget. No waveform tolerance changes. Near-zero/absent
+reference response is reported without infinite dB values. Expected output
+amplitudes at or below that uncertainty bound are unresolved for relative gain:
+an absolute-amplitude pass establishes compatibility with the PCM floor, not
+precise attenuation in dB. The native dB/null limits do not gate reference rows.
+
+The processing-order probe uses two impulses and a 10 ms linear amplitude
+attack. Filtering and constant gain commute, so a constant-volume fixture
+cannot establish amplitude/filter order. This probe demonstrably distinguishes
+filtering before versus after amplitude at the existing waveform limit.
+The import's ordered filter declarations are checked separately; exchanging
+two static linear filters in a cascade would not be distinguished by audio.
+
+Three reader-level regression cases verify combined low/high cutoff violations
+and an LFO range violation: located diagnostics remain, the static filter is
+retained, and unverified cutoff routes are absent. No clamping is introduced.
+
+The pinned enge renderer currently rejects key event bindings. Keyboard,
+combined key/velocity, second-filter tracking and the combined LFO profile
+therefore retain native setup errors. Their inputs, imports, original exception
+and independent sfizz comparisons remain available. No bindings are removed or
+pre-evaluated to bypass that limitation, and playback dependencies are unchanged.
 
 ## Additional work beyond the prompt
 

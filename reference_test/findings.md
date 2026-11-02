@@ -7,8 +7,9 @@ comparisons with sfizz still fail. Earlier pinned runs below are retained for
 comparison. Upstream sfizz remains unchanged; the accepted SFZ pan convention
 is explicit in the later implementation and qualification records.
 
-Current pan-law CI evidence is recorded under "Independent authored checks and
-pan qualification" below. "Gain and off-center pan equation audit" separates
+Current filter CI evidence is recorded under "Filter, tracking and triangle
+LFO qualification" below; the preceding "Independent authored checks and pan
+qualification" records the pan matrix. "Gain and off-center pan equation audit" separates
 conventions, numerical differences and implementation defects. "Per-instrument pan-law
 implementation" records the accepted convention and local verification;
 earlier baseline numbers used the previous gain model.
@@ -1138,18 +1139,143 @@ positions on both backends and all three platforms. It does not claim sfizz
 waveform equivalence, dynamic pan modulation, width/position controls or arbitrary
 voice interactions. The upstream report remains parked for the user's review.
 
+## Filter, tracking and triangle LFO qualification, 2026-11-02
+
+The next three families now have a shared qualification matrix: ten static/order
+profiles, five tracking profiles and four triangle-LFO profiles, each on both
+enge backends. The independent oracle and predeclared response criteria are
+documented in the [reference README](README.md#filters-tracking-and-triangle-lfo-qualification).
+No production DSP or importer behavior was changed.
+
+The matrix checks full native/authored audio, selection/timing, static RBJ
+frequency response and amplitude/filter order independently from sfizz.
+Keyboard/velocity cutoffs use explicit cents equations; dynamic filter state
+uses an independent trapezoidal matrix solve. The 2/5 Hz signed LFO cases have
+two note onsets at different global phases, checking the accepted zero-rising
+phase, depth and voice-relative restart. The static-response defaults remain
+`1e-6` dB and `1e-12` null gain. The reference amplitude-projection bound is
+derived as twice the existing PCM/float waveform budget; no existing numerical
+limit is changed or fitted to output. Full-waveform mismatches remain failures.
+
+Local execution without sfizz configuration reports **243 passed, 211 skipped,
+24 errors**. All original baseline/pan checks and all supported new native
+renders pass. The 24 errors are three native checks on eight variants requiring
+a key event binding: key tracking, combined key/velocity tracking, second-filter
+tracking and the combined tracking/LFO profile, on both backends. safaz imports
+them completely, but pinned enge's `synth.validate_generators` permits velocity
+event bindings only and raises `Unsupported binding for this renderer` for
+`EventBinding(kind="key")`. This is a native renderer limitation, not a sfizz
+failure or a test that has been waived. No binding removal, route flattening,
+dependency update or playback fix was applied.
+
+Native failures are preserved in `native-failure.json`; reference invocation
+failures have their own `reference-failure.json`. The shared setup retains the
+independent authored signal even if native preparation fails, so sfizz/authored
+waveforms and feature measurements can still be collected. No native WAV is
+fabricated, and native/reference comparison explicitly reports unavailability.
+Three diagnostic regressions pass for combined low/high tracking violations
+and an out-of-range LFO, preserving the static filter and located diagnostics.
+The existing 351 unit tests, Ruff, formatting, type checks and changed-file
+pyupgrade pass.
+
+[Run 41438715332](https://github.com/rec/safaz/actions/runs/41438715332), at
+`0d43fa8f405cbcc4c3fea02cad33b16bc2ee8234`, completes on Linux x86_64, Windows
+x86_64 and macOS arm64. Each platform reports **275 passed, 129 failed,
+50 skipped, 24 errors**. The jobs remain red; no known error is xfailed or
+retried. All three produce 86 case reports, 78 native WAVs and 66 case-reference
+WAVs, with eight native preparation failures and no reference subprocess/setup
+failures. All 1,635 WAVs across the three artifacts decode as finite 48 kHz
+audio. Source/submodule revisions and the uFor/enge/meedee dependency pins
+remain unchanged.
+
+| New family, per platform and both backends | Native checks passed | Native checks blocked |
+| --- | ---: | ---: |
+| Static responses, cascade and amplitude order | 60 | 0 |
+| Positive/negative velocity tracking | 12 | 0 |
+| Keyboard, combined and second-filter tracking | 0 | 18 |
+| Standalone signed triangle LFOs | 18 | 0 |
+| Combined keyboard/velocity/LFO/cascade | 0 | 6 |
+
+Each variant has independent waveform, selection/timing and processing/response
+checks. The 24 blocked checks are the same eight key-binding preparation
+failures observed locally, not 24 different DSP defects. All original 144
+baseline/pan native checks and all three new cutoff-diagnostic regressions pass
+on every platform. Every supported native render agrees with its independent
+oracle; the largest native/authored error is `3.885780586188048e-16`.
+
+Native spectral checks use float64 arrays before WAV serialization. Across all
+platforms, maximum static-response error is `9.839129574045571e-11` dB against
+the existing `1e-6` dB limit, and maximum gain at an analytical notch is
+`2.4548418416535968e-15` against `1e-12`. The largest repeated-voice LFO residual
+is `9.020562075079397e-17` at the unchanged waveform limit. Thus the supported
+frequency/phase/depth and voice-relative restart cases pass without using the
+production generator/filter helpers to construct their oracle.
+
+Both backends' decoded native WAVs match exactly within each platform, and all
+78 supported decoded native WAVs match exactly across platforms. All 48 earlier
+baseline/pan native WAVs and all 28 earlier case-reference WAVs also match run
+39422527853 on their respective platforms. Their SFZ, MIDI and source-WAV
+hashes are unchanged. This separates the new coverage from any playback change.
+
+The new reference results are deliberately more qualified than "all filters
+match sfizz":
+
+- All 28 applicable steady-response tests pass the predeclared absolute
+  output-amplitude bound, including reference cases whose native key bindings
+  could not prepare. These cover 48 note-response measurements at four probe
+  frequencies each. Of those 192 frequency measurements, 26 have authored
+  amplitudes at or below the reference uncertainty bound and are **unresolved
+  for relative gain**, including analytical notches and strongly attenuated
+  high harmonics. Passing their absolute bound does not validate deep-notch
+  attenuation or a precise dB response. The native dB/null limits are not used
+  as reference acceptance thresholds.
+- The amplitude-order probe passes both native/reference and authored/reference
+  waveform comparisons, through both backends on all platforms. Its changing
+  envelope distinguishes amplitude-before-filter behavior at the original
+  limit. A static linear cascade alone cannot establish filter order by audio;
+  its imported declaration order is asserted separately.
+- Of 30 new cases with native WAVs, two pass and 28 fail the native/reference
+  waveform assertion. Eight further native/reference checks are unavailable
+  because preparation failed; their failed tests carry that explicit status
+  rather than a fabricated residual. The 38 authored/reference waveform checks
+  independently produce two passes and 36 failures. Dynamic/order profiles have
+  no steady-response claim, so their ten spectral checks are inapplicable.
+  These failures remain distinct from successful static response checks; they
+  have not all been attributed to the intermittent loader cutoff or treated as
+  proof of equivalent dynamic algorithms.
+
+The 129 failed tests comprise the earlier 57 waveform/repeatability assertions
+and the new 72 failed/unavailable waveform assertions. The 50 skips comprise
+the earlier 40 generic-native-law comparisons with no SFZ equivalence claim
+and ten inapplicable steady-response checks. No supported native check is
+skipped. Reference block-repeatability measurements are unchanged from the
+pan qualification. The result qualifies the tested static, velocity-only and
+standalone-LFO native contracts; keyboard-based combinations are not qualified.
+
+The final ordered response/cutoff/Q assertions were also checked against every
+new imported document from all three artifacts and exercised locally on the
+cascade; this assertion strengthening changes no generated input or audio.
+
+JUnit results, import/render documents, original native exceptions, reports,
+waveforms, equations and reference process/build manifests are retained in the
+run's artifacts. Downloaded evidence and `analysis.json` are under
+`/private/tmp/safaz-ci-41438715332`; the inspection script is
+`/private/tmp/safaz-filter-audit-20261102.py`. Previous artifacts were downloaded
+for comparison under `/private/tmp/safaz-filter-prior-39422527853`. These are
+temporary paths; uploaded evidence retains the workflow's 14-day lifetime.
+
 ## Next slice
 
-The two slices are complete: authored correctness is independent, and the
-expanded pan matrix passes its native contract on all three platforms.
-The next feature family is static filters
-under the accepted `sfizz_rbj` response profile, with independently specified
-frequency-response and processing-order checks. Preserve the failing external
-waveform/repeatability evidence; do not copy scalar/NEON lookup or pinned-client
-timing defects into enge. The upstream cutoff report remains parked for human
-review. No sfizz fix or workaround has been applied here.
+The next implementation gap is native key event bindings in enge. Supporting
+the existing declared binding and rerunning this matrix is required before
+keyboard tracking, its velocity combinations and the combined LFO profile can
+be qualified. That playback implementation work is separate from this
+qualification and has not been performed. Keep successful native/response
+contracts distinct from full sfizz waveform equivalence, and preserve the
+remaining external failures. The upstream cutoff report remains parked for
+human review; no sfizz fix or workaround has been applied here.
 
 ## Additional work beyond the prompt
 
-None for these two slices. The preceding three-platform rerun separately
+None for this qualification. The preceding three-platform rerun separately
 included the user-approved meedee Windows build-path fix and safaz lock update.
