@@ -87,8 +87,11 @@ Basic first-filter LFOs now import fixed frequency and signed depth with a
 separate `filter_lfo_response="sfizz_triangle"` choice. They reuse a voice-local
 native triangle at quarter-cycle phase and an exponential cutoff ratio.
 Combined tracking/LFO bounds diagnose all active cutoff routes on the affected
-filter. Delay, fade, nonordinary triggers, richer LFOs, and export remain
-diagnosed; no native model or engine changes were needed.
+filter. Delay and fade now compose an activation envelope with a phase-offset
+triangle: delay is rounded up to an output frame, and fade scales cents before
+cutoff exponentiation. Nonordinary triggers, richer LFOs, and export remain
+diagnosed. Sampler preparation now reuses the existing Patch expansion and
+retains Patch identities in snapshots.
 The pinned SFZ v1/v2 registry classifies 453 opcodes and the standard headers,
 drives unsupported-feature diagnostics, and generates the
 [support table](../doc/sfz-support.md). SFZ 2 `#define` values expand

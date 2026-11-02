@@ -149,8 +149,9 @@ def support_table() -> str:
         '`filter_order=after_amplitude` to match the sfizz voice pipeline. '
         'Basic first-filter LFOs additionally require '
         '`filter_lfo_response="sfizz_triangle"`: fixed frequency and signed depth '
-        'use a voice-local triangle starting at zero rising. Delay, fade, and '
-        'nonordinary triggers remain diagnosed. Combined cutoff modulation '
+        'use a voice-local triangle starting at zero rising after its delay. '
+        'Fade scales the signal before cutoff exponentiation. '
+        'Nonordinary triggers remain diagnosed. Combined cutoff modulation '
         'outside bounds retains only the static filter. Export is unsupported.',
         '',
         '`set_ccN` imports under `<control>` as a named-control default, '

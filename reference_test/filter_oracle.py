@@ -15,6 +15,8 @@ class FilterSpec(BaseModel, frozen=True):
     veltrack: int = 0
     lfo_frequency: float = 0
     lfo_depth: float = 0
+    lfo_delay: float = 0
+    lfo_fade: float = 0
 
 
 class FilterProfile(BaseModel, frozen=True):
@@ -44,6 +46,10 @@ def declarations(profile: FilterProfile) -> str:
                     f'fillfo_depth={spec.lfo_depth:g}',
                 ]
             )
+        if spec.lfo_delay or spec.lfo_fade:
+            result.extend(
+                [f'fillfo_delay={spec.lfo_delay:g}', f'fillfo_fade={spec.lfo_fade:g}']
+            )
     return ' '.join(result)
 
 
@@ -51,7 +57,13 @@ def cutoffs(
     spec: FilterSpec, key: int, velocity: float, frames: int, rate: int
 ) -> np.ndarray:
     age = np.arange(frames) / rate
-    triangle = 1 - 4 * np.abs((spec.lfo_frequency * age + 0.25) % 1 - 0.5)
+    delayed_age = np.maximum(0, age - np.ceil(spec.lfo_delay * rate) / rate)
+    gate = (age >= np.ceil(spec.lfo_delay * rate) / rate).astype(float)
+    if spec.lfo_fade:
+        gate *= np.minimum(1, delayed_age / spec.lfo_fade)
+    triangle = (
+        1 - 4 * np.abs((spec.lfo_frequency * delayed_age + 0.25) % 1 - 0.5)
+    ) * gate
     cents = (
         spec.keytrack * (key - spec.keycenter)
         + spec.veltrack * velocity

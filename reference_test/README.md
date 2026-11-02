@@ -229,6 +229,13 @@ profile execute their original routes. The earlier preparation failures and the
 follow-up qualification are recorded in the findings. No bindings are removed or
 pre-evaluated to bypass the renderer, and sfizz and tolerances remain unchanged.
 
+Three additional filter LFO profiles cover delay, fade-in, and their combination
+at two note onsets. The authored oracle gates a phase-shifted triangle before
+the cutoff exponential, independently of the imported generator composition.
+Delay rounds upward to an output frame; fade begins after that delay. Native
+LFO contribution weights alone would apply the fade after exponentiation and
+are not used for this SFZ convention.
+
 ## Additional work beyond the prompt
 
 None. Event-binding support in other engines and an upstream float-output pull

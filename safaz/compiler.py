@@ -36,6 +36,7 @@ from .model import (
     UnimplementedFeature,
     _channel_routes,
 )
+from .modulators import triangle_lfo
 from .parser import (
     NOTE,
     NOTES,
@@ -864,18 +865,17 @@ def _slot(
     )
     parameters.extend(filter_parameters)
     if lfo_routes := [r for r in filter_routes if r.source == 'filter-lfo']:
-        kwargs['envelfos'] = {
-            'sfz-filter-lfo': envelfo.LFO(
-                shape='triangle',
-                rate=Fraction(values['fillfo_freq']),
-                phase=Fraction(1, 4),
-            )
-        }
+        oscillator = triangle_lfo(values, 'fillfo', output_rate)
+        kwargs['envelfos'] = {'sfz-filter-lfo': oscillator}
         sources.append(
             modulation.Source(name='filter-lfo', scope='voice', minimum=-1, maximum=1)
         )
         bindings.append(
-            processing.GeneratorBinding(name='filter-lfo', reference='sfz-filter-lfo')
+            processing.GeneratorBinding(
+                name='filter-lfo',
+                reference='sfz-filter-lfo',
+                output='signal' if isinstance(oscillator, envelfo.Patch) else None,
+            )
         )
         routes.extend(lfo_routes)
     key_routes.extend(r for r in filter_routes if r.source == 'key')
@@ -1442,17 +1442,6 @@ def _filter_lfo_modulation(
             )
             invalid = True
     if invalid or settings['fillfo_depth'] == 0 or settings['fillfo_freq'] == 0:
-        return None
-    unsupported_timing = False
-    for name in ('fillfo_delay', 'fillfo_fade'):
-        if settings[name] != 0:
-            _add_unimplemented(
-                unimplemented,
-                declarations[name],
-                'SFZ filter LFO delay/fade has no verified native timing equivalent',
-            )
-            unsupported_timing = True
-    if unsupported_timing:
         return None
     reason = None
     if control_triggered or values.get('trigger', 'attack') != 'attack':

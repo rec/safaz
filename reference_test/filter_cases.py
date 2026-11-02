@@ -113,3 +113,24 @@ LFO_CASES = [
         ),
     ),
 ]
+
+LFO_CASES += [
+    Case(
+        name=f'filter-lfo-timing-{d}-{f}',
+        notes=[Note(tick=11), Note(tick=5001)],
+        end_tick=10000,
+        source_channels=1,
+        filter_profile=FilterProfile(
+            filters=[
+                FilterSpec(
+                    response='lpf_2p',
+                    lfo_frequency=3,
+                    lfo_depth=900,
+                    lfo_delay=d,
+                    lfo_fade=f,
+                )
+            ]
+        ),
+    )
+    for d, f in [(0.1, 0), (0, 0.2), (0.1, 0.2)]
+]

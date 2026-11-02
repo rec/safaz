@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 import pytest
+from envelfo import patch
 from envelfo.runtime import envelfo_at, initial_envelfo
 from pytest_regressions.data_regression import DataRegressionFixture
 from ufor import modulation
@@ -619,6 +620,52 @@ def test_filter_lfo_starts_zero_rising_and_maps_signed_depth(depth: float) -> No
     assert any('envelfos' in f.reason.lower() for f in exported.unimplemented)
 
 
+@pytest.mark.parametrize('delay,fade', [(0.1, 0), (0, 0.2), (0.1, 0.2)])
+def test_filter_lfo_delay_and_fade_scale_cents_before_exponentiation(
+    delay: float, fade: float
+) -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav cutoff=1000 fillfo_freq=2 '
+        f'fillfo_depth=1200 fillfo_delay={delay} fillfo_fade={fade}',
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+    )
+    assert result.complete
+    assert result.instrument is not None
+    slot = result.instrument.body.slots[0]
+    oscillator = slot.envelfos['sfz-filter-lfo']
+    for at in [
+        Fraction(0),
+        Fraction(1, 20),
+        Fraction(1, 10),
+        Fraction(3, 20),
+        Fraction(1, 5),
+        Fraction(1, 2),
+    ]:
+        observed = patch.advance_patch(
+            oscillator,
+            patch.initial_patch(oscillator, Fraction(0)),
+            at,
+            next_delivery=at + 1,
+        ).values['signal']
+        age = max(0, float(at) - delay)
+        gate = 0 if float(at) < delay else min(1, age / fade) if fade else 1
+        expected = (1 - 4 * abs((2 * age + 0.25) % 1 - 0.5)) * gate
+        assert observed == pytest.approx(expected, abs=1e-14)
+        values = {
+            s.name: modulation.SourceValue(
+                value=observed if s.name == 'filter-lfo' else 1
+            )
+            for s in slot.modulation.sources
+        }
+        cutoff = next(
+            v.value
+            for v in modulation.evaluate(slot.modulation, values)
+            if v.target.parameter == 'cutoff_hz'
+        )
+        assert cutoff == pytest.approx(1000 * 2**expected)
+
+
 def test_filter_lfo_requires_separate_explicit_acceptance() -> None:
     result = _compile(
         '<region> sample=audio/glass.wav cutoff=1000 fillfo_freq=2 fillfo_depth=1200',
@@ -635,8 +682,8 @@ def test_filter_lfo_requires_separate_explicit_acceptance() -> None:
 @pytest.mark.parametrize(
     'declaration',
     [
-        'fillfo_delay=0.1',
-        'fillfo_fade=0.1',
+        'fillfo_delay=-0.1',
+        'fillfo_fade=-0.1',
         'trigger=release',
         'trigger=release_key',
         'trigger=legato',
