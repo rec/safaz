@@ -11,6 +11,7 @@ from typing import Literal
 
 import filter_oracle
 import mido
+import modulation_oracle
 import numpy as np
 import soundfile
 from enge import midi, sample_instrument
@@ -51,6 +52,7 @@ class Case(BaseModel, frozen=True):
     pan: int | None = None
     pan_law: PanLaw = PanLaw.sfizz
     filter_profile: filter_oracle.FilterProfile | None = None
+    modulation_profile: modulation_oracle.ModulationProfile | None = None
 
 
 def authored_pan_gains(case: Case) -> list[float]:
@@ -103,13 +105,19 @@ def create_inputs(case: Case, folder: Path) -> np.ndarray:
     """Use integer-valued PCM sources, distinct periods, and a silent tail."""
     folder.mkdir(parents=True)
     fixture = (
-        'filter'
+        'modulation'
+        if case.modulation_profile
+        else 'filter'
         if case.filter_profile
         else 'pan'
         if case.pan is not None
         else case.name
     )
     sfz = (Path(__file__).parent / 'fixtures' / f'{fixture}.sfz').read_text()
+    if case.modulation_profile:
+        sfz = sfz.format(
+            modulation=modulation_oracle.declarations(case.modulation_profile)
+        )
     if case.pan is not None:
         sfz = sfz.format(pan=case.pan)
     if case.filter_profile:
@@ -169,6 +177,8 @@ def create_inputs(case: Case, folder: Path) -> np.ndarray:
             ]
         )
         gain = MASTER_GAIN * 10 ** (note.gain_db / 20) * (note.velocity / 127) ** 2
+        if case.modulation_profile:
+            audio = modulation_oracle.render(case.modulation_profile, source, RATE)
         audio *= gain
         if case.filter_profile:
             audio = filter_oracle.render(
@@ -318,6 +328,7 @@ def run_native_case(
     write_json(folder / 'report.json', report)
     compiled = reader.read(
         folder / 'instrument.sfz',
+        pitch_lfo_response='sfizz_triangle' if case.modulation_profile else 'diagnose',
         filter_response='sfizz_rbj' if case.filter_profile else 'diagnose',
         filter_lfo_response='sfizz_triangle'
         if case.filter_profile

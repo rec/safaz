@@ -154,6 +154,12 @@ def support_table() -> str:
         'Nonordinary triggers remain diagnosed. Combined cutoff modulation '
         'outside bounds retains only the static filter. Export is unsupported.',
         '',
+        'Pitch LFOs require `pitch_lfo_response="sfizz_triangle"`. '
+        'Fixed frequency (0-20 Hz), signed depth (-1200 to 1200 cents), delay '
+        'and fade use the same delayed zero-rising triangle. Pitch, key and '
+        'velocity contributions add in cents. Other triggers and export remain '
+        'diagnosed.',
+        '',
         '`set_ccN` imports under `<control>` as a named-control default, '
         'including sustain for CC 64. It remains classified as '
         '`controller_binding`: without an explicit MIDI binding request or '
@@ -232,6 +238,10 @@ PARSABLE_OPCODES = {
     'fillfo_depth',
     'fillfo_delay',
     'fillfo_fade',
+    'pitchlfo_freq',
+    'pitchlfo_depth',
+    'pitchlfo_delay',
+    'pitchlfo_fade',
     'fil2_type',
     'fil2_keytrack',
     'fil2_keycenter',
@@ -317,6 +327,10 @@ ASSET_OPCODES = {
     'md5',
 }
 AMBIGUOUS_OPCODES = {
+    'pitchlfo_freq',
+    'pitchlfo_depth',
+    'pitchlfo_delay',
+    'pitchlfo_fade',
     'cutoff',
     'cutoff2',
     'fil_type',

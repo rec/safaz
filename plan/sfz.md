@@ -98,6 +98,10 @@ drives unsupported-feature diagnostics, and generates the
 at use sites with recursive and undefined variables rejected. Unsupported
 `<curve>`, `<effect>`, and `<sample>` sections have located diagnostics.
 
+Pitch LFO frequency, signed depth, delay and fade now import with explicit
+`pitch_lfo_response="sfizz_triangle"`. Existing tuning and key/velocity pitch
+routes add in cents. Nonordinary triggers, richer LFOs and export remain diagnosed.
+
 The remaining goal is a lossless, well-diagnosed import of useful,
 non-vendor-specific SFZ 1 and SFZ 2 behavior. Unsupported behavior must remain
 visible; it must never be silently approximated.

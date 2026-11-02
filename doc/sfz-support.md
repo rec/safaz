@@ -8,6 +8,8 @@ Numeric `polyphony` imports as a group-scoped voice pool using oldest-immediate 
 
 Static two-pole `lpf_2p`, `hpf_2p`, `bpf_2p`, and `brf_2p` filters require `filter_response="sfizz_rbj"` to accept the verified sfizz static response. Without that choice, the filter is omitted with a diagnostic. `fil_type`/`cutoff`/`resonance` and their second-filter counterparts map to ordered native filters with Q = 10^(resonance/20). `fil_keytrack`/`fil_keycenter` and their second-filter counterparts map exact integer-key cutoff ratios over each region's playable keys. Tracking is 0-1200 cents per key, with center key 60 by default. `fil_veltrack`/`fil2_veltrack` map exact continuous exponential velocity ratios from -9600 to 9600 cents. Keyboard and velocity ratios multiply; an out-of-range combination retains only the static filter. Controller and release-trigger velocity tracking remain diagnosed. Unverified tracking and tracked cutoff outside the verified range retain the static filter with a diagnostic. Declared filters without cutoff, explicit zero, unsupported types, other modulation, and cutoff outside the unclamped native/output-rate bounds remain diagnosed. Accepted static responses use native `filter_order=after_amplitude` to match the sfizz voice pipeline. Basic first-filter LFOs additionally require `filter_lfo_response="sfizz_triangle"`: fixed frequency and signed depth use a voice-local triangle starting at zero rising after its delay. Fade scales the signal before cutoff exponentiation. Nonordinary triggers remain diagnosed. Combined cutoff modulation outside bounds retains only the static filter. Export is unsupported.
 
+Pitch LFOs require `pitch_lfo_response="sfizz_triangle"`. Fixed frequency (0-20 Hz), signed depth (-1200 to 1200 cents), delay and fade use the same delayed zero-rising triangle. Pitch, key and velocity contributions add in cents. Other triggers and export remain diagnosed.
+
 `set_ccN` imports under `<control>` as a named-control default, including sustain for CC 64. It remains classified as `controller_binding`: without an explicit MIDI binding request or a shared channel range, the default is retained with a diagnostic. Conflicting initial values remain diagnosed. Export is unsupported.
 
 `sw_down` and `sw_up` require a shared consumed switch range; `sw_previous` tracks every prior note-on in the part. Release-region history combinations remain diagnosed. `on_loccN`/`on_hiccN` import only the explicit one-shot, note-independent subset with a MIDI binding; uncertain combinations remain diagnosed. These features have no implemented export.
@@ -377,11 +379,11 @@ Static two-pole `lpf_2p`, `hpf_2p`, `bpf_2p`, and `brf_2p` filters require `filt
 | Opcode | `pitcheg_release` | SFZ v1 | new_model |
 | Opcode | `pitcheg_start` | SFZ v1 | new_model |
 | Opcode | `pitcheg_sustain` | SFZ v1 | new_model |
-| Opcode | `pitchlfo_delay` | SFZ v1 | new_model |
-| Opcode | `pitchlfo_depth` | SFZ v1 | new_model |
+| Opcode | `pitchlfo_delay` | SFZ v1 | ambiguous |
+| Opcode | `pitchlfo_depth` | SFZ v1 | ambiguous |
 | Opcode | `pitchlfo_depth_onccN` | SFZ v2 | controller_binding |
-| Opcode | `pitchlfo_fade` | SFZ v1 | new_model |
-| Opcode | `pitchlfo_freq` | SFZ v1 | new_model |
+| Opcode | `pitchlfo_fade` | SFZ v1 | ambiguous |
+| Opcode | `pitchlfo_freq` | SFZ v1 | ambiguous |
 | Opcode | `pkf_2p` | SFZ v2 | new_model |
 | Opcode | `polyphony` | SFZ v2 | ambiguous |
 | Opcode | `position` | SFZ v1 | new_model |
