@@ -66,6 +66,7 @@ def compile_instrument(
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
     filter_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
     pitch_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
+    amplitude_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
     midi_binding: SfzMidiBindingRequest | None = None,
 ) -> SfzCompileResult:
     """Build a native document from parsed text and caller-supplied asset facts."""
@@ -79,6 +80,10 @@ def compile_instrument(
         raise ValueError(f'Unknown SFZ filter LFO response: {filter_lfo_response}')
     if pitch_lfo_response not in ('diagnose', 'sfizz_triangle'):
         raise ValueError(f'Unknown SFZ pitch LFO response: {pitch_lfo_response}')
+    if amplitude_lfo_response not in ('diagnose', 'sfizz_triangle'):
+        raise ValueError(
+            f'Unknown SFZ amplitude LFO response: {amplitude_lfo_response}'
+        )
     paths = sample_paths(source)
     if missing := [p for p in paths if p not in assets]:
         raise ValueError(f'Missing audio metadata for SFZ samples: {missing}')
@@ -160,6 +165,7 @@ def compile_instrument(
                 filter_response,
                 filter_lfo_response,
                 pitch_lfo_response,
+                amplitude_lfo_response,
             )
         ) is not None:
             slot, sample_slice = result
@@ -551,6 +557,7 @@ def _slot(
     filter_response: Literal['diagnose', 'sfizz_rbj'],
     filter_lfo_response: Literal['diagnose', 'sfizz_triangle'],
     pitch_lfo_response: Literal['diagnose', 'sfizz_triangle'],
+    amplitude_lfo_response: Literal['diagnose', 'sfizz_triangle'],
 ) -> tuple[SampleSlot, playback.Slice] | None:
     control_trigger = None
     if any(CONTROLLER_TRIGGER.fullmatch(o.opcode) for o in region.opcodes):
@@ -918,39 +925,72 @@ def _slot(
             )
             routes.append(route)
         bindings.append(processing.EventBinding(name='key', kind='key'))
-    if accepted_lfo(
-        values,
-        declarations,
-        'pitchlfo',
-        pitch_lfo_response,
-        1200,
-        control_trigger is not None,
-        unimplemented,
+    for prefix, source, response, limit in (
+        ('pitchlfo', 'pitch-lfo', pitch_lfo_response, 1200),
+        ('amplfo', 'amplitude-lfo', amplitude_lfo_response, 10),
     ):
-        oscillator = triangle_lfo(values, 'pitchlfo', output_rate)
-        generators['sfz-pitch-lfo'] = oscillator
+        if not accepted_lfo(
+            values,
+            declarations,
+            prefix,
+            response,
+            limit,
+            control_trigger is not None,
+            unimplemented,
+        ):
+            continue
+        oscillator = triangle_lfo(values, prefix, output_rate)
+        generators[f'sfz-{source}'] = oscillator
         sources.append(
-            modulation.Source(name='pitch-lfo', scope='voice', minimum=-1, maximum=1)
+            modulation.Source(name=source, scope='voice', minimum=-1, maximum=1)
         )
         bindings.append(
             processing.GeneratorBinding(
-                name='pitch-lfo',
-                reference='sfz-pitch-lfo',
+                name=source,
+                reference=f'sfz-{source}',
                 output='signal' if isinstance(oscillator, envelfo.Patch) else None,
             )
         )
-        depth = float(values['pitchlfo_depth'])
+        depth = float(values[f'{prefix}_depth'])
+        amplitude = prefix == 'amplfo'
+        if amplitude:
+            target = modulation.Target(name='processing', parameter='amplitude')
+            existing = next((p for p in parameters if p.target == target), None)
+            if existing is not None:
+                parameters.remove(existing)
+            parameters.append(
+                modulation.Parameter(
+                    target=target,
+                    scope=Scope.voice,
+                    unit=modulation.Unit.ratio,
+                    minimum=0,
+                    maximum=10 ** (abs(depth) / 20),
+                    default=1,
+                )
+            )
         routes.append(
             modulation.Route(
-                name='pitch-lfo',
-                source='pitch-lfo',
-                target=modulation.Target(name='processing', parameter='tuning_cents'),
-                operation=modulation.Operation.add,
-                unit=modulation.Unit.cents,
+                name=source,
+                source=source,
+                target=modulation.Target(
+                    name='processing',
+                    parameter='amplitude' if amplitude else 'tuning_cents',
+                ),
+                operation=modulation.Operation.multiply
+                if amplitude
+                else modulation.Operation.add,
+                unit=modulation.Unit.ratio if amplitude else modulation.Unit.cents,
                 points=[
-                    modulation.Point(input=-1, amount=-depth),
-                    modulation.Point(input=1, amount=depth),
+                    modulation.Point(
+                        input=-1, amount=10 ** (-depth / 20) if amplitude else -depth
+                    ),
+                    modulation.Point(
+                        input=1, amount=10 ** (depth / 20) if amplitude else depth
+                    ),
                 ],
+                interpolation=modulation.Interpolation.exponential
+                if amplitude
+                else modulation.Interpolation.linear,
             )
         )
     pitch_routes = [r for r in routes if r.target.parameter == 'tuning_cents']

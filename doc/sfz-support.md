@@ -10,6 +10,8 @@ Static two-pole `lpf_2p`, `hpf_2p`, `bpf_2p`, and `brf_2p` filters require `filt
 
 Pitch LFOs require `pitch_lfo_response="sfizz_triangle"`. Fixed frequency (0-20 Hz), signed depth (-1200 to 1200 cents), delay and fade use the same delayed zero-rising triangle. Pitch, key and velocity contributions add in cents. Other triggers and export remain diagnosed.
 
+Amplitude LFOs require `amplitude_lfo_response="sfizz_triangle"`. Signed depth (-10 to 10 dB) becomes multiplicative gain, including velocity gain. Delay and fade shape the triangle before the dB-to-gain conversion. Other triggers and export remain diagnosed.
+
 `set_ccN` imports under `<control>` as a named-control default, including sustain for CC 64. It remains classified as `controller_binding`: without an explicit MIDI binding request or a shared channel range, the default is retained with a diagnostic. Conflicting initial values remain diagnosed. Export is unsupported.
 
 `sw_down` and `sw_up` require a shared consumed switch range; `sw_previous` tracks every prior note-on in the part. Release-region history combinations remain diagnosed. `on_loccN`/`on_hiccN` import only the explicit one-shot, note-independent subset with a MIDI binding; uncertain combinations remain diagnosed. These features have no implemented export.
@@ -55,11 +57,11 @@ Pitch LFOs require `pitch_lfo_response="sfizz_triangle"`. Fixed frequency (0-20 
 | Opcode | `ampeg_start_onccN` | SFZ v2 | controller_binding |
 | Opcode | `ampeg_sustain` | SFZ v1 | supported |
 | Opcode | `ampeg_sustain_onccN` | SFZ v2 | controller_binding |
-| Opcode | `amplfo_delay` | SFZ v1 | new_model |
-| Opcode | `amplfo_depth` | SFZ v1 | new_model |
+| Opcode | `amplfo_delay` | SFZ v1 | ambiguous |
+| Opcode | `amplfo_depth` | SFZ v1 | ambiguous |
 | Opcode | `amplfo_depth_onccN` | SFZ v2 | controller_binding |
-| Opcode | `amplfo_fade` | SFZ v1 | new_model |
-| Opcode | `amplfo_freq` | SFZ v1 | new_model |
+| Opcode | `amplfo_fade` | SFZ v1 | ambiguous |
+| Opcode | `amplfo_freq` | SFZ v1 | ambiguous |
 | Opcode | `apan_depth` | SFZ v2 | new_model |
 | Opcode | `apan_dry` | SFZ v2 | new_model |
 | Opcode | `apan_freq` | SFZ v2 | new_model |

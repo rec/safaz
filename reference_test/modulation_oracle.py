@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 class ModulationProfile(BaseModel, frozen=True):
     pitch_depth: float = 0
+    amplitude_depth: float = 0
     frequency: float = 2
     delay: float = 0
     fade: float = 0
@@ -14,7 +15,9 @@ class ModulationProfile(BaseModel, frozen=True):
 def declarations(profile: ModulationProfile) -> str:
     return (
         f'pitchlfo_freq={profile.frequency:g} pitchlfo_depth={profile.pitch_depth:g} '
-        f'pitchlfo_delay={profile.delay:g} pitchlfo_fade={profile.fade:g}'
+        f'pitchlfo_delay={profile.delay:g} pitchlfo_fade={profile.fade:g} '
+        f'amplfo_freq={profile.frequency:g} amplfo_depth={profile.amplitude_depth:g} '
+        f'amplfo_delay={profile.delay:g} amplfo_fade={profile.fade:g}'
     )
 
 
@@ -28,9 +31,10 @@ def render(profile: ModulationProfile, source: np.ndarray, rate: int) -> np.ndar
     triangle = (1 - 4 * np.abs((profile.frequency * active + 0.25) % 1 - 0.5)) * gate
     increments = 2 ** (profile.pitch_depth * triangle / 1200)
     positions = np.concatenate(([0], np.cumsum(increments[:-1])))
-    return np.column_stack(
+    audio = np.column_stack(
         [
             np.interp(positions, np.arange(len(source)), source[:, c], right=0)
             for c in range(source.shape[1])
         ]
     )
+    return audio * 10 ** (profile.amplitude_depth * triangle[:, None] / 20)

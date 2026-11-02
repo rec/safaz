@@ -13,7 +13,9 @@ from safaz.model import SfzCompileResult
 
 
 def compile_modulation(
-    text: str, pitch: Literal['diagnose', 'sfizz_triangle'] = 'sfizz_triangle'
+    text: str,
+    pitch: Literal['diagnose', 'sfizz_triangle'] = 'sfizz_triangle',
+    amplitude: Literal['diagnose', 'sfizz_triangle'] = 'sfizz_triangle',
 ) -> SfzCompileResult:
     return compiler.compile_instrument(
         parser.parse('<region> sample=a.wav key=60 loop_mode=one_shot ' + text),
@@ -32,6 +34,7 @@ def compile_modulation(
         output_timebase=Timebase(name='output', rate=Rate(numerator=48000)),
         output_channels=['left', 'right'],
         pitch_lfo_response=pitch,
+        amplitude_lfo_response=amplitude,
     )
 
 
@@ -105,3 +108,51 @@ def test_pitch_lfo_requires_explicit_convention() -> None:
     result = compile_modulation('pitchlfo_freq=2 pitchlfo_depth=100', pitch='diagnose')
     assert not result.complete
     assert 'pitch_lfo_response' in result.unimplemented[0].reason
+
+
+@pytest.mark.parametrize('depth', [-10, -6, 6, 10])
+def test_amplitude_lfo_fades_decibels_before_gain_conversion(depth: float) -> None:
+    result = compile_modulation(f'amplfo_freq=2 amplfo_depth={depth} amplfo_fade=0.5')
+    assert result.complete
+    assert result.instrument is not None
+    slot = result.instrument.body.slots[0]
+    oscillator = slot.envelfos['sfz-amplitude-lfo']
+    at = Fraction(1, 8)
+    signal = patch.advance_patch(
+        oscillator,
+        patch.initial_patch(oscillator, Fraction(0)),
+        at,
+        next_delivery=at + 1,
+    ).values['signal']
+    assert signal == 0.25
+    observed = modulation.evaluate(
+        slot.modulation,
+        {
+            s.name: modulation.SourceValue(
+                value=signal if s.name == 'amplitude-lfo' else 0.5
+            )
+            for s in slot.modulation.sources
+        },
+    )
+    velocity = modulation.map_value(
+        next(r for r in slot.modulation.routes if r.source == 'velocity'), 0.5
+    )
+    assert next(
+        v.value for v in observed if v.target.parameter == 'amplitude'
+    ) == pytest.approx(velocity * 10 ** (depth * 0.25 / 20))
+
+
+@pytest.mark.parametrize(
+    'extra', ['amplfo_depth=11', 'amplfo_delay=-1', 'amplfo_freq=21', 'trigger=release']
+)
+def test_unverified_amplitude_lfo_remains_diagnosed(extra: str) -> None:
+    result = compile_modulation('amplfo_freq=2 amplfo_depth=6 ' + extra)
+    assert not result.complete
+    assert result.instrument is not None
+    assert result.instrument.body.slots[0].envelfos == {}
+
+
+def test_amplitude_lfo_requires_its_own_convention() -> None:
+    result = compile_modulation('amplfo_freq=2 amplfo_depth=6', amplitude='diagnose')
+    assert not result.complete
+    assert 'amplitude_lfo_response' in result.unimplemented[0].reason

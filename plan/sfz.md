@@ -101,6 +101,9 @@ at use sites with recursive and undefined variables rejected. Unsupported
 Pitch LFO frequency, signed depth, delay and fade now import with explicit
 `pitch_lfo_response="sfizz_triangle"`. Existing tuning and key/velocity pitch
 routes add in cents. Nonordinary triggers, richer LFOs and export remain diagnosed.
+Amplitude LFOs similarly use `amplitude_lfo_response="sfizz_triangle"`, with
+signed dB depth converted to multiplicative gain after delay/fade shaping.
+Velocity gain and amplitude LFO gain multiply without clamping the LFO peaks.
 
 The remaining goal is a lossless, well-diagnosed import of useful,
 non-vendor-specific SFZ 1 and SFZ 2 behavior. Unsupported behavior must remain

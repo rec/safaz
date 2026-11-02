@@ -329,6 +329,9 @@ def run_native_case(
     compiled = reader.read(
         folder / 'instrument.sfz',
         pitch_lfo_response='sfizz_triangle' if case.modulation_profile else 'diagnose',
+        amplitude_lfo_response='sfizz_triangle'
+        if case.modulation_profile
+        else 'diagnose',
         filter_response='sfizz_rbj' if case.filter_profile else 'diagnose',
         filter_lfo_response='sfizz_triangle'
         if case.filter_profile

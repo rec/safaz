@@ -160,6 +160,11 @@ def support_table() -> str:
         'velocity contributions add in cents. Other triggers and export remain '
         'diagnosed.',
         '',
+        'Amplitude LFOs require `amplitude_lfo_response="sfizz_triangle"`. '
+        'Signed depth (-10 to 10 dB) becomes multiplicative gain, including '
+        'velocity gain. Delay and fade shape the triangle before the dB-to-gain '
+        'conversion. Other triggers and export remain diagnosed.',
+        '',
         '`set_ccN` imports under `<control>` as a named-control default, '
         'including sustain for CC 64. It remains classified as '
         '`controller_binding`: without an explicit MIDI binding request or '
@@ -242,6 +247,10 @@ PARSABLE_OPCODES = {
     'pitchlfo_depth',
     'pitchlfo_delay',
     'pitchlfo_fade',
+    'amplfo_freq',
+    'amplfo_depth',
+    'amplfo_delay',
+    'amplfo_fade',
     'fil2_type',
     'fil2_keytrack',
     'fil2_keycenter',
@@ -327,6 +336,10 @@ ASSET_OPCODES = {
     'md5',
 }
 AMBIGUOUS_OPCODES = {
+    'amplfo_freq',
+    'amplfo_depth',
+    'amplfo_delay',
+    'amplfo_fade',
     'pitchlfo_freq',
     'pitchlfo_depth',
     'pitchlfo_delay',
