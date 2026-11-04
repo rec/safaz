@@ -1,0 +1,1251 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="SFZ import and export for uFor instruments">
+      
+      
+      
+        <link rel="canonical" href="https://rec.github.io/safaz/conversion/">
+      
+      
+      
+        <link rel="prev" href="./..">
+      
+      
+        <link rel="next" href="../sfz-support/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.73">
+    
+    
+      
+        <title>SFZ conversion contract - safaz</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="safaz" class="md-header__button md-logo" aria-label="safaz" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            safaz
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              SFZ conversion contract
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="safaz" class="md-nav__button md-logo" aria-label="safaz" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    safaz
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  safaz
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SFZ conversion contract
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SFZ conversion contract
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#sfz-and-application-ownership" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SFZ and application ownership
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#static-filter-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Static filter responses
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Static filter responses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#keyboard-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Keyboard tracking
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#velocity-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Velocity tracking
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#basic-filter-lfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Basic filter LFO
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-bindings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Performance bindings
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#held-and-previous-note-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Held and previous-note conditions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controller-triggered-regions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Controller-triggered regions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sequence-counters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sequence counters
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changes-to-authored-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changes to authored documents
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sfz-support/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SFZ support
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  API Reference
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  API Reference
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../reference/safaz/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>safaz
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4_1">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>safaz
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  assets
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/compiler/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  compiler
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/exporter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  exporter
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/modulators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  modulators
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/parser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  parser
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/reader/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  reader
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  registry
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#sfz-and-application-ownership" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SFZ and application ownership
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#static-filter-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Static filter responses
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Static filter responses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#keyboard-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Keyboard tracking
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#velocity-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Velocity tracking
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#basic-filter-lfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Basic filter LFO
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-bindings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Performance bindings
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#held-and-previous-note-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Held and previous-note conditions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controller-triggered-regions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Controller-triggered regions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sequence-counters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sequence counters
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changes-to-authored-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Changes to authored documents
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+
+<h1 id="sfz-conversion-contract">SFZ conversion contract<a class="headerlink" href="#sfz-conversion-contract" title="Permanent link">&para;</a></h1>
+<p>The canonical format, models, examples and schema now live in uFor:</p>
+<ul>
+<li><a href="https://github.com/rec/ufor/blob/main/doc/instrument-format.md">Instrument format</a></li>
+<li><a href="https://github.com/rec/ufor/blob/main/doc/modulation-format.md">Envelope and LFO semantics</a></li>
+<li><a href="../../conformance/instrument.json">Native conversion fixture</a></li>
+<li><a href="https://github.com/rec/ufor/blob/main/schema/scores.json">Score schema</a></li>
+</ul>
+<p><code>ufor.samples.instrument.SampleInstrumentScore</code> is the common root. It owns sealed
+audio assets, native timebases, output layout and a typed sample-instrument body.
+Slots reference named slices and explicit channel maps. <code>ufor.samples</code> owns the
+musical declarations; <code>ufor.envelope</code>, <code>ufor.lfo</code> and <code>ufor.modulation</code> provide
+their shared control definitions. The old Recsam classes and <code>format_version</code>
+root are removed, with no forwarding modules or compatibility reader.</p>
+<h2 id="sfz-and-application-ownership">SFZ and application ownership<a class="headerlink" href="#sfz-and-application-ownership" title="Permanent link">&para;</a></h2>
+<p>Use <code>safaz.parser.parse</code>, <code>safaz.parser.sample_paths</code>,
+<code>safaz.compiler.compile_instrument</code>, and <code>safaz.exporter.write</code>.
+<code>parser.py</code> handles source text
+and metadata, <code>compiler.py</code> builds the native instrument, <code>exporter.py</code> writes
+representable SFZ, and <code>model.py</code> holds their shared result and diagnostic
+types. This split does not change the SFZ conversion rules below.</p>
+<p><code>safaz.parser.parse(text)</code> produces parsed regions and diagnostics.
+<code>sample_paths(source)</code> lists safe relative sample references.
+<code>compile_instrument(source, name=..., title=..., assets=..., output_timebase=...,
+output_channels=...)</code> accepts <code>ufor.samples.metadata.AudioMetadata</code> facts
+supplied by the caller and produces a <code>SampleInstrumentScore</code> where possible.
+All of these operations are pure. Unsupported opcodes retain source locations;
+missing or malformed required data fails explicitly.</p>
+<p>SFZ's fixed DAHDSR becomes four on-segments and a release segment. Delay/attack/
+hold curves are 0; decay/release are -5. SFZ decimal durations become exact
+fractions. Export accepts that representable shape and reports general envelopes
+as unsupported. Velocity response becomes the shared typed multiplier route.
+SFZ inclusive endpoints become exclusive native slice/loop ends and reverse on
+export. Imported channel maps are identity or the standard mono-to-stereo law.
+Each imported instrument selects <code>body.pan_law="sfizz"</code>. Mono <code>pan</code> and stereo
+<code>stereo_balance</code> positions retain SFZ <code>pan / 100</code>; the selected law supplies the
+audited cosine/sine gains and +3/+6 dB compensation once at rendering. Static
+channel routes remain the canonical maps, not baked copies of the pan gain.
+Export diagnoses <code>pan_law="native"</code> rather than silently changing its law.
+The convention does not include sfizz's lookup quantization, SIMD differences,
+master volume, width/position controls or client timing.
+SFZ <code>off_by</code> identifies the existing voice to stop when a new region in the
+named <code>group</code> starts. Import maps this victim-side rule to native trigger-side
+<code>chokes</code>; export reverses that mapping and diagnoses graphs SFZ cannot express.</p>
+<p><code>safaz.exporter.write(score)</code> returns text and diagnostics without opening files.
+Unsafe sample syntax, custom channel maps, named controls/generators, selections,
+nonrepresentable routes/envelopes and other losses are reported. Diagnostics
+use native <code>body.slots[...]</code> / <code>body.settings...</code> paths. A partial export must
+not be treated as complete. The historical <code>recs</code> metadata comment namespace
+remains understood. Its version-2 metadata uses the native name/title fields.</p>
+<p><code>safaz.reader.read(path)</code> is the application adapter. It checks resolved path
+containment, reads/decodes metadata, inspects embedded WAV loops, hashes the
+existing file, and passes those facts to the compiler. Its explicit file-reader default
+is 48 kHz stereo output; callers may select another supported output layout/rate.
+It does not generate audio. <code>safaz.reader</code> and <code>safaz.assets</code> own file acquisition
+and asset inspection.</p>
+<h2 id="static-filter-responses">Static filter responses<a class="headerlink" href="#static-filter-responses" title="Permanent link">&para;</a></h2>
+<p><code>read()</code> and <code>compile_instrument()</code> accept
+<code>filter_response="diagnose"</code> (the default) or <code>filter_response="sfizz_rbj"</code>.
+The default omits active filters and reports a located diagnostic requiring
+an explicit response choice. Accepting the latter imports static <code>lpf_2p</code>,
+<code>hpf_2p</code>, <code>bpf_2p</code>, and <code>brf_2p</code> responses into native <code>processing.filters</code>.
+The first filter uses <code>fil_type</code>, <code>cutoff</code>, and <code>resonance</code>; the second uses
+<code>fil2_type</code>, <code>cutoff2</code>, and <code>resonance2</code>. They retain that serial order and
+stable local names <code>sfz-filter-1</code> and <code>sfz-filter-2</code> after inheritance and
+region overrides. A missing type defaults to <code>lpf_2p</code> and a missing resonance
+to 0 dB. Declared filters without explicit cutoff remain omitted and diagnosed,
+including the implicit first filter when only the second is declared.
+The documented disabled default and sfizz's initialized zero-cutoff filter
+do not establish one verified interpretation. Regions with no filter
+declarations have no filters and acquire no filter diagnostics.</p>
+<p>The verified static transfer profile comes from sfizz revision
+<code>f5c6e29f23b8057867c08e88f5f6ac6738baa30b</code>:
+<a href="https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/dsp/filters/sfz_filters.dsp">filter definitions</a>
+and <a href="https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/dsp/filters/rbj_filters.dsp">RBJ coefficients</a>.
+Resonance maps as <code>Q = 10^(resonance/20)</code>, so 0 dB becomes Q=1,
+rather than the native model's default Q. Import accepts the standard
+0–40 dB resonance range. Cutoff must be within
+<code>[1, min(20000, 0.999 * output_sample_rate / 2)]</code> Hz to avoid sfizz's
+internal clipping and the native filter boundary. Values outside this
+interval, explicit <code>cutoff=0</code>, and unrepresented filter types are diagnosed
+without clamping or approximating. Malformed numeric values fail explicitly.</p>
+<p>Accepted static responses select native <code>filter_order=after_amplitude</code> to match
+sfizz's <a href="https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Voice.cpp">voice pipeline</a>.
+The amplitude envelope, velocity gain, volume, and changing amplitude controls
+precede the complete filter chain; native pan and channel routing follow it.
+sfizz places stereo pan before filtering; the supported static linear routing
+commutes with identical per-channel filters. No extra
+filter tail extends the native voice lifetime. This resolves the ordering
+diagnostic, so supported static regions can return <code>complete=True</code>. The option
+still accepts only the declared static transfer profile, not equivalence to
+the whole player.</p>
+<h3 id="keyboard-tracking">Keyboard tracking<a class="headerlink" href="#keyboard-tracking" title="Permanent link">&para;</a></h3>
+<p>With the same <code>sfizz_rbj</code> choice, <code>fil_keytrack</code> and <code>fil_keycenter</code> import
+keyboard tracking for the first filter; <code>fil2_keytrack</code> and <code>fil2_keycenter</code>
+configure the second independently. Tracking defaults to 0 cents per key and
+center to MIDI key 60. Center keys accept the existing numeric and note-name
+syntax. The verified standard subset uses integral tracking from 0 to 1200.
+The cutoff at an integer note key is
+<code>cutoff * 2^(fil_keytrack * (key - fil_keycenter) / 1200)</code>.
+This formula follows the pinned sfizz
+<a href="https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/FilterPool.cpp">filter setup</a>.</p>
+<p>Native multiplication routes contain one point per playable integer key and
+share the existing note-key binding with amplitude and pitch tracking. The
+original note key determines the ratio, independently of pitch tuning. The
+range check uses each region's inclusive key mapping, not notes that cannot
+select it. Values outside the verified cutoff interval at any playable key,
+unverified tracking amounts, and controller-triggered voices with no note key
+retain the static filter with a located diagnostic. No clamping is introduced.
+Malformed tracking or center values fail explicitly. A zero track value creates
+no route; changing its center does not change the cutoff.</p>
+<h3 id="velocity-tracking">Velocity tracking<a class="headerlink" href="#velocity-tracking" title="Permanent link">&para;</a></h3>
+<p>With <code>sfizz_rbj</code>, <code>fil_veltrack</code> and <code>fil2_veltrack</code> independently import
+integral depths from -9600 to 9600 cents, defaulting to zero. The continuous
+note velocity <code>v</code> in [0,1] multiplies the cutoff by <code>2^(depth*v/1200)</code>, following
+the same pinned sfizz filter setup. uFor's positive-valued <code>exponential</code>
+interpolation expresses this exactly with two ratio points; it does not
+quantize velocity to MIDI integers. Velocity binding is shared with other
+velocity-dependent settings. Zero depth creates no route.</p>
+<p>Keyboard and velocity ratios multiply. Bounds cover every playable key and
+the full native note-velocity domain [0,1], including output-rate limits.
+If individually valid routes exceed the cutoff limits when combined, both
+are diagnosed at their declarations and the static filter remains. An
+individually unsupported route is diagnosed without discarding another valid
+route. No player clamping is approximated. Malformed depths fail explicitly.
+Controller and release-triggered velocity tracking remain diagnosed because
+their velocity semantics are not verified. The
+<a href="../../conformance/filter-velocity-tracking.sfz">velocity fixture</a> demonstrates
+inherited, decreasing, combined, and zero-override tracking.</p>
+<h3 id="basic-filter-lfo">Basic filter LFO<a class="headerlink" href="#basic-filter-lfo" title="Permanent link">&para;</a></h3>
+<p>Import additionally requires <code>filter_lfo_response="sfizz_triangle"</code> alongside
+<code>filter_response="sfizz_rbj"</code>. This separate choice accepts the pinned sfizz
+<a href="https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/LFO.cpp">LFO waveform and phase</a>
+and <a href="https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Defaults.cpp">default triangle</a>,
+not other players' LFO behavior. Both <code>compile_instrument</code> and <code>read</code> expose it.</p>
+<p><code>fillfo_freq</code> imports fixed frequency from 0 to 20 Hz; <code>fillfo_depth</code> imports
+signed depth from -1200 to 1200 cents. Both default to zero, which makes the
+LFO inactive without creating a envelfo. Active LFOs use a voice-local native
+triangle at phase &frac14;, starting at zero rising. Negative depth inverts its
+cutoff effect. The cutoff ratio is <code>2^(depth * triangle / 1200)</code>, represented
+by a positive exponential route. Each new ordinary note-on voice starts its
+own oscillator; it runs through release until that voice finishes.</p>
+<p>Only the first filter is targeted, following the pinned sfizz legacy
+<a href="https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Region.cpp">opcode mapping</a>.
+LFO, keyboard, and velocity ratios multiply. Bounds cover the full oscillation,
+playable keys, and native velocity domain. An individually unsupported LFO
+retains valid tracking; a combined out-of-range result diagnoses every active
+cutoff route on that filter and retains its static settings. The second filter
+remains independent. See the <a href="../../conformance/filter-lfo.sfz">inheritance fixture</a>.</p>
+<p>Nonzero <code>fillfo_delay</code> and <code>fillfo_fade</code> remain diagnosed: sfizz pauses phase
+during delay and scales the oscillator before the cents-to-ratio conversion,
+whereas the native cycle advances phase during delay and applies activation
+weight after mapping. Controller and nonordinary note triggers, SFZ 2 LFOs,
+controller/aftertouch modulation, and export remain diagnosed. Malformed or
+nonfinite numbers fail explicitly; values outside the verified ranges are
+diagnosed without clamping. This profile asserts mathematical waveform and
+mapping semantics, not bit-identical floating-point playback.</p>
+<p>Unsupported filter modulation retains its source diagnostic alongside any
+accepted static filter. Filter export, higher-order and alternate filter
+types, controller modulation, envelopes, and richer LFO behavior remain unsupported. The <a href="../../conformance/filters.sfz">SFZ fixture</a> and
+<a href="../../conformance/filters.json">native filter settings</a> demonstrate inheritance
+and the static two-filter mapping without asserting complete playback equivalence.
+The <a href="../../conformance/filter-key-tracking.sfz">keyboard tracking fixture</a> covers
+inherited tracking, independent centers, and a per-region zero override.</p>
+<h2 id="performance-bindings">Performance bindings<a class="headerlink" href="#performance-bindings" title="Permanent link">&para;</a></h2>
+<p>SFZ import can return a <code>ufor.performance_binding.PerformanceBindingScore</code>
+alongside the instrument when the caller supplies
+<code>safaz.model.SfzMidiBindingRequest</code> with the destination instrument reference,
+part, and repeated-key release rule. The import maps SFZ's shared inclusive
+<code>lochan</code>/<code>hichan</code> range, the standard sustain pedal CC 64, and the CCs used by
+<code>loccN</code>/<code>hiccN</code> note-on conditions. Those conditions become inclusive native
+control ranges; a missing CC begins at the declared control default of zero.
+Without a request, channel opcodes and controller conditions remain
+source-located diagnostics. Different channel ranges in
+different regions cannot be represented by one instrument-level MIDI channel
+filter, so they also remain diagnostics rather than being silently merged.</p>
+<p><code>&lt;control&gt; set_ccN</code> imports an initial MIDI CC value (integer 0 through 127)
+as a named-control default divided by 127; CC numbers must also be 0 through
+127. CC 64 initializes <code>sustain</code>. Controllers declared only by <code>set_ccN</code> are
+also declared and included in the requested MIDI binding. Initial values apply
+independently to each part until overridden by an explicit native control event.
+They do not send MIDI messages or synthesize controller-triggered voices.
+Hosts carrying controller state across instrument loads must emit that state
+explicitly.</p>
+<p>Without a MIDI binding request, or with mixed per-region channel ranges, initial
+values are retained with source-located binding diagnostics. Repeated identical
+values are accepted across <code>&lt;control&gt;</code> sections. Conflicting values diagnose
+every declaration and leave the controller at its existing default rather than
+choosing a value. Declarations outside <code>&lt;control&gt;</code> are diagnosed and omitted.
+Initial controller export remains unsupported under the existing named-control
+diagnostics.</p>
+<h2 id="held-and-previous-note-conditions">Held and previous-note conditions<a class="headerlink" href="#held-and-previous-note-conditions" title="Permanent link">&para;</a></h2>
+<p><code>sw_down</code> requires a physically pressed key and <code>sw_up</code> requires a physically
+released key. They combine independently with each other and sticky <code>sw_last</code>;
+all conditions on a region must pass. A shared <code>sw_lokey</code>/<code>sw_hikey</code> range is
+required and consumed. Missing or inconsistent ranges and switch keys outside
+the range are not approximated. Overlapping presses are tracked by trigger ID,
+and sustain does not keep a key physically pressed. The native state updates
+before selection and changing a switch does not alter existing voices.</p>
+<p><code>sw_previous</code> selects by the previous note-on in the part, including consumed
+switches and unmatched notes. Selection precedes the history update. History
+starts empty and survives note releases and silence. Held and previous-note
+conditions on <code>release</code>/<code>release_key</code> regions remain diagnosed until their SFZ
+history rules have a verified equivalent. Export remains diagnosed.</p>
+<h2 id="controller-triggered-regions">Controller-triggered regions<a class="headerlink" href="#controller-triggered-regions" title="Permanent link">&para;</a></h2>
+<p><code>on_loccN</code>/<code>on_hiccN</code> imports one triggering CC per region with both inclusive
+endpoints explicitly assigned. Values and controller numbers must be 0 through
+127. The first supported subset requires <code>key=-1</code>, <code>loop_mode=one_shot</code>,
+<code>pitch_keytrack=0</code>, and <code>amp_veltrack=0</code>, with no other note-dependent processing,
+selection, or explicit <code>trigger</code> declaration. Ordinary <code>loccN</code>/<code>hiccN</code> conditions
+use the updated part-control values. Uncertain combinations are located
+diagnostics, and their regions are omitted rather than becoming note regions.
+The registry keeps controller triggers classified as <code>controller_binding</code>.</p>
+<p>Every matching part-scoped control message starts a voice, including repeated
+identical values. Initial defaults do not trigger voices. The native trigger
+rule records the region's pitch-center frequency and unit velocity, which do
+not influence note-independent processing. It creates no note key or note
+identity, and does not update physical presses, previous-note history, or
+note-on sequence counters. Voices finish naturally; existing chokes and voice
+limits can retire them. Note release, sustain, and leaving the controller range
+do not release them. The binding request and shared channel-range requirements
+match other imported controller conditions. Export remains diagnosed and omits
+control-triggered regions.</p>
+<h2 id="sequence-counters">Sequence counters<a class="headerlink" href="#sequence-counters" title="Permanent link">&para;</a></h2>
+<p>SFZ import reports <code>seq_length</code> and <code>seq_position</code> as unsupported by
+default; callers must explicitly request <code>sequence_counter='all_note_ons'</code>.
+That rule advances once for every note-on in the part, even when no slot is
+eligible. It is not a claim that all SFZ players count
+identically. SFZ export writes the corresponding opcodes but reports that the
+player-dependent counter rule cannot be guaranteed by the file.</p>
+<h2 id="changes-to-authored-documents">Changes to authored documents<a class="headerlink" href="#changes-to-authored-documents" title="Permanent link">&para;</a></h2>
+<p>Use the <a href="https://github.com/rec/ufor/blob/main/doc/instrument-format.md#updating-old-declarations">conversion instructions</a>.
+Move metadata to the common root, replace sample paths with sealed assets and
+slice IDs, and declare output clocks/channels. Envelope overrides are complete
+segment definitions. Playback overrides use explicit nullable fields so
+inheritance survives serialization. Routes use structured targets and declared
+source bindings. Unit strings such as <code>10ms</code> are authoring input, not native
+data: normalize them before constructing uFor models.</p>
+<p>This changes instrument documents, not recording descriptors or production
+sessions. Creating instruments from edits and hosting playback belong outside
+recs; the sampler engine is in enge.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["navigation.indexes","content.code.copy"],"redirect":null,"search":"../assets/javascripts/workers/search.c47bb847.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.77dd0ce9.min.js"></script>
+      
+    
+  </body>
+</html>

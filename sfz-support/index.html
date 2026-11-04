@@ -1,0 +1,3510 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="SFZ import and export for uFor instruments">
+      
+      
+      
+        <link rel="canonical" href="https://rec.github.io/safaz/sfz-support/">
+      
+      
+      
+        <link rel="prev" href="../conversion/">
+      
+      
+        <link rel="next" href="../reference/safaz/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.73">
+    
+    
+      
+        <title>SFZ support - safaz</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.4ab2de0c.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="safaz" class="md-header__button md-logo" aria-label="safaz" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            safaz
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              SFZ support
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="safaz" class="md-nav__button md-logo" aria-label="safaz" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    safaz
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  safaz
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../conversion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SFZ conversion contract
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  SFZ support
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  API Reference
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  API Reference
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+                  
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../reference/safaz/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>safaz
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+            <label class="md-nav__title" for="__nav_4_1">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  <code class="doc-symbol doc-symbol-nav doc-symbol-module"></code>safaz
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  assets
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/compiler/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  compiler
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/exporter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  exporter
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  model
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/modulators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  modulators
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/parser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  parser
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/reader/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  reader
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/safaz/registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  registry
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+
+<h1 id="sfz-support">SFZ support<a class="headerlink" href="#sfz-support" title="Permanent link">&para;</a></h1>
+<p>Generated from <code>safaz.registry</code> using the <a href="https://sfzformat.com/opcodes/">SFZ Format catalog</a> at revision <code>2f933f593895f92dcc2fc78a1ca4110158250272</code>.</p>
+<p><code>supported</code> entries may have value-specific constraints. <code>asset_metadata</code> requires measured or verified sample facts. <code>ambiguous</code> requires an explicit player-semantics choice. The other classifications are reported as unsupported.</p>
+<p>Numeric <code>polyphony</code> imports as a group-scoped voice pool using oldest-immediate retirement. By default, the instrument is retained with a diagnostic; <code>polyphony_overflow="oldest_immediate"</code> accepts the choice. Conflicting limits, legato values, and limits that may reject simultaneous layers remain diagnosed.</p>
+<p>Static two-pole <code>lpf_2p</code>, <code>hpf_2p</code>, <code>bpf_2p</code>, and <code>brf_2p</code> filters require <code>filter_response="sfizz_rbj"</code> to accept the verified sfizz static response. Without that choice, the filter is omitted with a diagnostic. <code>fil_type</code>/<code>cutoff</code>/<code>resonance</code> and their second-filter counterparts map to ordered native filters with Q = 10^(resonance/20). <code>fil_keytrack</code>/<code>fil_keycenter</code> and their second-filter counterparts map exact integer-key cutoff ratios over each region's playable keys. Tracking is 0-1200 cents per key, with center key 60 by default. <code>fil_veltrack</code>/<code>fil2_veltrack</code> map exact continuous exponential velocity ratios from -9600 to 9600 cents. Keyboard and velocity ratios multiply; an out-of-range combination retains only the static filter. Controller and release-trigger velocity tracking remain diagnosed. Unverified tracking and tracked cutoff outside the verified range retain the static filter with a diagnostic. Declared filters without cutoff, explicit zero, unsupported types, other modulation, and cutoff outside the unclamped native/output-rate bounds remain diagnosed. Accepted static responses use native <code>filter_order=after_amplitude</code> to match the sfizz voice pipeline. Basic first-filter LFOs additionally require <code>filter_lfo_response="sfizz_triangle"</code>: fixed frequency and signed depth use a voice-local triangle starting at zero rising after its delay. Fade scales the signal before cutoff exponentiation. Nonordinary triggers remain diagnosed. Combined cutoff modulation outside bounds retains only the static filter. Export is unsupported.</p>
+<p>Pitch LFOs require <code>pitch_lfo_response="sfizz_parabolic"</code>. Fixed frequency (0-20 Hz), signed depth (-1200 to 1200 cents), delay and fade use the delayed zero-rising parabolic sine approximation. Pitch, key and velocity contributions add in cents. Other triggers and export remain diagnosed.</p>
+<p>Amplitude LFOs require <code>amplitude_lfo_response="sfizz_parabolic"</code>. Signed depth (-10 to 10 dB) becomes multiplicative gain, including velocity gain. Delay and fade shape the parabolic signal before dB-to-gain conversion. Other triggers and export remain diagnosed.</p>
+<p>Pitch bend requires an explicit MIDI binding and <code>pitch_bend_response="sfizz_symmetric"</code>. <code>bend_up</code> and <code>bend_down</code> map signed cents with center zero; the bottom two MIDI wheel values share the negative endpoint, matching sfizz. Unsmoothed continuous bend (<code>bend_smooth=0</code>, <code>bend_step=1</code>) is supported. Other smoothing, steps, nonordinary triggers and mixed channel ranges remain diagnosed. No bend is added to instruments without explicit bend declarations.</p>
+<p><code>set_ccN</code> imports under <code>&lt;control&gt;</code> as a named-control default, including sustain for CC 64. It remains classified as <code>controller_binding</code>: without an explicit MIDI binding request or a shared channel range, the default is retained with a diagnostic. Conflicting initial values remain diagnosed. Export is unsupported.</p>
+<p><code>sw_down</code> and <code>sw_up</code> require a shared consumed switch range; <code>sw_previous</code> tracks every prior note-on in the part. Release-region history combinations remain diagnosed. <code>on_loccN</code>/<code>on_hiccN</code> import only the explicit one-shot, note-independent subset with a MIDI binding; uncertain combinations remain diagnosed. These features have no implemented export.</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Name</th>
+<th>Version</th>
+<th>Classification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Header</td>
+<td><code>&lt;region&gt;</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Header</td>
+<td><code>&lt;group&gt;</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Header</td>
+<td><code>&lt;control&gt;</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Header</td>
+<td><code>&lt;global&gt;</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Header</td>
+<td><code>&lt;curve&gt;</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Header</td>
+<td><code>&lt;effect&gt;</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Header</td>
+<td><code>&lt;sample&gt;</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>#define</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_attack</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_decay</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_delay</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_hold</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_keycenter</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_keytrack</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_random</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_release</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_sustain</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_vel2attack</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_vel2decay</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_vel2delay</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_vel2hold</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_vel2release</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_vel2sustain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_velcurve_N</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amp_veltrack</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_attack</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_attack_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_decay</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_decay_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_delay</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_delay_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_hold</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_hold_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_release</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_release_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_start</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_start_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_sustain</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>ampeg_sustain_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amplfo_delay</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amplfo_depth</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amplfo_depth_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amplfo_fade</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>amplfo_freq</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>apan_depth</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>apan_dry</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>apan_freq</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>apan_phase</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>apan_waveform</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>apan_wet</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>apf_1p</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>bend_down</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>bend_smooth</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>bend_step</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>bend_stepdown</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>bend_stepup</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>bend_up</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>bitred</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>bpf_1p</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>bpf_2p_sv</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>brf_1p</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>brf_2p_sv</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>bus</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>bypass_onccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>comb</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>comp_attack</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>comp_gain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>comp_ratio</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>comp_release</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>comp_stlink</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>comp_threshold</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>count</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>cutoff</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>cutoff_curveccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>cutoff_onccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>cutoff_random</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>cutoff_smoothccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>cutoff_stepccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>cutoff2</code></td>
+<td>SFZ v2</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>decim</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>default_path</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_beats</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_cutoff</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_damphi</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_damplo</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_dry</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_feedback</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_filter</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_input</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_levelc</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_levell</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_levelr</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_lfofreq</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_moddepth</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_mode</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_panc</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_panl</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_panr</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_random</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_resonance</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_samples</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_spread</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_syncc_onccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_syncl_onccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_syncr_onccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_time_tap</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_timec</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_timel</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_timer</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>delay_wet</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>direction</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>directtomain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>disto_depth</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>disto_dry</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>disto_stages</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>disto_tone</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>disto_wet</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>dsp_order</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>effect1</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>effect2</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>effect3</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>effect4</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_amplitude</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_bitred</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_curveX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_cutoff</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_cutoff2</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_decim</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_depth_lfoX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_depthadd_lfoX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_driveshape</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_eqXbw</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_eqXfreq</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_eqXgain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_freq_lfoX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_levelX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_loop</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_loop_count</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_noiselevel</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_noisestep</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_noisetone</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_pan</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_pan_curve</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_pitch</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_points</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_rectify</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_resonance</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_resonance2</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_ringmod</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_shapeX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_sustain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_timeX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_volume</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>egN_width</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>end</code></td>
+<td>SFZ v1</td>
+<td>asset_metadata</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>eq_bw</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>eq_freq</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>eq_gain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>eq_type</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>eqN_bw</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>eqN_bw_onccX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>eqN_freq</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>eqN_freq_onccX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>eqN_gain</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>eqN_gain_onccX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>eqN_type</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_attack</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_decay</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_delay</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_depth</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_hold</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_keycenter</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_keytrack</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_random</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_release</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_sustain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_type</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_vel2attack</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_vel2decay</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_vel2delay</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_vel2depth</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_vel2hold</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_vel2release</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_vel2sustain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil_veltrack</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil2_keycenter</code></td>
+<td>SFZ v2</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil2_keytrack</code></td>
+<td>SFZ v2</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil2_type</code></td>
+<td>SFZ v2</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fil2_veltrack</code></td>
+<td>SFZ v2</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fileg_attack</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fileg_decay</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fileg_delay</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fileg_depth</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fileg_hold</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fileg_release</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fileg_start</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fileg_sustain</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fillfo_delay</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fillfo_depth</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fillfo_depth_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fillfo_fade</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fillfo_freq</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>filter_cutoff</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>filter_resonance</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>filter_type</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fxNtomain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>fxNtomix</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>gain_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>gain_random</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>gate_attack</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>gate_onccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>gate_release</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>gate_stlink</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>gate_threshold</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>group</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hibend</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hibpm</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hiccN</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hichan</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hichanaft</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hikey</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hipolyaft</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hiprog</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hirand</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hitimer</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hivel</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hpf_2p_sv</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hpf_4p</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>hpf_6p</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>image</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>internal</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>key</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_amplitude</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_bitred</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_count</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_cutoff</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_cutoff2</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_decim</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_delay</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_depth_lfoX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_depthadd_lfoX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_drive</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_eqXbw</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_eqXfreq</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_eqXgain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_fade</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_freq</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_freq_lfoX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_noiselevel</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_noisestep</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_noisetone</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_pan</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_phase</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_pitch</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_resonance</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_resonance2</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_smooth</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_steps</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_stepX</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_volume</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_wave</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lfoN_width</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>load_end</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>load_mode</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>load_start</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lobend</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lobpm</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>loccN</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lochan</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lochanaft</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lokey</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>loop_count</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>loop_crossfade</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>loop_end</code></td>
+<td>SFZ v1</td>
+<td>asset_metadata</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>loop_lengthccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>loop_mode</code></td>
+<td>SFZ v1</td>
+<td>asset_metadata</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>loop_start</code></td>
+<td>SFZ v1</td>
+<td>asset_metadata</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>loop_startccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>loop_tune</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>loop_type</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lopolyaft</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>loprog</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lorand</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lotimer</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lovel</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lpf_2p_sv</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lpf_4p</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>lpf_6p</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>md5</code></td>
+<td>SFZ v2</td>
+<td>asset_metadata</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>noise_filter</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>noise_level</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>noise_step</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>noise_stereo</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>noise_tone</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>note_offset</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>note_polyphony</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>note_selfmask</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>octave_offset</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>off_by</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>off_mode</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>offset</code></td>
+<td>SFZ v1</td>
+<td>asset_metadata</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>offset_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>offset_random</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>on_hiccN</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>on_loccN</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>oscillator</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>oscillator_detune</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>oscillator_mod_depth</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>oscillator_mode</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>oscillator_multi</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>oscillator_phase</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>oscillator_quality</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>oscillator_table_size</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>output</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pan</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pan_curveccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pan_keycenter</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pan_keytrack</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pan_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pan_smoothccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pan_stepccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pan_veltrack</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>phase</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>phaser_depth</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>phaser_feedback</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>phaser_freq</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>phaser_phase_onccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>phaser_stages</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>phaser_waveform</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>phaser_wet</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pink</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_attack</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_curveccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_decay</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_delay</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_depth</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_hold</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_keycenter</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_keytrack</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_random</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_release</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_smoothccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_stepccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_sustain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_vel2attack</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_vel2decay</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_vel2delay</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_vel2depth</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_vel2hold</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_vel2release</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_vel2sustain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitch_veltrack</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitcheg_attack</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitcheg_decay</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitcheg_delay</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitcheg_depth</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitcheg_hold</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitcheg_release</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitcheg_start</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitcheg_sustain</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitchlfo_delay</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitchlfo_depth</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitchlfo_depth_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitchlfo_fade</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pitchlfo_freq</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>pkf_2p</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>polyphony</code></td>
+<td>SFZ v2</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>position</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>release_key</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>resonance</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>resonance_curveccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>resonance_onccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>resonance_smoothccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>resonance_stepccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>resonance2</code></td>
+<td>SFZ v2</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>resonance2_ccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>reverb_damp</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>reverb_dry</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>reverb_input</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>reverb_predelay</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>reverb_size</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>reverb_tone</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>reverb_type</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>reverb_wet</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>reverse_hiccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>reverse_loccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>rt_dead</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>rt_decay</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sample</code></td>
+<td>SFZ v1</td>
+<td>asset_metadata</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sample_fadeout</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sample_quality</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>seq_length</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>seq_position</code></td>
+<td>SFZ v1</td>
+<td>ambiguous</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>set_ccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sostenuto_sw</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>start_hiccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>start_loccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>static_cyclic_level</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>static_cyclic_time</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>static_filter</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>static_level</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>static_random_level</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>static_random_maxtime</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>static_random_mintime</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>static_stereo</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>static_tone</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>stop_beats</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>stop_hiccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>stop_loccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>strings_number</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>strings_wet_onccN</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sustain_sw</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sw_default</code></td>
+<td>SFZ v2</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sw_down</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sw_hikey</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sw_last</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sw_lokey</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sw_previous</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sw_up</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sw_vel</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sync_beats</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>sync_offset</code></td>
+<td>SFZ v1</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>tdfir_dry</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>tdfir_gain</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>tdfir_impulse</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>tdfir_wet</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>transpose</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>trigger</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>tune</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>type</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>vNNN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>volume</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>volume_curveccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>volume_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>volume_smoothccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>volume_stepccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>waveguide</code></td>
+<td>SFZ v2</td>
+<td>new_model</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>width</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>width_curveccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>width_onccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>width_smoothccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>width_stepccN</code></td>
+<td>SFZ v2</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xf_cccurve</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xf_keycurve</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xf_velcurve</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfin_hiccN</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfin_hikey</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfin_hivel</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfin_loccN</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfin_lokey</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfin_lovel</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfout_hiccN</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfout_hikey</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfout_hivel</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfout_loccN</code></td>
+<td>SFZ v1</td>
+<td>controller_binding</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfout_lokey</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>Opcode</td>
+<td><code>xfout_lovel</code></td>
+<td>SFZ v1</td>
+<td>supported</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["navigation.indexes","content.code.copy"],"redirect":null,"search":"../assets/javascripts/workers/search.c47bb847.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.77dd0ce9.min.js"></script>
+      
+    
+  </body>
+</html>
