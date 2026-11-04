@@ -10,3 +10,4 @@ dist/
 *.egg-info/
 .reference-artifacts/
 .reference/
+/.cache/reccy-docs/
