@@ -7,7 +7,7 @@ license = "MIT"
 authors = [{ name = "Tom Ritchford", email = "tom@swirly.com" }]
 requires-python = ">=3.13"
 classifiers = ["Programming Language :: Python :: 3", "Programming Language :: Python :: 3.13", "Programming Language :: Python :: 3.14","Programming Language :: Python :: 3.15"]
-dependencies = ["ufor", "pydantic>=2.13.4", "soundfile"]
+dependencies = ["ufor", "pydantic>=2.13.4", "soundfile", "reccy"]
 
 [project.urls]
 Repository = "https://github.com/rec/safaz"
@@ -33,6 +33,7 @@ override-dependencies = [
 ]
 
 [tool.uv.sources]
+reccy = { git = "https://github.com/rec/reccy.git", branch = "main" }
 enge = { git = "ssh://git@github.com/rec/enge.git", rev = "5a7c2bce6fcbffbaa667058dc9ed108b312010c8" }
 ufor = { git = "ssh://git@github.com/rec/ufor.git", rev = "b109c591dac9b87249afa945b571b20985fc09d2" }
 envelfo = { git = "ssh://git@github.com/rec/envelfo.git", rev = "a9213ce9d99602866022339975ae5469e7784985" }
