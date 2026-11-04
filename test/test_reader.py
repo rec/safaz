@@ -1028,3 +1028,43 @@ def test_read_sfz_imports_explicitly_accepted_filter_lfo(tmp_path: Path) -> None
     slot = result.instrument.body.slots[0]
     assert 'sfz-filter-lfo' in slot.envelfos
     assert any(r.source == 'filter-lfo' for r in slot.modulation.routes)
+
+
+def test_sample_snapshot_survives_source_replacement(tmp_path: Path) -> None:
+    from safaz.assets import inspect_audio, open_sample
+
+    sample = tmp_path / 'sample.wav'
+    _write_wav(sample)
+    original = sample.read_bytes()
+    with open_sample(sample) as stream:
+        sample.write_bytes(b'changed after preparation')
+        metadata = inspect_audio(stream, 'sample.wav')
+    assert metadata.sha256 == sha256(original).hexdigest()
+    assert metadata.byte_length == len(original)
+
+
+def test_read_reports_all_missing_samples(tmp_path: Path) -> None:
+    path = tmp_path / 'missing.sfz'
+    path.write_text('<region> sample=one.wav\n<region> sample=two.wav')
+    with pytest.raises(ValueError, match='one.wav.*two.wav'):
+        read(path)
+
+
+def test_package_preserves_sfz_and_sample_bytes(tmp_path: Path) -> None:
+    from reccy.runtime.asset_sets import verify_package
+
+    from safaz.reader import package
+
+    source = tmp_path / 'instrument.sfz'
+    source.write_text('<region> sample=samples/one.wav loop_mode=no_loop')
+    _write_wav(tmp_path / 'samples/one.wav')
+    destination = tmp_path / 'export'
+    manifest = package(source, destination)
+    verify_package(destination, manifest)
+    assert (destination / source.name).read_bytes() == source.read_bytes()
+    assert (destination / 'samples/one.wav').read_bytes() == (
+        tmp_path / 'samples/one.wav'
+    ).read_bytes()
+    assert read(destination / source.name).complete
+    with pytest.raises(FileExistsError):
+        package(source, destination)

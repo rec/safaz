@@ -76,3 +76,10 @@ preserves mismatches as failure evidence; it does not imply playback equivalence
 
 The implementation and tests were extracted from uFor
 and recs; this project retains their MIT license and copyright notices.
+
+Local SFZ reads now snapshot each sample before inspecting its hash, decoded
+metadata, and embedded loops. Missing samples are reported together before
+compilation. `safaz.reader.package(source, destination)` copies an SFZ and its
+sample dependencies into a verified new directory, preserving their bytes and
+relative layout. It returns a reccy `PackageManifest`; an existing destination
+is never replaced. This operation does not render audio or require enge.
