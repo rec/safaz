@@ -68,7 +68,7 @@ Regenerate regression baselines separately with `-n 0`. Run one full suite at a
 time when also verifying uFor or enge; their workers share the same CPU budget.
 The manual [cross-platform workflow](.github/workflows/test.yml) checks both
 serial execution and four workers on Linux, Windows, and macOS.
-See [test performance](plan/parallelize.md) for measurements and worker choices.
+See [test performance](doc/test-performance.md) for measurements and worker choices.
 
 The optional [reference suite](reference_test/README.md) compares imported
 playback against a pinned, unmodified sfizz client. Its separate manual workflow

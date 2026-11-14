@@ -1391,7 +1391,7 @@ included the user-approved meedee Windows build-path fix and safaz lock update.
 The approved batch implemented filter LFO delay/fade, signed pitch and amplitude
 LFOs, and explicit continuous pitch bend. Filter-envelope import remains
 unimplemented: the user requested a portable design proposal before any shared
-model/runtime changes. See `plan/filter-envelope.md`.
+model/runtime changes. See [the envelope design](../doc/filter-envelope-design.md).
 
 The sampler needed to expand composed Patch generators and preserve their state
 in snapshots. enge `5a7c2bce6fcbffbaa667058dc9ed108b312010c8` implements this using
@@ -1502,7 +1502,7 @@ The proposed exponential approach can resolve at stage entry into an existing
 curved segment and a terminal linear segment. A 5,005-point local comparison
 against the direct exponential equation has maximum error
 `2.220446049250313e-16`. This is mathematical validation, not an audio or
-snapshot qualification. See `plan/filter-envelope.md` for the revised design,
+snapshot qualification. See [the envelope design](../doc/filter-envelope-design.md) for the revised design,
 adapter touchpoints, rational-time boundary issue and authored/resolved index
 requirements. No shared runtime, dependency pin or enge code changed.
 

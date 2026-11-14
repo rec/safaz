@@ -1,5 +1,9 @@
 # Test parallelization and performance
 
+This is the completed measurement and implementation record from 2026-10-08.
+The retained choices are serial safaz tests and the existing parallel defaults
+in uFor/enge. Timings and suite sizes below are historical measurements.
+
 ## Baseline before implementation
 
 As checked on 2026-10-08:

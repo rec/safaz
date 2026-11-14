@@ -1,215 +1,50 @@
-# Remaining Standard SFZ Import Work
+# Remaining SFZ work
 
-## Current Baseline
+Implemented behavior is recorded in [import status](../doc/import-status.md),
+the [conversion contract](../doc/conversion.md) and the generated
+[opcode support catalog](../doc/sfz-support.md). This plan lists unfinished work
+only. A standard opcode classification is not a claim of complete support.
 
-`safaz.reader.read()` already returns `SfzCompileResult`, containing a validated
-native uFor instrument when one can be constructed and an ordered collection of
-unimplemented features with source locations. The completed correctness work
-includes velocity response, asset-aware loop and channel defaults, envelope
-shape mapping, release-trigger distinctions, half-open loop endpoints, and
-basic inheritance. Pure parsing, compilation and export now live in
-`safaz`; its reader resolves paths and supplies measured asset metadata.
-Key-dependent amplitude, partial pitch-key tracking, pitch-by-velocity, and
-velocity-dependent amplifier envelope durations are also imported.
-Key and velocity crossfades preserve the separate mapping eligibility ranges;
-deterministic SFZ random ranges have their own selection condition. The
-documented `lovel` default of MIDI velocity 1 is preserved. Finite `loop_count`
-values now map to native loop `repeat_count` and round-trip.
-The `pitch` fine-tuning alias and integral `transpose` bounds are handled.
-Standard `tune` and `volume` bounds are enforced on import and export, and
-numeric SFZ group spellings share one choke identity. Conflicting `key` and
-`pitch_keycenter` order is diagnosed where players disagree.
-SFZ `off_by` is translated from its victim-side meaning into native trigger-side
-chokes, including distinct `off_mode` values; export reverses that mapping.
-SFZ `phase=invert` maps to generic polarity inversion independently of pan.
-SFZ `sample_fadeout` maps to a native linear end fade for unlooped single
-playback; `width=-100` swaps stereo channels when no pan is active, and
-`ampeg_start` maps to the native envelope's initial level.
-Positive SFZ `count` values map to native one-shot `play_count` without
-retriggering envelopes; player-dependent `count=0` remains diagnosed.
-SFZ `loop_type` now preserves a loop's direction independently of whole-sample
-`direction`, including backward and alternating loops.
-SFZ `delay` maps to a native delayed voice start distinct from envelope delay;
-one-shot note-off behavior that varies by player remains diagnosed.
-SFZ round-robin positions can be imported with the explicit `all_note_ons`
-counter rule; the default reports them as unsupported because SFZ players
-disagree on counter behavior.
-Release-triggered sequence and random conditions that cannot use the native
-note-on state are diagnosed rather than approximated. Overlapping regions
-remain independent layers.
-Numeric SFZ `polyphony` now maps to group-scoped native voice pools with
-oldest-immediate retirement. The default retains the instrument with a located
-assumption diagnostic; callers can accept the rule explicitly. Conflicting
-limits, legato variants, and limits that may reject simultaneous layers remain
-diagnosed.
-Sticky `sw_last` keyswitches now select regions per part, with optional
-`sw_default`; an unmapped key inside the declared switch range clears the
-selection. `loccN`/`hiccN` note-on conditions now use part-local controller
-state and map to named controls when a MIDI binding is requested. Controller
-conditions without that binding, and release conditions that need note-on
-controller history, retain located diagnostics.
-`<control> set_ccN` now imports part-local named-control defaults, including
-sustain for CC 64 and controllers with no other supported use. Explicit MIDI
-bindings include those controllers; missing bindings or mixed channel ranges
-retain the defaults with located diagnostics. Conflicting initial values and
-declarations outside `<control>` remain diagnosed. Initialization emits no
-events, and export remains unsupported.
-Held `sw_down`/`sw_up` conditions now use physical presses by trigger identity,
-with a shared consumed switch range. Independent held conditions combine with
-sticky selection. `sw_previous` uses part-local history of every note-on, checked
-before updating and retained through releases and silence. Release-region
-history conditions remain diagnosed. `on_loccN`/`on_hiccN` now imports explicit
-one-shot note-independent regions with one controller and an explicit MIDI
-binding. Repeated matching messages trigger separate voices without changing
-note history. Ambiguous combinations, note-dependent processing, and sustained
-or looped controller voices remain diagnosed. Export remains unsupported.
-Static two-pole lowpass, highpass, bandpass, and notch filter responses now
-import with the explicit `sfizz_rbj` response choice, including a second
-filter in series and inherited defaults. The default diagnoses active filters
-without importing them. Accepted responses select native filtering after
-amplitude, resolving the former ordering diagnostic. Zero cutoff, unclamped
-range boundaries, unsupported types,
-modulation, and export remain diagnosed.
-Keyboard tracking now imports `fil_keytrack`/`fil_keycenter` and their
-second-filter counterparts through the existing integer-key modulation model.
-The explicit `sfizz_rbj` choice remains required. Tracking is verified over
-each region's playable keys; unsupported amounts, controller voices without
-note keys, and cutoff values outside the unclamped output-rate bounds retain
-the static filter with located diagnostics. Velocity tracking now imports
-`fil_veltrack` and `fil2_veltrack` through generic positive-valued exponential
-routes in uFor, with matching array evaluation in enge. Signed integral depths
-use the exact continuous velocity ratio. Combined keyboard/velocity cutoffs
-outside the verified bounds diagnose both routes and retain the static filter.
-Controller and release-trigger velocity semantics remain diagnosed. Native
-consumers restricted to direct linear routes continue to reject exponential
-routes explicitly.
-Basic first-filter LFOs now import fixed frequency and signed depth with a
-separate `filter_lfo_response="sfizz_triangle"` choice. They reuse a voice-local
-native triangle at quarter-cycle phase and an exponential cutoff ratio.
-Combined tracking/LFO bounds diagnose all active cutoff routes on the affected
-filter. Delay and fade now compose an activation envelope with a phase-offset
-triangle: delay is rounded up to an output frame, and fade scales cents before
-cutoff exponentiation. Nonordinary triggers, richer LFOs, and export remain
-diagnosed. Sampler preparation now reuses the existing Patch expansion and
-retains Patch identities in snapshots.
-The pinned SFZ v1/v2 registry classifies 453 opcodes and the standard headers,
-drives unsupported-feature diagnostics, and generates the
-[support table](../doc/sfz-support.md). SFZ 2 `#define` values expand
-at use sites with recursive and undefined variables rejected. Unsupported
-`<curve>`, `<effect>`, and `<sample>` sections have located diagnostics.
+## Next implementation decision
 
-Pitch LFO frequency, signed depth, delay and fade now import with explicit
-`pitch_lfo_response="sfizz_parabolic"`. Existing tuning and key/velocity pitch
-routes add in cents. Nonordinary triggers, richer LFOs and export remain diagnosed.
-Amplitude LFOs similarly use `amplitude_lfo_response="sfizz_parabolic"`, with
-signed dB depth converted to multiplicative gain after delay/fade shaping.
-Velocity gain and amplitude LFO gain multiply without clamping the LFO peaks.
-Explicit pitch-bend declarations now import through a MIDI binding with
-`pitch_bend_response="sfizz_symmetric"`. The negative endpoint plateau is
-expressed in the route; the generic MIDI converter is unchanged. Unsmoothed
-continuous bend supports signed asymmetric ranges, held notes and part-local
-state. Stepped/smoothed bend and mixed channel ranges remain diagnosed.
+Filter-envelope implementation remains unapproved. The completed design and
+enge review are in [the envelope design](../doc/filter-envelope-design.md).
+See [the implementation plan](filter-envelope.md) for the proposed next batch.
+The user's last implementation decision was "not yet"; documentation cleanup
+does not authorize that batch.
 
-The remaining goal is a lossless, well-diagnosed import of useful,
-non-vendor-specific SFZ 1 and SFZ 2 behavior. Unsupported behavior must remain
-visible; it must never be silently approximated.
+## Remaining feature priorities
 
-Vendor extensions remain outside the compatibility promise. Add a portable uFor
-concept only when it is useful independently of SFZ.
+1. Filter envelopes: captured-level approach/release semantics, shared runtime
+   state, snapshots, enge integration and explicit safaz mapping.
+2. Richer expressive controls: aftertouch, stepped/smoothed bend, controller
+   curves, additional LFO shapes and controller modulation.
+3. Remaining articulation rules: release-region controller/keyswitch history,
+   richer controller-trigger combinations, repeated-note masking and release-tail
+   termination. Specify portable rules before importing them.
+4. Intermediate stereo width and channel position with explicit channel semantics.
+5. Reproducible random gain, pitch, offset and delay, including snapshot state.
+6. EQ, after bandwidth and resonance transfer functions are specified and tested.
+7. Export gaps for supported import-only features, as listed in the catalog.
 
-## Priorities by User Interest
+Each feature needs precise defaults, bounds, inheritance, source-located
+diagnostics and focused regressions. A portable concept must be useful outside
+SFZ. Unsupported behavior must stay visible rather than be approximated.
 
-This ranks the remaining work by the likely payoff to someone importing and
-playing real instruments, not by opcode count or implementation convenience.
-SFZ mappings and local asset inspection belong in safaz. Generic instrument
-models and preparation belong in uFor. A player or editor owns live MIDI input
-and playback.
+## Qualification still open
 
-1. **Remaining keyswitch and controller behavior.** Sticky `sw_last`, optional
-   `sw_default`, `loccN`/`hiccN` note-on conditions, and initial CC values are
-   complete on import. Held and previous-key switches and the explicit one-shot,
-   note-independent CC-trigger subset are implemented. Remaining work includes
-   release-region history rules and richer controller-trigger combinations only
-   when a verified portable equivalent exists. Do not guess how a host reads or
-   schedules controllers.
-2. **Basic filters and their musical controls.** Cutoff and resonance have a
-   large audible effect. The verified static two-pole response subset now
-   imports with an explicit choice and filtering after amplitude. Filter LFO
-   delay/fade is implemented. Filter envelopes need the separate
-   [portable envelope proposal](filter-envelope.md), requested for review before
-   implementation; non-equivalent curves remain diagnosed.
-3. **Pitch bend and aftertouch.** These make an imported instrument expressive
-   under performance. Continuous unsmoothed pitch bend is implemented through
-   the existing transport-neutral binding. Aftertouch, stepped bend and
-   smoothing remain separate work requiring verified contracts.
-4. **Amplitude and pitch LFOs, plus richer envelopes.** Vibrato, tremolo and
-   evolving patches are more compelling than another static mapping. Fixed
-   parabolic pitch/amplitude LFOs, delay and fade are implemented with explicit
-   choices. Richer shapes, controller modulation and envelopes remain separate
-   work; declare timing or shape mismatches explicitly.
-5. **Repeated-note and release behavior.** Repeated-trigger masking and
-   release-tail termination matter for drums and realistic legato. Specify
-   portable rules beyond the existing voice limits and oldest-immediate
-   stealing rule before mapping SFZ controls.
-6. **Stereo width and position.** Intermediate width and channel placement
-   are useful for stereo samples, but less fundamental than articulation and
-   timbre. Keep their native channel semantics independent of SFZ opcode names.
-7. **Reproducible random variation.** Random gain, pitch, offset, and delay can
-   enliven repeated notes, but need declared random state so renders and
-   snapshots remain reproducible.
-8. **Equalization.** Map SFZ EQ only after its bandwidth and resonance transfer
-   functions are specified and tested against the native EQ model.
+See [reference qualification](reference-test.md). Native/authored agreement is
+established for the tested profiles; full sfizz waveform equivalence and
+repeatability are not. The existing triangle filter-LFO convention differs from
+sfizz's default parabolic waveform; changing it is a separate playback decision.
 
-Output buses, sends, effects, generated waveforms, and waveguides remain
-separate, larger designs rather than prerequisites for the above work.
+## Larger deferred designs
 
-## Controller Bindings
-
-The separate `performance_binding` score now describes MIDI channel-to-part,
-note identity, and named-control CC conversion independently of host adapters.
-SFZ import can return it alongside the instrument when the caller explicitly
-supplies an instrument reference, part, and repeated-key release rule. Shared
-`lochan`/`hichan` ranges map; mixed per-region ranges remain diagnosed.
-Other protocols need their own explicit input profile.
-
-The prioritized binding work also includes previous-key conditions and
-controller curves. Until each construct has a defined portable representation,
-report it as requiring a controller binding.
-
-## Explicit Deferrals
-
-- beat synchronization without a transport and tempo model;
-- output buses, sends, and `<effect>` without a routing graph;
-- generated waveforms and waveguides without a synthesis-source model;
-- random delay, offset, pitch, and gain until reproducible random state exists;
-- MD5 assertions unless safaz adopts general asset verification;
-- vendor extensions, including `#include`.
-- player-specific sample-unit interpretations of `sample_fadeout`.
-
-## Tests
-
-Use compact handwritten SFZ fixtures and regression snapshots. Cover every
-supported opcode's defaults, bounds, and units; inheritance order; mono and
-stereo assets; embedded loops; diagnostics for all standard unsupported
-opcodes; `#define`; crossfades; coherent alternatives; and exact source
-locations after preprocessing.
-
-Audio fixtures must remain WAV files at 48,000 samples per second and at least
-one second long. Ambiguous reference behavior is a documented deferral, not a
-fixture copied from one player's interpretation.
-
-## Completion Criteria
-
-- Every standard SFZ 1 and SFZ 2 construct has one registry classification.
-- Every successful conversion preserves all represented behavior.
-- Every unsupported construct has a precise location and explanation.
-- The generated support table comes from the runtime registry.
-- Native uFor additions remain protocol-neutral and independently useful.
-- The full suite does not access real MIDI devices.
-
-## Additional work beyond the prompt
-
-None.
+Beat-synchronized SFZ controls need a declared transport mapping. Buses, sends
+and effects need routing semantics. Generated waveforms and waveguides need a
+synthesis-source model. Vendor extensions, including `#include`, remain outside
+the compatibility promise. Player-dependent sample-unit interpretations and
+other disputed conventions need explicit profiles rather than guesses.
 
 ## Additional work beyond the prompt
 
