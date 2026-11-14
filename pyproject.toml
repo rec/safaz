@@ -34,7 +34,7 @@ override-dependencies = [
 
 [tool.uv.sources]
 reccy = { git = "https://github.com/rec/reccy.git", branch = "main" }
-enge = { git = "ssh://git@github.com/rec/enge.git", rev = "5a7c2bce6fcbffbaa667058dc9ed108b312010c8" }
+enge = { git = "ssh://git@github.com/rec/enge.git", rev = "af2c476f4b2b59fc83d2aab6ce9bbb12aa1bb05a" }
 ufor = { git = "ssh://git@github.com/rec/ufor.git", rev = "8046380a63b23ad4e2d6acf0a1880107efd8d3d0" }
 envelfo = { git = "ssh://git@github.com/rec/envelfo.git", rev = "ea3533233e3f127806938fc929779edf42e2fce0" }
 
