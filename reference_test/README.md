@@ -274,6 +274,11 @@ gain regressions verify capture, partitioning and snapshots. Those checks do
 not establish sfizz equivalence: its sample advance, terminal capture and
 block-observed threshold behavior differ from the explicit portable convention.
 
+The optional [direct-class isolation client](envelope_probe/README.md) separates
+envelope values, dynamic filter realization and the existing amplifier release
+law, and reconstructs the frozen player's output without fitted gains or offsets.
+It preserves the original acceptance measurements and any truncated render.
+
 ## Additional work beyond the prompt
 
 None. Event-binding support in other engines and an upstream float-output pull

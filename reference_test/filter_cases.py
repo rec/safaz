@@ -181,3 +181,22 @@ LFO_CASES += [
     )
     for d, f in [(0.1, 0), (0, 0.2), (0.1, 0.2)]
 ]
+
+ENVELOPE_ISOLATION_PROFILES = [
+    (c.name.removeprefix('filter-envelope-'), c.filter_profile.envelope)
+    for c in ENVELOPE_CASES
+    if c.filter_profile is not None and c.filter_profile.envelope is not None
+] + [
+    ('held', EnvelopeProfile(release_at=2)),
+    (
+        'constant',
+        EnvelopeProfile(
+            start=1, delay=0, attack=0, hold=0, decay=0, sustain=1, release_at=2
+        ),
+    ),
+    ('subthreshold-release', EnvelopeProfile(start=0.00001, release_at=0.05)),
+    (
+        'zero-decay',
+        EnvelopeProfile(start=1, delay=0, attack=0, hold=0, decay=0, release_at=0.8),
+    ),
+]

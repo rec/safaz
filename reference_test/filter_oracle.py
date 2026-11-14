@@ -128,9 +128,30 @@ def render(
         )
         amplitude = 1 - np.expm1(-5 * progress) / np.expm1(-5)
         result *= amplitude[:, None]
-    for index, spec in enumerate(profile.filters):
+    result = apply_filters(
+        result,
+        profile.filters,
+        [
+            profile_cutoffs(profile, i, key, velocity, len(audio), rate)
+            for i in range(len(profile.filters))
+        ],
+        rate,
+    )
+    if before_amplitude:
+        result *= amplitude[:, None]
+    return result
+
+
+def apply_filters(
+    audio: np.ndarray,
+    filters: list[FilterSpec],
+    trajectories: list[np.ndarray],
+    rate: int,
+) -> np.ndarray:
+    """Apply the independent TPT solve to explicit cutoff trajectories."""
+    result = audio.copy()
+    for spec, frequency in zip(filters, trajectories, strict=True):
         q = 10 ** (spec.resonance / 20)
-        frequency = profile_cutoffs(profile, index, key, velocity, len(audio), rate)
         g = np.tan(np.pi * frequency / rate)
         d = 1 + g / q + g * g
         s1 = np.zeros(audio.shape[1])
@@ -148,8 +169,6 @@ def render(
                 result[index] = band / q
             else:
                 result[index] -= band / q
-    if before_amplitude:
-        result *= amplitude[:, None]
     return result
 
 

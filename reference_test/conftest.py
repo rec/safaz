@@ -82,6 +82,9 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption('--sfizz-source', help='Unmodified pinned sfizz checkout')
     parser.addoption('--sfizz-render', help='Upstream sfizz_render executable')
     parser.addoption('--sfizz-build', help='Build directory containing CMakeCache.txt')
+    parser.addoption(
+        '--sfizz-envelope-probe', help='Diagnostic client of frozen sfizz classes'
+    )
     parser.addoption('--reference-output', default='.reference-artifacts')
     parser.addoption('--require-reference', action='store_true')
 

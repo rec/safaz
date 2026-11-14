@@ -1,5 +1,138 @@
 # Initial reference findings
 
+## Filter-envelope isolation, 2026-11-14
+
+**No implementation defect was found in the bounded portable filter-envelope
+profile. A pre-existing amplifier-release mismatch on our side of sfizz
+compatibility was isolated.**
+The latter belongs to our conversion boundary, not to sfizz: the importer maps
+`ampeg_release` to a normalized fixed-duration curve, which is not sfizz's
+captured exponential release plus terminal fade. Rendering that declared native
+curve is correct; it does not reproduce the frozen reference's release. Playback,
+import diagnostics, dependency pins, sfizz and all existing limits remain
+unchanged in this investigation.
+
+The previous mixed-case residuals did not isolate `fileg_*`. A new
+[diagnostic client](envelope_probe/README.md) links directly to unchanged frozen
+sfizz classes, without copying their envelope or filter implementations. Twelve
+profiles at block sizes 64, 256 and 257 hold the source, gain, cutoff depth and
+amplifier policy fixed while independently exchanging envelope values and
+filter realizations. This removes MIDI timing, source loading and pan from the
+component comparisons. A constant-cutoff control checks the static response.
+The existing independent TPT solve is extracted into one reusable function;
+its equations and the original full-waveform acceptance tests are unchanged.
+
+### Component results
+
+All twelve imported filter-envelope profiles agree with the independent
+continuous equations at the sampled rational observation times: maximum error
+is **8.604228440844963e-16**. The imported amplifier agrees with its declared
+normalized curve within **2.55351295663786e-15**. Together with the original
+NumPy/native audio and snapshot regressions, this places the discrepancies in
+the compatibility conventions, rather than an error executing the portable
+filter envelope. This is evidence for the bounded tested profile, not proof
+about every possible envelope or future extension.
+
+The following audio differences use the same held 500 Hz source, declared
+master/mono-center gain and 48 kHz rate, with blocks of 256. Only the named
+factor changes; maxima from separate experiments must not be added together.
+
+| Profile | Envelope law only, same TPT filter | Filter realization only, same portable envelope | Amplifier law only, same TPT/filter envelope |
+| --- | ---: | ---: | ---: |
+| Release during delay | 0.01071219 | 0.00090047 | 0.01485146 |
+| Release during attack | 0.00005963 | 0.00248852 | 0.01482387 |
+| Release during decay | 0.00003664 | 0.00202190 | 0.01483400 |
+| Release during sustain | 0.00006039 | 0.00138823 | 0.01483392 |
+| Negative depth | 0.00007160 | 0.00295600 | 0.01498370 |
+| Zero release | 0.00002436 | 0.00119888 | 0.01492249 |
+| Free-running | 0.00005636 | 0.00287521 | 0.01487828 |
+| Constant cutoff | 0 | 0.00000000572 | 0 |
+
+Classification:
+
+- **Portable filter-envelope convention:** sfizz advances before output and
+  can defer release during onset delay. The portable envelope releases
+  immediately from its observed level. Releasing during a 100 ms delay at
+  50 ms therefore gives a level difference as large as **0.19777403**; this is
+  an explicit event-semantics difference, not roundoff. Other cases expose
+  float accumulation, threshold/terminal-transition rules and block-sensitive
+  release timing. For example, the attack-release envelope level difference
+  is about `4.17e-5` with 64-frame blocks and `9.58e-4` with 256-frame blocks.
+  The portable state is block independent by design.
+- **Dynamic filter convention:** frozen sfizz's
+  [SfzFilter.cpp](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/SfzFilter.cpp)
+  samples cutoff every **16 frames**; its
+  [generated low-pass](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/gen/filters/sfzLpf2p.hxx)
+  smooths coefficients with a **1 ms** time constant and uses a transposed
+  biquad realization. The declared native filter is TPT with per-sample cutoff
+  updates. Their static RBJ transfer functions agree, but their changing-state
+  behavior differs. Identical envelope values still produce the errors in the
+  middle column; the constant control reduces that to `5.72e-9`. This is not
+  an envelope, gain or Q conversion defect.
+- **Our existing amplifier-release compatibility gap:** at a nominal 100 ms,
+  the native gain is `1 - expm1(-5*t/0.1)/expm1(-5)` until it reaches zero at
+  100 ms. The frozen sfizz release instead multiplies by `exp(-9/(0.1*48000))`
+  each sample until `1e-4`, then applies its terminal fade. The gain difference
+  peaks at **0.21016455**, about **14.48 ms after note-off**. The isolated
+  audio error of about `0.0148` explains why the mixed tests can differ at the
+  `0.015` scale without a filter-envelope implementation error. This mapping
+  predates the new filter envelopes and has no explicit alternate-law selector.
+  It must not be described as a sfizz bug or dismissed as numerical noise.
+  Correcting it would change playback and needs a separate decision.
+
+The combined profile's 600-cent envelope component also passes the independent
+control check. Its full LFO comparison retains the separately documented native
+triangle versus sfizz parabolic convention; that is deliberately excluded from
+the envelope-only factor experiment.
+
+### Full player reconstruction
+
+The diagnostic also predicts the entire signed sfizz output for the seven
+profiles without LFOs. It uses the source-audited fmidi double clock and strict
+event comparison, the single repeated source sample after a voice's first
+block, and the actual frozen sfizz amplifier, filter envelope and filter
+classes. There is **no fitted gain, event-offset search, time alignment or
+threshold change**. This explanatory prediction is separate from the unchanged
+native/reference acceptance measurement, which remains a failure.
+
+Six fresh upstream renders match the prediction over the full authored horizon
+within **4.66108e-5 to 4.67971e-5**, below the existing **6.303515625e-5** limit.
+The seventh, decay-release, has both notes cut off near 8,192 source frames:
+the first last exceeds the audibility threshold at **8,542**, and the second
+at **133,293**. Its normal-output prediction fails by **0.07196711** and is
+retained as a failed test, without retry or exclusion. This is consistent with
+the previously investigated preload-length truncation and filter tail; no new
+claim about the precise thread interleaving is needed for this isolation.
+
+For that seventh profile, the SFZ, sample and MIDI bytes were compared with the
+retained normal Linux evidence from run 43600333721 and are identical. The same
+prediction agrees with that normal reference at about **4.7e-5** over all
+250,000 authored frames, using the documented float-decoded difference command.
+Thus every normal non-LFO profile is accounted for within the existing budget
+once the known client/source behavior, sfizz amplifier law and filter realization
+are used. There is no unexplained normal-output residual requiring a change to
+the portable filter-envelope implementation.
+
+Verification: **48 direct/control checks pass**; the seven fresh full-player
+checks give **6 passes and the retained cutoff failure**. The original **399
+safaz unit tests pass**, along with Ruff, formatting, type checking and pyupgrade.
+The complete local native matrix passes **387 tests**, with **360 external or
+probe-related skips** and zero failures/errors; its 128 native/authored case
+comparisons all pass. Evidence is retained under
+`/tmp/safaz-envelope-isolation-full-native-20261114`.
+No additional CI workflow was dispatched for this diagnostic-only change.
+Windows remains blocked by the previously recorded reccy asset-import defect;
+these new direct measurements were made locally on macOS arm64 with AppleClang
+16, CMake 3.31.10 and the unchanged pinned source/submodules.
+
+Generated traces, nine-channel control/audio WAVs, paired amplifier WAVs and
+component reports are in `/tmp/safaz-envelope-isolation-qualified-20261114`.
+Fresh player evidence and predictions are in
+`/tmp/safaz-envelope-player-resynthesis-20261114`; earlier exploratory outputs
+are disposable as well. The C++ client, CMake build, pytest driver and exact
+reproduction instructions are tracked under `reference_test/`. No development
+source or irreplaceable instructions live only in temporary directories.
+
 ## Captured filter-envelope implementation, 2026-11-14
 
 The approved bounded implementation now spans uFor `8046380`, enveLFO
