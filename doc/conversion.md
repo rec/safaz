@@ -148,10 +148,10 @@ inherited, decreasing, combined, and zero-override tracking.
 ### Basic filter LFO
 
 Import additionally requires `filter_lfo_response="sfizz_triangle"` alongside
-`filter_response="sfizz_rbj"`. This separate choice accepts the pinned sfizz
-[LFO waveform and phase](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/LFO.cpp)
-and [default triangle](https://github.com/sfztools/sfizz/blob/f5c6e29f23b8057867c08e88f5f6ac6738baa30b/src/sfizz/Defaults.cpp),
-not other players' LFO behavior. Both `compile_instrument` and `read` expose it.
+`filter_response="sfizz_rbj"`. This separate choice selects the existing triangle
+convention. Pinned sfizz's v1 default instead uses a parabolic sine approximation;
+see the [waveform audit](../reference_test/findings.md). Both
+`compile_instrument` and `read` expose the explicit triangle choice.
 
 `fillfo_freq` imports fixed frequency from 0 to 20 Hz; `fillfo_depth` imports
 signed depth from -1200 to 1200 cents. Both default to zero, which makes the
@@ -169,10 +169,9 @@ retains valid tracking; a combined out-of-range result diagnoses every active
 cutoff route on that filter and retains its static settings. The second filter
 remains independent. See the [inheritance fixture](../conformance/filter-lfo.sfz).
 
-Nonzero `fillfo_delay` and `fillfo_fade` remain diagnosed: sfizz pauses phase
-during delay and scales the oscillator before the cents-to-ratio conversion,
-whereas the native cycle advances phase during delay and applies activation
-weight after mapping. Controller and nonordinary note triggers, SFZ 2 LFOs,
+Nonzero `fillfo_delay` and `fillfo_fade` compose a phase-offset oscillator and
+activation envelope, scaling the signal before cents-to-ratio conversion.
+Controller and nonordinary note triggers, SFZ 2 LFOs,
 controller/aftertouch modulation, and export remain diagnosed. Malformed or
 nonfinite numbers fail explicitly; values outside the verified ranges are
 diagnosed without clamping. This profile asserts mathematical waveform and
@@ -180,11 +179,45 @@ mapping semantics, not bit-identical floating-point playback.
 
 Unsupported filter modulation retains its source diagnostic alongside any
 accepted static filter. Filter export, higher-order and alternate filter
-types, controller modulation, envelopes, and richer LFO behavior remain unsupported. The [SFZ fixture](../conformance/filters.sfz) and
+types, controller modulation and richer LFO behavior remain unsupported. The [SFZ fixture](../conformance/filters.sfz) and
 [native filter settings](../conformance/filters.json) demonstrate inheritance
 and the static two-filter mapping without asserting complete playback equivalence.
 The [keyboard tracking fixture](../conformance/filter-key-tracking.sfz) covers
 inherited tracking, independent centers, and a per-region zero override.
+
+## Filter envelopes
+
+`filter_envelope_response="portable_exponential"`, together with
+`filter_response="sfizz_rbj"`, accepts first-filter `fileg_delay`, `fileg_attack`,
+`fileg_hold`, `fileg_decay`, `fileg_release`, `fileg_start`, `fileg_sustain` and
+`fileg_depth`. Defaults are zero except sustain (100 percent) and release
+(0.001 seconds). Times are 0–100 seconds, levels 0–100 percent, and signed depth
+is -12000–12000 cents. Zero depth is inactive. Unsupported triggers and richer
+modifiers retain diagnostics.
+
+Delay and hold truncate to output frames. Attack has constant unit slope,
+so its duration is `attack * (1-start)`. Positive decay/release times use
+`max(time, 0.006)/9` as the exponential time constant. Decay approaches zero
+until `min(1, sustain+0.001)`, then settles to sustain over 50 ms. Zero decay
+jumps directly to sustain. Sustain at or below 0.0032 runs freely into release.
+Release approaches `1e-4`, then fades to zero with a 50 ms nominal duration
+and a `1e-4` minimum transition-distance rule; zero release retains that fade.
+
+Crossings are continuous and derived durations round once to nearest nanoseconds
+before frame conversion. They do not reproduce sfizz's advance-before-output,
+previous-sample release capture or block-observed decay threshold. This explicit
+convention must not be described as exact sfizz envelope equivalence.
+
+The voice-scoped named Envelope follows the voice release gate. Its cutoff ratio
+is `2**(depth * value / 1200)`. Keyboard, velocity, LFO and envelope ratios
+multiply. An out-of-range combined cutoff diagnoses every active first-filter
+route and retains its static settings. The second filter remains independent.
+Filter-envelope export is not implemented. See the
+[design and audit](filter-envelope-design.md) and
+[qualification findings](../reference_test/findings.md).
+
+Regenerate the support catalog with
+`uv run --no-editable python doc/generate-support.py`.
 
 ## Performance bindings
 

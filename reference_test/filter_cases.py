@@ -1,7 +1,54 @@
 """Positive filter profiles with independently authored settings and notes."""
 
+from filter_envelope_oracle import EnvelopeProfile
 from filter_oracle import FilterProfile, FilterSpec
 from harness import Case, Note
+
+ENVELOPE_CASES = [
+    Case(
+        name=f'filter-envelope-{n}',
+        notes=[Note(tick=11), Note(tick=5001)],
+        end_tick=10000,
+        source_channels=1,
+        filter_profile=FilterProfile(
+            filters=[FilterSpec(response='lpf_2p', cutoff=1000)], envelope=p
+        ),
+    )
+    for n, p in [
+        ('delay-release', EnvelopeProfile(release_at=0.05)),
+        ('attack-release', EnvelopeProfile(release_at=0.25)),
+        ('decay-release', EnvelopeProfile(release_at=0.65)),
+        ('sustain-release', EnvelopeProfile(release_at=0.8)),
+        ('negative-depth', EnvelopeProfile(depth=-1200)),
+        ('zero-release', EnvelopeProfile(release=0, release_at=0.4)),
+        (
+            'free-running',
+            EnvelopeProfile(
+                start=0, delay=0, attack=0, hold=0, decay=0.2, sustain=0, release_at=0.6
+            ),
+        ),
+    ]
+] + [
+    Case(
+        name='filter-envelope-combined',
+        notes=[Note(tick=11), Note(tick=5001)],
+        end_tick=10000,
+        source_channels=1,
+        filter_profile=FilterProfile(
+            filters=[
+                FilterSpec(
+                    response='lpf_2p',
+                    cutoff=1000,
+                    keytrack=100,
+                    veltrack=300,
+                    lfo_frequency=2,
+                    lfo_depth=300,
+                )
+            ],
+            envelope=EnvelopeProfile(depth=600),
+        ),
+    )
+]
 
 STATIC_CASES = [
     Case(

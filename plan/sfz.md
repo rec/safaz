@@ -5,18 +5,15 @@ the [conversion contract](../doc/conversion.md) and the generated
 [opcode support catalog](../doc/sfz-support.md). This plan lists unfinished work
 only. A standard opcode classification is not a claim of complete support.
 
-## Next implementation decision
+## Current qualification
 
-Filter-envelope implementation remains unapproved. The completed design and
-enge review are in [the envelope design](../doc/filter-envelope-design.md).
-See [the implementation plan](filter-envelope.md) for the proposed next batch.
-The user's last implementation decision was "not yet"; documentation cleanup
-does not authorize that batch.
+The bounded filter-envelope implementation was approved on 2026-11-14 and now
+spans uFor, enveLFO, enge and safaz. See [the design](../doc/filter-envelope-design.md),
+[remaining envelope qualification](filter-envelope.md) and the reference findings.
 
 ## Remaining feature priorities
 
-1. Filter envelopes: captured-level approach/release semantics, shared runtime
-   state, snapshots, enge integration and explicit safaz mapping.
+1. Filter-envelope qualification and separately scoped richer modifiers/export.
 2. Richer expressive controls: aftertouch, stepped/smoothed bend, controller
    curves, additional LFO shapes and controller modulation.
 3. Remaining articulation rules: release-region controller/keyswitch history,

@@ -152,7 +152,14 @@ def support_table() -> str:
         'use a voice-local triangle starting at zero rising after its delay. '
         'Fade scales the signal before cutoff exponentiation. '
         'Nonordinary triggers remain diagnosed. Combined cutoff modulation '
-        'outside bounds retains only the static filter. Export is unsupported.',
+        'outside bounds retains only the static filter. Export is unsupported. '
+        'First-filter envelopes additionally require '
+        '`filter_envelope_response="portable_exponential"`: fixed DAHDSR/start '
+        'and signed depth use captured exponential approaches and terminal fades. '
+        'The convention uses continuous crossings, rather than sfizz sample/block '
+        'threshold observation. Combined modulation must stay within cutoff bounds. '
+        'Only ordinary note-on triggers are supported; richer modifiers and export '
+        'remain diagnosed.',
         '',
         'Pitch LFOs require `pitch_lfo_response="sfizz_parabolic"`. '
         'Fixed frequency (0-20 Hz), signed depth (-1200 to 1200 cents), delay '
@@ -255,6 +262,14 @@ PARSABLE_OPCODES = {
     'fillfo_depth',
     'fillfo_delay',
     'fillfo_fade',
+    'fileg_delay',
+    'fileg_attack',
+    'fileg_hold',
+    'fileg_decay',
+    'fileg_release',
+    'fileg_start',
+    'fileg_sustain',
+    'fileg_depth',
     'pitchlfo_freq',
     'pitchlfo_depth',
     'pitchlfo_delay',
@@ -348,6 +363,14 @@ ASSET_OPCODES = {
     'md5',
 }
 AMBIGUOUS_OPCODES = {
+    'fileg_delay',
+    'fileg_attack',
+    'fileg_hold',
+    'fileg_decay',
+    'fileg_release',
+    'fileg_start',
+    'fileg_sustain',
+    'fileg_depth',
     'amplfo_freq',
     'amplfo_depth',
     'amplfo_delay',

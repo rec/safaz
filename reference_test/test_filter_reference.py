@@ -16,7 +16,8 @@ from safaz.model import SfzLocation
     scope='module',
     params=filter_cases.STATIC_CASES
     + filter_cases.TRACKING_CASES
-    + filter_cases.LFO_CASES,
+    + filter_cases.LFO_CASES
+    + filter_cases.ENVELOPE_CASES,
     ids=lambda c: c.name,
 )
 def case(request: pytest.FixtureRequest) -> harness.Case:

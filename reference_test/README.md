@@ -258,6 +258,22 @@ bounded by [-1, 1]. Tests include positions between extrema.
 The older filter choice remains explicitly `sfizz_triangle`. It is a different
 waveform convention from sfizz's default v1 LFO, not evidence of a sfizz defect.
 
+## Captured filter-envelope qualification
+
+The filter matrix also includes eight captured-envelope profiles: release
+during delay, attack, decay and sustain; negative depth; zero release; free
+running; and combined key/velocity/LFO/envelope modulation. They use the
+explicit `portable_exponential` convention. The independent oracle solves
+continuous level equations, applies the existing authored amplifier release,
+and feeds cutoff trajectories into the independent trapezoidal filter solve.
+The new fixture uses a held sample so release modulation remains observable.
+Existing fixtures and all comparison thresholds remain unchanged.
+
+Shared Python/Rust control conformance and enge's separate two-second 48 kHz
+gain regressions verify capture, partitioning and snapshots. Those checks do
+not establish sfizz equivalence: its sample advance, terminal capture and
+block-observed threshold behavior differ from the explicit portable convention.
+
 ## Additional work beyond the prompt
 
 None. Event-binding support in other engines and an upstream float-output pull

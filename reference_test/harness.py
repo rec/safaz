@@ -105,7 +105,9 @@ def create_inputs(case: Case, folder: Path) -> np.ndarray:
     """Use integer-valued PCM sources, distinct periods, and a silent tail."""
     folder.mkdir(parents=True)
     fixture = (
-        'modulation'
+        'filter-envelope'
+        if case.filter_profile and case.filter_profile.envelope
+        else 'modulation'
         if case.modulation_profile
         else 'filter'
         if case.filter_profile
@@ -124,15 +126,21 @@ def create_inputs(case: Case, folder: Path) -> np.ndarray:
         sfz = sfz.format(
             filters=filter_oracle.declarations(case.filter_profile),
             attack=case.filter_profile.attack,
+            release=case.filter_profile.envelope.amplitude_release
+            if case.filter_profile.envelope
+            else 0,
         )
     (folder / 'instrument.sfz').write_text(sfz)
     sources: dict[str, np.ndarray] = {}
     for name, period in [('a.wav', 96), ('b.wav', 64)]:
         audio = np.zeros((RATE, case.source_channels))
-        phase = np.arange(RATE // 2) % period
-        audio[: RATE // 2, 0] = np.where(phase < period // 2, 0.125, -0.125)
+        length = (
+            RATE if case.filter_profile and case.filter_profile.envelope else RATE // 2
+        )
+        phase = np.arange(length) % period
+        audio[:length, 0] = np.where(phase < period // 2, 0.125, -0.125)
         if case.source_channels == 2:
-            audio[: RATE // 2, 1] = -audio[: RATE // 2, 0] / 2
+            audio[:length, 1] = -audio[:length, 0] / 2
         if case.filter_profile and case.filter_profile.attack:
             audio[:] = 0
             audio[[0, RATE // 4], 0] = 0.125
@@ -166,8 +174,13 @@ def create_inputs(case: Case, folder: Path) -> np.ndarray:
                 time=note.tick - previous,
             )
         )
-        track.append(mido.Message('note_off', note=note.key, velocity=0, time=1920))
-        previous = note.tick + 1920
+        gate = (
+            round(case.filter_profile.envelope.release_at * RATE / 25)
+            if case.filter_profile and case.filter_profile.envelope
+            else 1920
+        )
+        track.append(mido.Message('note_off', note=note.key, velocity=0, time=gate))
+        previous = note.tick + gate
     if bend_events:
         absolute = []
         at = 0
@@ -362,6 +375,9 @@ def run_native_case(
         if case.modulation_profile
         else 'diagnose',
         filter_response='sfizz_rbj' if case.filter_profile else 'diagnose',
+        filter_envelope_response='portable_exponential'
+        if case.filter_profile and case.filter_profile.envelope
+        else 'diagnose',
         filter_lfo_response='sfizz_triangle'
         if case.filter_profile
         and any(f.lfo_frequency for f in case.filter_profile.filters)
@@ -522,14 +538,18 @@ def filter_contract(
                 'velocity': note.velocity,
                 'relative_frames': ages.tolist(),
                 'cutoffs_hz': [
-                    filter_oracle.cutoffs(f, note.key, note.velocity / 127, RATE, RATE)[
-                        ages
-                    ].tolist()
-                    for f in profile.filters
+                    filter_oracle.profile_cutoffs(
+                        profile, i, note.key, note.velocity / 127, RATE, RATE
+                    )[ages].tolist()
+                    for i in range(len(profile.filters))
                 ],
             }
         )
-        if profile.attack or any(f.lfo_frequency for f in profile.filters):
+        if (
+            profile.attack
+            or profile.envelope is not None
+            or any(f.lfo_frequency for f in profile.filters)
+        ):
             continue
         start = note.tick * 25
         source = soundfile.read(folder / 'a.wav', always_2d=True)[0]

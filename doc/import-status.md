@@ -115,6 +115,14 @@ expressed in the route; the generic MIDI converter is unchanged. Unsmoothed
 continuous bend supports signed asymmetric ranges, held notes and part-local
 state. Stepped/smoothed bend and mixed channel ranges remain diagnosed.
 
+Basic first-filter `fileg_*` DAHDSR, start level and signed depth now import with
+`filter_envelope_response="portable_exponential"`. The shared stage captures
+entry/release levels and resolves to ordinary curved/linear segments, with
+snapshot continuation in Python and Rust and named-modulation support in enge.
+The explicit continuous convention retains known sfizz sample/block-boundary
+differences. Combined cutoff bounds include keyboard, velocity, LFO and envelope
+routes. Richer modifiers and export remain diagnosed.
+
 Local reads snapshot samples before inspecting their hash, decoded metadata and
 embedded-loop information, so compilation uses one verified asset version.
 `safaz.reader.package` copies an SFZ and its samples into a verified package;

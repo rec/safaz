@@ -1,10 +1,20 @@
 # Portable filter-envelope proposal
 
-Status: design and integration review completed on 2026-11-02; implementation
-was subsequently deferred by the user. This document preserves the research
-and proposed contract, not an implemented feature. Remaining implementation
-work and the approval boundary are in [the plan](../plan/filter-envelope.md).
-The source revisions and adapter observations below describe that review date.
+Status: the user approved implementation on 2026-11-14. The bounded shared stage,
+Python/Rust evaluation, named enge modulation integration and explicit safaz
+mapping are implemented; qualification is recorded in
+[findings](../reference_test/findings.md). This document preserves the original
+research and design rationale. Source revisions and adapter observations in the
+historical review below describe 2026-11-02, not today's source layout.
+
+The implemented convention resolves each captured phase once, rounding derived
+durations to nearest nanoseconds with ties to even and storing the resolved
+segments in continuation state. Rust frame hosts convert after rounding.
+Ordinary Segment interpolation is reused. The first version excludes normalized
+markers, repeated playback, indefinite holds and nesting in Stages. enge exposes
+the stage through named modulation Envelopes; its voice-amplitude policy rejects
+captured stages. The current SFZ contract is in
+[conversion](conversion.md#filter-envelopes).
 
 ## Problem and evidence
 

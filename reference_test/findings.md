@@ -1,5 +1,49 @@
 # Initial reference findings
 
+## Captured filter-envelope implementation, 2026-11-14
+
+The approved bounded implementation now spans uFor `8046380`, enveLFO
+`ea35332` and enge `af2c476`. safaz pins those revisions and exposes the explicit
+`filter_envelope_response="portable_exponential"` import convention. The default
+continues to diagnose active filter envelopes. The eight basic `fileg_*` fields
+map to a named voice modulation Envelope and a signed exponential cutoff route.
+Combined key, velocity, LFO and envelope cutoff bounds are checked together.
+
+The generic stage captures its incoming level, resolves the threshold crossing
+and terminal fade once per phase, and retains ordinary resolved segments in
+continuation state. Derived durations round to nearest nanoseconds, ties to
+even, before conversion to a native frame clock. Python and Rust share
+conformance vectors; enge tests cover release during delay, attack and sustain,
+partitioned rendering and JSON snapshot restoration, using two-second 48 kHz
+WAVs. Voice-amplitude integration, effects, nested Stages and repeated envelopes
+remain outside this bounded implementation.
+
+Local verification: uFor **1,598 passed**; enveLFO **217 passed** plus its Rust
+core tests; enge **3,466 passed, 29 skipped** with one development-tool collection
+error subsequently fixed and verified by its six passing tests. The final enge
+focused run passes all **12** captured-envelope and development-tool cases.
+safaz's **399** unit tests pass. Changed Python passes Ruff, formatting, type
+checking and pyupgrade; Rust formatting and diff checks pass.
+
+Eight new reference profiles exercise release during delay, attack, decay and
+sustain, negative depth, zero release, free-running decay, and combined cutoff
+modulation. Both installed-wheel backends pass all **48** local native assertions
+against independent continuous equations. Maximum waveform residuals range from
+`1.793833696951199e-6` to `2.0479600224145355e-6`, below the unchanged
+`2/32768 + 2e-6` limit. The **48** external assertions were skipped locally
+because no sfizz build was configured. Generated evidence is in
+`/tmp/safaz-filter-envelope-native-20261114`; these WAVs and reports are disposable
+outputs, and all fixture generation and measurement code is tracked.
+
+This establishes the portable convention, not sample-exact sfizz equivalence.
+The pinned source advances envelopes before output, retains a pre-crossing
+release level and observes some decay transitions at processing boundaries.
+The portable convention uses continuous, block-independent crossings and
+immediate release from the observed value, including during onset delay.
+The dedicated three-platform run will retain and classify these differences;
+sfizz `f5c6e29f23b8057867c08e88f5f6ac6738baa30b` and all existing tolerances
+remain unchanged.
+
 The harness is implemented, but baseline audio equivalence is **not established**.
 The envelope and sample-velocity binding blockers are fixed in enge. Both
 backends now complete every baseline render and match the authored oracle;

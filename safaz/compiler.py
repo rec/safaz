@@ -28,6 +28,7 @@ from ufor.samples.metadata import AudioMetadata
 from ufor.streams import AudioType
 from ufor.time import Rate, Timebase
 
+from .filter_envelope import filter_envelope
 from .model import (
     ParsedOpcode,
     ParsedRegion,
@@ -66,6 +67,7 @@ def compile_instrument(
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
     filter_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
+    filter_envelope_response: Literal['diagnose', 'portable_exponential'] = 'diagnose',
     pitch_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
     amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
     pitch_bend_response: Literal['diagnose', 'sfizz_symmetric'] = 'diagnose',
@@ -80,6 +82,10 @@ def compile_instrument(
         raise ValueError(f'Unknown SFZ filter response: {filter_response}')
     if filter_lfo_response not in ('diagnose', 'sfizz_triangle'):
         raise ValueError(f'Unknown SFZ filter LFO response: {filter_lfo_response}')
+    if filter_envelope_response not in ('diagnose', 'portable_exponential'):
+        raise ValueError(
+            f'Unknown SFZ filter envelope response: {filter_envelope_response}'
+        )
     if pitch_lfo_response not in ('diagnose', 'sfizz_parabolic'):
         raise ValueError(f'Unknown SFZ pitch LFO response: {pitch_lfo_response}')
     if amplitude_lfo_response not in ('diagnose', 'sfizz_parabolic'):
@@ -171,6 +177,7 @@ def compile_instrument(
                 output_timebase.rate.numerator / output_timebase.rate.denominator,
                 filter_response,
                 filter_lfo_response,
+                filter_envelope_response,
                 pitch_lfo_response,
                 amplitude_lfo_response,
                 binding is not None,
@@ -589,6 +596,7 @@ def _slot(
     output_rate: float,
     filter_response: Literal['diagnose', 'sfizz_rbj'],
     filter_lfo_response: Literal['diagnose', 'sfizz_triangle'],
+    filter_envelope_response: Literal['diagnose', 'portable_exponential'],
     pitch_lfo_response: Literal['diagnose', 'sfizz_parabolic'],
     amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'],
     midi_available: bool,
@@ -901,6 +909,15 @@ def _slot(
         )
         if r is not None
     ]
+    envelope = filter_envelope(
+        values,
+        declarations,
+        output_rate,
+        filter_envelope_response,
+        control_trigger is not None,
+        any(f.name == 'sfz-filter-1' for f in filters),
+        unimplemented,
+    )
     filter_parameters, filter_routes = _filter_tracking_modulation(
         values,
         declarations,
@@ -909,9 +926,26 @@ def _slot(
         output_rate,
         control_trigger is not None,
         filter_lfo_response,
+        envelope,
         unimplemented,
     )
     parameters.extend(filter_parameters)
+    if envelope_routes := [r for r in filter_routes if r.source == 'filter-envelope']:
+        assert envelope is not None
+        generators['sfz-filter-envelope'] = envelope
+        sources.append(
+            modulation.Source(
+                name='filter-envelope', scope='voice', minimum=0, maximum=1
+            )
+        )
+        bindings.append(
+            processing.GeneratorBinding(
+                name='filter-envelope',
+                reference='sfz-filter-envelope',
+                release_timing=processing.ReleaseTiming.voice,
+            )
+        )
+        routes.extend(envelope_routes)
     if lfo_routes := [r for r in filter_routes if r.source == 'filter-lfo']:
         oscillator = triangle_lfo(values, 'fillfo', output_rate)
         generators['sfz-filter-lfo'] = oscillator
@@ -1401,6 +1435,7 @@ def _filter_tracking_modulation(
     output_rate: float,
     control_triggered: bool,
     filter_lfo_response: Literal['diagnose', 'sfizz_triangle'],
+    envelope: envelfo.Envelope | None,
     unimplemented: list[UnimplementedFeature],
 ) -> tuple[list[modulation.Parameter], list[modulation.Route]]:
     parameters: list[modulation.Parameter] = []
@@ -1496,6 +1531,24 @@ def _filter_tracking_modulation(
                 )
             )
         if index == 1:
+            if envelope is not None and filter is not None:
+                depth = float(values['fileg_depth'])
+                candidates.append(
+                    modulation.Route(
+                        name='envelope-filter-cutoff',
+                        source='filter-envelope',
+                        target=modulation.Target(
+                            name=f'filter-{filter.name}', parameter='cutoff_hz'
+                        ),
+                        operation=modulation.Operation.multiply,
+                        unit=modulation.Unit.ratio,
+                        interpolation=modulation.Interpolation.exponential,
+                        points=[
+                            modulation.Point(input=0, amount=1),
+                            modulation.Point(input=1, amount=2 ** (depth / 1200)),
+                        ],
+                    )
+                )
             lfo_route = _filter_lfo_modulation(
                 values,
                 declarations,
@@ -1520,6 +1573,8 @@ def _filter_tracking_modulation(
                     if route.source == 'key'
                     else velocity_name
                     if route.source == 'velocity'
+                    else 'fileg_depth'
+                    if route.source == 'filter-envelope'
                     else 'fillfo_depth'
                 )
                 _add_unimplemented(
@@ -1882,8 +1937,10 @@ def _velocity_envelope_durations(
         opcode = f'ampeg_vel2{name}'
         if opcode not in values:
             continue
-        segments = definition.segments if phase == 'on' else definition.release
-        duration = segments[index].duration
+        parts = definition.segments if phase == 'on' else definition.release
+        segment = parts[index]
+        assert isinstance(segment, segments.Segment)
+        duration = segment.duration
         assert duration is not None
         base = float(duration)
         amount = _number(values[opcode], opcode)

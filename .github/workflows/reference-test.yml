@@ -35,7 +35,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
       - name: Install locked reference dependencies
-        run: uv sync --frozen --group reference
+        run: uv sync --frozen --group reference --no-editable
       - name: Select macOS reference toolchain
         if: runner.os == 'macOS'
         env:

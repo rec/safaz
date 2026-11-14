@@ -6,7 +6,7 @@ Generated from `safaz.registry` using the [SFZ Format catalog](https://sfzformat
 
 Numeric `polyphony` imports as a group-scoped voice pool using oldest-immediate retirement. By default, the instrument is retained with a diagnostic; `polyphony_overflow="oldest_immediate"` accepts the choice. Conflicting limits, legato values, and limits that may reject simultaneous layers remain diagnosed.
 
-Static two-pole `lpf_2p`, `hpf_2p`, `bpf_2p`, and `brf_2p` filters require `filter_response="sfizz_rbj"` to accept the verified sfizz static response. Without that choice, the filter is omitted with a diagnostic. `fil_type`/`cutoff`/`resonance` and their second-filter counterparts map to ordered native filters with Q = 10^(resonance/20). `fil_keytrack`/`fil_keycenter` and their second-filter counterparts map exact integer-key cutoff ratios over each region's playable keys. Tracking is 0-1200 cents per key, with center key 60 by default. `fil_veltrack`/`fil2_veltrack` map exact continuous exponential velocity ratios from -9600 to 9600 cents. Keyboard and velocity ratios multiply; an out-of-range combination retains only the static filter. Controller and release-trigger velocity tracking remain diagnosed. Unverified tracking and tracked cutoff outside the verified range retain the static filter with a diagnostic. Declared filters without cutoff, explicit zero, unsupported types, other modulation, and cutoff outside the unclamped native/output-rate bounds remain diagnosed. Accepted static responses use native `filter_order=after_amplitude` to match the sfizz voice pipeline. Basic first-filter LFOs additionally require `filter_lfo_response="sfizz_triangle"`: fixed frequency and signed depth use a voice-local triangle starting at zero rising after its delay. Fade scales the signal before cutoff exponentiation. Nonordinary triggers remain diagnosed. Combined cutoff modulation outside bounds retains only the static filter. Export is unsupported.
+Static two-pole `lpf_2p`, `hpf_2p`, `bpf_2p`, and `brf_2p` filters require `filter_response="sfizz_rbj"` to accept the verified sfizz static response. Without that choice, the filter is omitted with a diagnostic. `fil_type`/`cutoff`/`resonance` and their second-filter counterparts map to ordered native filters with Q = 10^(resonance/20). `fil_keytrack`/`fil_keycenter` and their second-filter counterparts map exact integer-key cutoff ratios over each region's playable keys. Tracking is 0-1200 cents per key, with center key 60 by default. `fil_veltrack`/`fil2_veltrack` map exact continuous exponential velocity ratios from -9600 to 9600 cents. Keyboard and velocity ratios multiply; an out-of-range combination retains only the static filter. Controller and release-trigger velocity tracking remain diagnosed. Unverified tracking and tracked cutoff outside the verified range retain the static filter with a diagnostic. Declared filters without cutoff, explicit zero, unsupported types, other modulation, and cutoff outside the unclamped native/output-rate bounds remain diagnosed. Accepted static responses use native `filter_order=after_amplitude` to match the sfizz voice pipeline. Basic first-filter LFOs additionally require `filter_lfo_response="sfizz_triangle"`: fixed frequency and signed depth use a voice-local triangle starting at zero rising after its delay. Fade scales the signal before cutoff exponentiation. Nonordinary triggers remain diagnosed. Combined cutoff modulation outside bounds retains only the static filter. Export is unsupported. First-filter envelopes additionally require `filter_envelope_response="portable_exponential"`: fixed DAHDSR/start and signed depth use captured exponential approaches and terminal fades. The convention uses continuous crossings, rather than sfizz sample/block threshold observation. Combined modulation must stay within cutoff bounds. Only ordinary note-on triggers are supported; richer modifiers and export remain diagnosed.
 
 Pitch LFOs require `pitch_lfo_response="sfizz_parabolic"`. Fixed frequency (0-20 Hz), signed depth (-1200 to 1200 cents), delay and fade use the delayed zero-rising parabolic sine approximation. Pitch, key and velocity contributions add in cents. Other triggers and export remain diagnosed.
 
@@ -211,14 +211,14 @@ Pitch bend requires an explicit MIDI binding and `pitch_bend_response="sfizz_sym
 | Opcode | `fil2_keytrack` | SFZ v2 | ambiguous |
 | Opcode | `fil2_type` | SFZ v2 | ambiguous |
 | Opcode | `fil2_veltrack` | SFZ v2 | ambiguous |
-| Opcode | `fileg_attack` | SFZ v1 | new_model |
-| Opcode | `fileg_decay` | SFZ v1 | new_model |
-| Opcode | `fileg_delay` | SFZ v1 | new_model |
-| Opcode | `fileg_depth` | SFZ v1 | new_model |
-| Opcode | `fileg_hold` | SFZ v1 | new_model |
-| Opcode | `fileg_release` | SFZ v1 | new_model |
-| Opcode | `fileg_start` | SFZ v1 | new_model |
-| Opcode | `fileg_sustain` | SFZ v1 | new_model |
+| Opcode | `fileg_attack` | SFZ v1 | ambiguous |
+| Opcode | `fileg_decay` | SFZ v1 | ambiguous |
+| Opcode | `fileg_delay` | SFZ v1 | ambiguous |
+| Opcode | `fileg_depth` | SFZ v1 | ambiguous |
+| Opcode | `fileg_hold` | SFZ v1 | ambiguous |
+| Opcode | `fileg_release` | SFZ v1 | ambiguous |
+| Opcode | `fileg_start` | SFZ v1 | ambiguous |
+| Opcode | `fileg_sustain` | SFZ v1 | ambiguous |
 | Opcode | `fillfo_delay` | SFZ v1 | ambiguous |
 | Opcode | `fillfo_depth` | SFZ v1 | ambiguous |
 | Opcode | `fillfo_depth_onccN` | SFZ v2 | controller_binding |

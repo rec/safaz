@@ -2,6 +2,7 @@
 
 from typing import Literal
 
+import filter_envelope_oracle
 import numpy as np
 from pydantic import BaseModel
 
@@ -22,6 +23,7 @@ class FilterSpec(BaseModel, frozen=True):
 class FilterProfile(BaseModel, frozen=True):
     filters: list[FilterSpec]
     attack: float = 0
+    envelope: filter_envelope_oracle.EnvelopeProfile | None = None
 
 
 def declarations(profile: FilterProfile) -> str:
@@ -50,6 +52,8 @@ def declarations(profile: FilterProfile) -> str:
             result.extend(
                 [f'fillfo_delay={spec.lfo_delay:g}', f'fillfo_fade={spec.lfo_fade:g}']
             )
+    if profile.envelope is not None:
+        result.append(filter_envelope_oracle.declarations(profile.envelope))
     return ' '.join(result)
 
 
@@ -70,6 +74,26 @@ def cutoffs(
         + spec.lfo_depth * triangle
     )
     return spec.cutoff * 2 ** (cents / 1200)
+
+
+def profile_cutoffs(
+    profile: FilterProfile,
+    index: int,
+    key: int,
+    velocity: float,
+    frames: int,
+    rate: int,
+) -> np.ndarray:
+    frequency = cutoffs(profile.filters[index], key, velocity, frames, rate)
+    if index == 0 and profile.envelope is not None:
+        frequency *= 2 ** (
+            profile.envelope.depth
+            * filter_envelope_oracle.levels(
+                profile.envelope, np.arange(frames) / rate, rate
+            )
+            / 1200
+        )
+    return frequency
 
 
 def render(
@@ -95,9 +119,19 @@ def render(
     )
     if not before_amplitude:
         result *= amplitude[:, None]
-    for spec in profile.filters:
+    if profile.envelope is not None:
+        age = np.arange(len(audio)) / rate
+        progress = np.clip(
+            (age - profile.envelope.release_at) / profile.envelope.amplitude_release,
+            0,
+            1,
+        )
+        amplitude = 1 - np.expm1(-5 * progress) / np.expm1(-5)
+        result *= amplitude[:, None]
+    for index, spec in enumerate(profile.filters):
         q = 10 ** (spec.resonance / 20)
-        g = np.tan(np.pi * cutoffs(spec, key, velocity, len(audio), rate) / rate)
+        frequency = profile_cutoffs(profile, index, key, velocity, len(audio), rate)
+        g = np.tan(np.pi * frequency / rate)
         d = 1 + g / q + g * g
         s1 = np.zeros(audio.shape[1])
         s2 = np.zeros(audio.shape[1])
