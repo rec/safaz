@@ -6,6 +6,7 @@ from pathlib import PurePosixPath
 from typing import Literal
 
 from ufor import envelfo, modulation, segments
+from ufor.approach import ExponentialApproach
 from ufor.assets import AudioDescription, ContentIdentity, RelativeFileLocation
 from ufor.control import Scope
 from ufor.interface import AudioBinding, EventType, Input, Output, PerformanceBinding
@@ -53,6 +54,7 @@ from .registry import (
     INITIAL_CONTROLLER,
     OPCODE_ALIASES,
 )
+from .release import release_stage
 
 
 def compile_instrument(
@@ -574,10 +576,8 @@ def amplitude_envelope(values: dict[str, str]) -> envelfo.Envelope:
             )
         ],
         release=[
-            segments.Segment(
-                duration=Fraction(values.get('ampeg_release', '0.001')),
-                to=0,
-                curve=-5,
+            release_stage(
+                _number(values.get('ampeg_release', '0.001'), 'ampeg_release')
             )
         ],
     )
@@ -869,9 +869,7 @@ def _slot(
             )
             bindings.append(processing.EventBinding(name='velocity', kind='velocity'))
         routes.append(pitch_velocity)
-    for parameter_name, base, amount in _velocity_envelope_durations(
-        values, slot_envelope
-    ):
+    for parameter_name, base, amount in _velocity_envelope_times(values, slot_envelope):
         if not any(source.name == 'velocity' for source in sources):
             sources.append(
                 modulation.Source(name='velocity', scope='voice', minimum=0, maximum=1)
@@ -1923,7 +1921,7 @@ def _velocity_pitch_modulation(values: dict[str, str]) -> modulation.Route | Non
     )
 
 
-def _velocity_envelope_durations(
+def _velocity_envelope_times(
     values: dict[str, str], definition: envelfo.Envelope
 ) -> list[tuple[str, float, float]]:
     result: list[tuple[str, float, float]] = []
@@ -1939,16 +1937,22 @@ def _velocity_envelope_durations(
             continue
         parts = definition.segments if phase == 'on' else definition.release
         segment = parts[index]
-        assert isinstance(segment, segments.Segment)
-        duration = segment.duration
-        assert duration is not None
-        base = float(duration)
         amount = _number(values[opcode], opcode)
         if not -100 <= amount <= 100:
             raise ValueError(f'{opcode} must be between -100 and 100')
+        if isinstance(segment, ExponentialApproach):
+            base = _number(values.get('ampeg_release', '0.001'), 'ampeg_release')
+            parameter = f'{phase}-{index}-time_constant'
+        else:
+            assert isinstance(segment, segments.Segment)
+            base = float(segment.duration)
+            parameter = f'{phase}-{index}-duration'
         if base + amount < 0:
             raise ValueError(f'{opcode} makes envelope duration negative')
-        result.append((f'{phase}-{index}-duration', base, amount))
+        if isinstance(segment, ExponentialApproach):
+            base /= 9
+            amount /= 9
+        result.append((parameter, base, amount))
     return result
 
 

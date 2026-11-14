@@ -195,6 +195,8 @@ ENVELOPE_ISOLATION_PROFILES = [
         ),
     ),
     ('subthreshold-release', EnvelopeProfile(start=0.00001, release_at=0.05)),
+    ('amplifier-zero-release', EnvelopeProfile(amplitude_release=0)),
+    ('amplifier-minimum-release', EnvelopeProfile(amplitude_release=0.001)),
     (
         'zero-decay',
         EnvelopeProfile(start=1, delay=0, attack=0, hold=0, decay=0, release_at=0.8),

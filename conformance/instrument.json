@@ -149,9 +149,14 @@
           ],
           "release": [
             {
-              "duration": "2/5 s",
-              "curve": -5.0,
-              "to": 0.0
+              "kind": "exponential_approach",
+              "asymptote": 0.0,
+              "time_constant": 0.044444444444444446,
+              "minimum_time_constant": 0.0006666666666666666,
+              "threshold": 0.0001,
+              "transition_to": 0.0,
+              "transition_seconds": 0.05,
+              "minimum_transition_distance": 0.0001
             }
           ],
           "hold": true,

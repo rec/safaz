@@ -15,7 +15,9 @@ shape mapping, release-trigger distinctions, half-open loop endpoints, and
 basic inheritance. Pure parsing, compilation and export now live in
 `safaz`; its reader resolves paths and supplies measured asset metadata.
 Key-dependent amplitude, partial pitch-key tracking, pitch-by-velocity, and
-velocity-dependent amplifier envelope durations are also imported.
+velocity-dependent amplifier envelope times are also imported. Amplifier release
+uses the captured SFZ exponential law, positive time floor and terminal fade;
+its velocity route targets the time constant before that floor.
 Key and velocity crossfades preserve the separate mapping eligibility ranges;
 deterministic SFZ random ranges have their own selection condition. The
 documented `lovel` default of MIDI velocity 1 is preserved. Finite `loop_count`

@@ -121,12 +121,9 @@ def render(
         result *= amplitude[:, None]
     if profile.envelope is not None:
         age = np.arange(len(audio)) / rate
-        progress = np.clip(
-            (age - profile.envelope.release_at) / profile.envelope.amplitude_release,
-            0,
-            1,
+        amplitude = filter_envelope_oracle.release(
+            1, age - profile.envelope.release_at, profile.envelope.amplitude_release
         )
-        amplitude = 1 - np.expm1(-5 * progress) / np.expm1(-5)
         result *= amplitude[:, None]
     result = apply_filters(
         result,

@@ -41,8 +41,11 @@ tracking and the known triangle/parabolic LFO convention are separate effects.
 9. Portable amplifier envelope level.
 
 These are diagnostic signals, including DC control values. `amplifier.wav`
-separately contains the portable and sfizz amplifier laws applied before the
-same TPT filter and portable cutoff trajectory. Reports measure each factor
+separately contains three channels: the portable amplifier law, the actual
+sfizz amplifier, and the source-defined prediction that advances the same law
+by one sample before output. Each is applied before the same TPT filter and
+portable cutoff trajectory. The prediction does not change native timing or
+the original acceptance comparison. Reports measure each factor
 independently; their maximum errors are not additive. Constant-cutoff controls
 check that the filter difference disappears when modulation is removed.
 The imported filter and amplifier envelopes are also observed at 2,000 evenly

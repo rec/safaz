@@ -705,6 +705,10 @@ def test_sfz_reports_unrepresentable_shared_envelope_features(
     changes: dict[str, object],
 ) -> None:
     raw = fixture()
+    # These are valid generic shapes; captured releases prohibit some of them.
+    raw['body']['slots'][0]['envelope']['release'] = [
+        {'duration': '2/5 s', 'to': 0, 'curve': -5}
+    ]
     raw['body']['slots'][0]['envelope'].update(changes)
     result = exporter.write(SampleInstrumentScore.model_validate(raw))
     assert not result.complete

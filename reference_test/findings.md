@@ -1,5 +1,84 @@
 # Initial reference findings
 
+## Amplifier-release mapping correction, 2026-11-14
+
+The amplifier compatibility gap identified below is now corrected at the SFZ
+import boundary. `ampeg_release=R` captures the current gain `L`, approaches zero
+with time constant `max(R, 0.006)/9` for positive `R`, and switches at `1e-4` to
+the 50 ms terminal fade. Zero release skips the exponential stage but retains
+the fade; starting below the threshold shortens that fade in proportion to the
+entry level. Velocity release modulation targets the time constant before its
+positive floor. The exporter recognizes this captured shape, and diagnoses the
+former normalized fixed-duration release as unrepresentable.
+
+This changes imported SFZ playback. Existing authored native release curves,
+onset/decay mappings, sfizz and every existing acceptance tolerance are unchanged.
+uFor expresses the positive time-constant floor; enveLFO evaluates the same
+captured stage in Python and Rust. enge's main amplitude adapters support that
+stage for synth, sampler, FM and noise. Prepared command and continuation storage
+preserves the native callback contract: the focused 18-test allocation-audit run
+recorded 100 successful callbacks and zero allocations, reallocations or frees.
+The evidence covers main amplitude commands, not all named-generator/Patch paths.
+
+The direct frozen-class comparison retains enge's event/sample convention. At
+100 ms, the isolated gain maximum falls from **0.21016455** to **0.001873255**;
+the attack-release profile's amplifier-only filtered audio maximum falls from
+**0.01482387** to **0.0001193832**. This remaining error still exceeds the
+unchanged **0.00006303515625** waveform limit. Frozen sfizz advances the release
+before output; a separate source-defined one-sample advance prediction reduces
+that audio residual to **1.7925e-7**. No offset is applied to acceptance or native
+playback. With a 1 ms authored release, the 6 ms positive floor makes this sample
+convention more visible: gain error **0.030766785**, filtered audio error
+**0.0014568163**, predicted residual **1.57685e-7**. Zero release gives filtered
+audio error **3.19579e-5** and predicted residual **2.49072e-6**. These are
+256-frame direct-class measurements with the same source and TPT filter.
+
+The dynamic filter realization, filter-envelope event conventions, player MIDI
+clock/sample traversal and intermittent frozen-source cutoff documented below
+remain separate factors. The correction does not establish waveform equivalence
+and does not reclassify deliberate native conventions as sfizz bugs.
+
+Qualification on macOS arm64 used a noneditable candidate enge wheel built from
+the isolated integration worktree. safaz's **414 unit tests pass**. Fourteen
+imported-control profiles and **42 direct probes** cover blocks 64, 256 and 257;
+all 42 amplifier advance predictions pass, with maximum audio error
+**2.49072e-6**. Imported amplifier control error is at most **2.77556e-15**.
+The eight-profile external filter batch records **48 native checks passed,
+32 external waveform assertions failed and 16 static-response checks skipped**;
+maximum native/oracle error is **2.60397e-8**. This includes the combined LFO case,
+whose independent native triangle convention is retained.
+The full candidate native reference matrix reports **389 passed, 366 skipped**;
+the skips require an external renderer/probe or apply only to static filters.
+
+The seven full-player reconstructions record **six passed and one failed**.
+Successful predictions differ from actual frozen output by at most **4.67971e-5**.
+The failed sustain-release render cuts its first note off early: last audible
+frame **8,542**, versus native **42,448**, while its second note plays through.
+The first onset is frame 274, placing this near the known 8,192-source-frame
+cutoff plus filter tail. Prediction error is **0.0719670**. This render is retained
+without retry; it is separate from the release mapping. The combined run totals
+**54 passed, 33 failed, 16 skipped, 323 deselected**.
+
+Disposable generated evidence is under
+`/tmp/safaz-amplitude-release-law-20261114` (direct traces and three-channel
+amplifier WAVs) and `/tmp/safaz-amplitude-candidate-20261114` (ordinary comparison
+reports, WAVs and full-player reconstructions), with the latter's JUnit report
+alongside the directory. The tracked probe/test commands reproduce these outputs;
+sfizz remains clean at `f5c6e29f23b8057867c08e88f5f6ac6738baa30b`.
+The candidate native matrix and JUnit output use
+`/tmp/safaz-amplitude-native-candidate-20261114` and its adjacent XML file.
+
+Final qualification replaces the candidate with the normal noneditable wheel
+from the committed lock: uFor `fcf6f59`, enveLFO `181bad8`, enge `2c73c32`.
+The locked safaz unit suite again reports **414 passed**. All **62 targeted
+native filter and imported-control checks pass**; artifacts and JUnit are under
+`/tmp/safaz-amplitude-locked-20261114` and its adjacent XML file. enge's full
+suite reports **3,505 passed, 29 skipped**, followed by **22 passing** release
+and newly landed de-esser tests together with allocation auditing. uFor's
+suite reports **1,613 passed**, enveLFO's Python suite **217 passed**, and the
+shared Rust snapshot/preallocated-command tests pass. Ruff, formatting, typing,
+pyupgrade and diff checks pass for the changed Python code.
+
 ## Filter-envelope isolation, 2026-11-14
 
 **No implementation defect was found in the bounded portable filter-envelope

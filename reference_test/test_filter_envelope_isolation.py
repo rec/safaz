@@ -68,14 +68,20 @@ def test_filter_envelope_isolation(
         source[:, None], [spec], [1000 * 2 ** (profile.depth * actual / 1200)], rate
     )[:, 0]
     # These four corners separate envelope values from filter realization.
-    progress = np.clip((age - profile.release_at) / profile.amplitude_release, 0, 1)
-    portable_amplitude = 1 - np.expm1(-5 * progress) / np.expm1(-5)
+    portable_amplitude = filter_envelope_oracle.release(
+        1, age - profile.release_at, profile.amplitude_release
+    )
+    # ADSREnvelope advances before emitting a release sample. This is a
+    # source-defined prediction, not an alignment search or acceptance offset.
+    sfizz_amplitude_prediction = filter_envelope_oracle.release(
+        1, age - profile.release_at + 1 / rate, profile.amplitude_release
+    )
     trajectory = 1000 * 2 ** (profile.depth * portable / 1200)
     amplifier_audio = [
         filter_oracle.apply_filters((source * a)[:, None], [spec], [trajectory], rate)[
             :, 0
         ]
-        for a in [portable_amplitude, trace[:, 3]]
+        for a in [portable_amplitude, trace[:, 3], sfizz_amplitude_prediction]
     ]
     soundfile.write(
         folder / 'amplifier.wav',
@@ -126,6 +132,9 @@ def test_filter_envelope_isolation(
                 'amplifier_only_tpt': harness.compare(
                     amplifier_audio[1][m], amplifier_audio[0][m]
                 ),
+                'amplifier_advance_prediction': harness.compare(
+                    amplifier_audio[1][m], amplifier_audio[2][m]
+                ),
                 'filter_only_portable': harness.compare(trace[m, 1], native[m]),
                 'filter_only_sfizz': harness.compare(trace[m, 2], native_actual[m]),
                 'combined': harness.compare(trace[m, 2], native[m]),
@@ -138,6 +147,7 @@ def test_filter_envelope_isolation(
     harness.write_json(folder / 'report.json', report)
     assert np.all(np.isfinite(channels))
     assert max(report['native_control'].values()) < 1e-10
+    assert harness.compare(amplifier_audio[1], amplifier_audio[2])['passed']
     if name == 'constant':
         assert np.max(np.abs(trace[:, 2] - native)) <= (
             harness.PCM_ERROR + harness.FLOAT_ERROR
@@ -321,8 +331,9 @@ def check_native_control(
     times = sorted(set([Fraction(i, 1000) for i in range(2000)] + [gate]))
     age = np.asarray([float(t) for t in times])
     expected = filter_envelope_oracle.levels(profile, age, harness.RATE)
-    progress = np.clip((age - profile.release_at) / profile.amplitude_release, 0, 1)
-    amplifier = 1 - np.expm1(-5 * progress) / np.expm1(-5)
+    amplifier = filter_envelope_oracle.release(
+        1, age - profile.release_at, profile.amplitude_release
+    )
     errors = {}
     for name, body, values in [
         ('maximum_error', slot.envelfos['sfz-filter-envelope'], expected),

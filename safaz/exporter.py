@@ -4,6 +4,7 @@ import json
 import math
 
 from ufor import base, envelfo, envelope, modulation, segments
+from ufor.approach import ExponentialApproach
 from ufor.assets import RelativeFileLocation
 from ufor.control import Clock, Scope
 from ufor.samples import controls, crossfade, enums, playback, processing, selection
@@ -678,7 +679,7 @@ def _envelope_opcodes(
         f'{path}.envelope' if slot.envelope is not None else 'body.settings.envelope'
     )
     finite = [s for s in value.segments if isinstance(s, segments.Segment)]
-    release = [s for s in value.release if isinstance(s, segments.Segment)]
+    release = [s for s in value.release if isinstance(s, ExponentialApproach)]
     initial = value.initial
     representable = (
         value.clock == Clock.seconds
@@ -698,8 +699,12 @@ def _envelope_opcodes(
         representable = (
             [s.to for s in finite[:3]] == [value.initial, 1, 1]
             and [s.curve for s in finite] == [0, 0, 0, -5]
-            and release[0].to == 0
-            and release[0].curve == -5
+            and release[0].asymptote == 0
+            and release[0].threshold == 0.0001
+            and release[0].transition_to == 0
+            and release[0].transition_seconds == 0.05
+            and release[0].minimum_transition_distance == 0.0001
+            and release[0].minimum_time_constant == 0.006 / 9
         )
     if not representable:
         _issue(
@@ -707,7 +712,7 @@ def _envelope_opcodes(
             envelope_path,
             value,
             'SFZ requires a seconds-based delay/attack/hold/decay envelope '
-            'with linear attack and exponential decay/release',
+            'with linear attack, curved decay and a captured exponential release',
         )
         return []
     assert isinstance(initial, float)
@@ -721,7 +726,7 @@ def _envelope_opcodes(
     values['ampeg_sustain'] = finite[-1].to * 100
     if initial:
         values['ampeg_start'] = initial * 100
-    values['ampeg_release'] = float(release[0].duration)
+    values['ampeg_release'] = release[0].time_constant * 9
     return [Opcode(name=n, value=_number_text(v)) for n, v in values.items()]
 
 

@@ -31,10 +31,23 @@ supplied by the caller and produces a `SampleInstrumentScore` where possible.
 All of these operations are pure. Unsupported opcodes retain source locations;
 missing or malformed required data fails explicitly.
 
-SFZ's fixed DAHDSR becomes four on-segments and a release segment. Delay/attack/
-hold curves are 0; decay/release are -5. SFZ decimal durations become exact
-fractions. Export accepts that representable shape and reports general envelopes
-as unsupported. Velocity response becomes the shared typed multiplier route.
+SFZ's DAHDSR becomes four on-segments and a captured release stage. Delay/attack/
+hold curves are 0; decay retains curve -5. Release captures the observed level,
+approaches zero with time constant `ampeg_release/9` (positive values have a
+`0.006/9` second floor), stops at `1e-4`, then fades linearly over 50 ms.
+A starting level below `1e-4` skips the approach and shortens the fade in
+proportion to that level. Zero release skips the approach but retains the fade.
+Derived durations round once to nanoseconds, as defined by the shared stage;
+native event/sample conventions remain unchanged. The mapping implements the
+frozen sfizz release law, not its block-sensitive event placement or float
+recurrence. Existing attack and decay conventions are unchanged.
+`ampeg_vel2release` targets the stage's latched time constant before its positive
+floor, preserving zero at either velocity endpoint. Other velocity-envelope
+times retain their existing duration targets.
+Export accepts this representable shape and reports other native release laws
+as unsupported, including the former normalized release curve. Other SFZ decimal
+durations remain exact fractions. Velocity response becomes the shared typed
+multiplier route.
 SFZ inclusive endpoints become exclusive native slice/loop ends and reverse on
 export. Imported channel maps are identity or the standard mono-to-stereo law.
 Each imported instrument selects `body.pan_law="sfizz"`. Mono `pan` and stereo

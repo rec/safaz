@@ -264,7 +264,7 @@ The filter matrix also includes eight captured-envelope profiles: release
 during delay, attack, decay and sustain; negative depth; zero release; free
 running; and combined key/velocity/LFO/envelope modulation. They use the
 explicit `portable_exponential` convention. The independent oracle solves
-continuous level equations, applies the existing authored amplifier release,
+continuous level equations, applies the captured SFZ amplifier release,
 and feeds cutoff trajectories into the independent trapezoidal filter solve.
 The new fixture uses a held sample so release modulation remains observable.
 Existing fixtures and all comparison thresholds remain unchanged.
@@ -275,9 +275,13 @@ not establish sfizz equivalence: its sample advance, terminal capture and
 block-observed threshold behavior differ from the explicit portable convention.
 
 The optional [direct-class isolation client](envelope_probe/README.md) separates
-envelope values, dynamic filter realization and the existing amplifier release
-law, and reconstructs the frozen player's output without fitted gains or offsets.
+envelope values, dynamic filter realization and amplifier release timing,
+and reconstructs the frozen player's output without fitted gains or offsets.
 It preserves the original acceptance measurements and any truncated render.
+Fourteen direct profiles at blocks 64, 256 and 257 include zero amplifier
+release and the 6 ms positive release floor. The amplifier diagnostic predicts
+sfizz's update-before-output sample convention separately from the unchanged
+native/reference acceptance measurement.
 
 ## Additional work beyond the prompt
 

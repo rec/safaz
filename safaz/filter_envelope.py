@@ -9,6 +9,7 @@ from ufor.approach import ExponentialApproach
 
 from .model import ParsedOpcode, UnimplementedFeature
 from .parser import _add_unimplemented
+from .release import release_stage
 
 
 def filter_envelope(
@@ -59,16 +60,7 @@ def filter_envelope(
         _add_unimplemented(unimplemented, declarations['fileg_depth'], reason)
         return None
     start, sustain = settings['start'] / 100, settings['sustain'] / 100
-    release = ExponentialApproach(
-        asymptote=0.0,
-        threshold=0.0001,
-        transition_to=0.0,
-        time_constant=max(0.006, settings['release']) / 9
-        if settings['release']
-        else 0.0,
-        transition_seconds=0.05,
-        minimum_transition_distance=0.0001,
-    )
+    release = release_stage(settings['release'])
     rate = Fraction(output_rate)
     parts: list[segments.Segment | segments.IndefiniteSegment | ExponentialApproach] = [
         segments.Segment(

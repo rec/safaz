@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from pytest_regressions.file_regression import FileRegressionFixture
 from ufor import modulation
+from ufor.approach import ExponentialApproach
 from ufor.assets import AudioDescription, ContentIdentity, RelativeFileLocation
 from ufor.control import Scope
 from ufor.interface import (
@@ -84,9 +85,10 @@ def test_read_sfz_inheritance_and_common_opcodes(tmp_path: Path) -> None:
     assert soft.modulation.routes[0].points[64].amount == pytest.approx((64 / 127) ** 2)
     assert soft.modulation.routes[0].points[127].amount == 1
     assert soft.envelope.segments[1].duration == Fraction(1, 100)
-    assert soft.envelope.release[0].duration == Fraction(2, 5)
+    assert isinstance(soft.envelope.release[0], ExponentialApproach)
+    assert soft.envelope.release[0].time_constant == 0.4 / 9
     assert [s.curve for s in soft.envelope.segments] == [0, 0, 0, -5]
-    assert soft.envelope.release[0].curve == -5
+    assert soft.envelope.release[0].minimum_time_constant == 0.006 / 9
     assert loud.mapping.lowest_key == 62
     assert loud.mapping.highest_key == 62
     assert not loud.mapping.pitch_tracking
@@ -253,7 +255,8 @@ def test_read_sfz_loops_and_choke_groups(tmp_path: Path) -> None:
     assert result.instrument.body.slices[0].loop.start_frame == 10
     assert result.instrument.body.slices[0].loop.end_frame == 20
     assert result.instrument.body.slices[0].loop.mode == enums.LoopMode.until_release
-    assert first.envelope.release[0].duration == Fraction(1, 1000)
+    assert isinstance(first.envelope.release[0], ExponentialApproach)
+    assert first.envelope.release[0].time_constant == 0.001 / 9
     assert second.choke_group == 'sfz-group-1-normal'
     assert first.chokes[0].group == second.choke_group
     assert first.chokes[0].mode == enums.ChokeMode.release
@@ -279,7 +282,8 @@ def test_empty_default_path_and_release_no_loop(tmp_path: Path) -> None:
     )
     assert slot.trigger == enums.TriggerKind.logical_release
     assert slot.playback.mode == enums.PlaybackMode.one_shot
-    assert slot.envelope.release[0].duration == Fraction(1, 5)
+    assert isinstance(slot.envelope.release[0], ExponentialApproach)
+    assert slot.envelope.release[0].time_constant == 0.2 / 9
 
 
 def test_read_sfz_distinguishes_release_triggers(tmp_path: Path) -> None:
