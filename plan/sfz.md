@@ -13,7 +13,8 @@ spans uFor, enveLFO, enge and safaz. See [the design](../doc/filter-envelope-des
 
 ## Remaining feature priorities
 
-1. Filter-envelope qualification and separately scoped richer modifiers/export.
+1. Windows filter-envelope qualification after the reccy asset-import fix;
+   isolate remaining external differences and scope richer modifiers/export.
 2. Richer expressive controls: aftertouch, stepped/smoothed bend, controller
    curves, additional LFO shapes and controller modulation.
 3. Remaining articulation rules: release-region controller/keyswitch history,

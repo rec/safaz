@@ -40,9 +40,86 @@ The pinned source advances envelopes before output, retains a pre-crossing
 release level and observes some decay transitions at processing boundaries.
 The portable convention uses continuous, block-independent crossings and
 immediate release from the observed value, including during onset delay.
-The dedicated three-platform run will retain and classify these differences;
-sfizz `f5c6e29f23b8057867c08e88f5f6ac6738baa30b` and all existing tolerances
-remain unchanged.
+The dedicated three-platform run below retains these differences; sfizz
+`f5c6e29f23b8057867c08e88f5f6ac6738baa30b` and all existing tolerances remain
+unchanged.
+
+### Installed-wheel reference qualification
+
+The complete local native matrix reports **375 passed, 317 external-reference
+skips**, with zero failures/errors. Its 128 case/backend reports all pass their
+native/authored comparison. Evidence is retained under
+`/tmp/safaz-filter-envelope-full-native-20261114`.
+
+[Run 43600333721](https://github.com/rec/safaz/actions/runs/43600333721) tests
+safaz `586f0de0af88cf3d76bcbb4d1b9f4432025b8cbf` with non-editable installations:
+
+| Platform | Passed | Failed | Skipped | Errors |
+| --- | ---: | ---: | ---: | ---: |
+| Linux x86_64 | 407 | 213 | 72 | 0 |
+| macOS arm64 | 407 | 213 | 72 | 0 |
+| Windows x86_64 | 6 | 6 | 0 | 680 |
+
+Linux and macOS complete all 128 native renders; every authored comparison
+passes, including all existing cases. Their decoded float32 native WAV samples
+are identical across platforms. Container hashes differ, so the comparison uses
+FFmpeg's decoded PCM SHA-256, rather than whole-file hashes. The eight new
+profiles contribute **48 passes, 32 external waveform failures and 16
+inapplicable static-response skips** on each platform. The other 181 failures
+are the retained older comparison/repeatability categories. Corrected
+parabolic pitch/amplitude LFOs now have macOS comparison evidence too.
+
+For the new envelopes, normal sfizz/authored maximum errors range from
+`0.014912269911333133` to `0.029344978386185765`, well above the unchanged
+`6.303515625e-5` limit. Both new waveform assertions fail for every profile and
+backend. One macOS `filter-envelope-zero-release-native-256` reference render
+has a larger `0.07201005947368476` residual: its first note last exceeds the
+audibility threshold at frame **8,541**, versus **23,393** in Linux's normal
+reference render and **24,164** in the authored render. Its second note ends
+at frame **148,144**, matching the normal reference. This is consistent with
+the previously investigated intermittent preload cutoff plus filter/release
+tail; this run does not independently prove the thread interleaving. The bad
+render is retained, without retry or exclusion.
+
+The remaining differences are not all first-onset or cutoff effects. In the
+Linux attack-release case, the second note begins at the authored frame
+125,025 in both renderers. Inspecting the retained
+`reference-authored-difference.wav` with
+`ffmpeg -i FILE -af 'atrim=start_sample=125025:end_sample=137025,astats=metadata=0:reset=0' -f null -`
+gives a peak residual of **-39.340060 dBFS** before note-off. The following
+6,000-frame release window gives **-36.529125 dBFS**. These are diagnostic
+windows with no alignment or gain fitting; full-horizon failures remain the
+acceptance result. They contain the existing sample traversal/amplifier
+conventions as well as filter-envelope behavior, so their residuals do not
+isolate an envelope implementation bug. The declared continuous convention
+and existing triangle/parabolic filter-LFO difference are deliberate choices;
+attributing every residual to sfizz or to sample-update rounding would be
+unsupported. Isolating the remaining external differences is separate work.
+
+Repeated 256-frame sfizz renders agree in this invocation on all three
+platforms. The 64-frame comparison still fails: maximum difference is
+`0.10699462890625` on Linux/Windows and `0.10693359375` on macOS. The 257-frame
+comparison passes, at zero difference on Linux/Windows and one PCM16 step on
+macOS. This does not establish general reference repeatability.
+
+Windows builds the native dependencies and unmodified sfizz successfully, but
+the pinned reccy `b44b643832ce02ed16154c6e728bdfd0f0277c9d` asset import calls
+`os.open(root, os.O_RDONLY | os.O_DIRECTORY)` before rendering. Windows has no
+`os.O_DIRECTORY`, so `AttributeError` blocks all 128 native cases and their
+dependent reference fixtures. Three diagnostic cases and two pitch-bend checks
+also fail there; the sixth failure is the independent repeatability assertion.
+The six passes are measurement checks. Windows has **no native audio
+qualification**, and its pending case reports must not be counted as successful
+renders. This pre-existing reccy portability defect also affects old profiles;
+fixing that fifth repository and refreshing its pin requires separate scope.
+
+All three artifacts were downloaded to
+`/tmp/safaz-filter-envelope-ci-43600333721/{linux,macos,windows}`. They retain
+JUnit, inputs, manifests, WAVs where rendering completed, signed differences
+and compiler metadata. The tracked workflow retains uploads for 14 days.
+These directories and generated hashes are disposable evidence; no handwritten
+development code is stored there. Implementation, tests and reproducible
+generation commands are committed in the four owning repositories.
 
 The harness is implemented, but baseline audio equivalence is **not established**.
 The envelope and sample-velocity binding blockers are fixed in enge. Both
