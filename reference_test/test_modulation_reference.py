@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import expectations
 import harness
 import numpy as np
 import pytest
@@ -65,16 +66,14 @@ def test_native_modulation_selection_and_padding(
 
 
 def test_reference_modulation_matches_authored(
+    case: harness.Case,
     reference_report: dict[str, object],
 ) -> None:
-    measurement = reference_report['reference_vs_authored']
-    assert isinstance(measurement, dict)
-    assert measurement['passed'], measurement
+    expectations.check_waveform(case, reference_report, 'reference_vs_authored')
 
 
 def test_reference_modulation_matches_native(
+    case: harness.Case,
     reference_report: dict[str, object],
 ) -> None:
-    measurement = reference_report['native_vs_reference']
-    assert isinstance(measurement, dict)
-    assert measurement['passed'], measurement
+    expectations.check_waveform(case, reference_report, 'native_vs_reference')

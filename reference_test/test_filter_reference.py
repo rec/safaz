@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import expectations
 import filter_cases
 import filter_oracle
 import harness
@@ -96,16 +97,16 @@ def test_native_filter_response_and_processing_contract(
         )
 
 
-def test_reference_filter_waveform(reference_report: dict[str, object]) -> None:
-    measurement = reference_report['native_vs_reference']
-    assert isinstance(measurement, dict)
-    assert measurement['passed'], measurement
+def test_reference_filter_waveform(
+    case: harness.Case, reference_report: dict[str, object]
+) -> None:
+    expectations.check_waveform(case, reference_report, 'native_vs_reference')
 
 
-def test_reference_filter_matches_authored(reference_report: dict[str, object]) -> None:
-    measurement = reference_report['reference_vs_authored']
-    assert isinstance(measurement, dict)
-    assert measurement['passed'], measurement
+def test_reference_filter_matches_authored(
+    case: harness.Case, reference_report: dict[str, object]
+) -> None:
+    expectations.check_waveform(case, reference_report, 'reference_vs_authored')
 
 
 def test_reference_filter_response(reference_report: dict[str, object]) -> None:
@@ -116,8 +117,18 @@ def test_reference_filter_response(reference_report: dict[str, object]) -> None:
         pytest.skip(
             'Dynamic/order profiles use full-waveform assertions, not a static response'
         )
-    for measurement in measurements:
-        assert measurement['amplitude_passed'], measurement
+    authored = reference_report['authored_notes']
+    reference = reference_report['reference_notes']
+    assert isinstance(authored, list) and isinstance(reference, list)
+    cutoffs = []
+    for measurement, a, r in zip(measurements, authored, reference, strict=True):
+        if not measurement['amplitude_passed']:
+            assert expectations.preload_cutoff(a, r), measurement
+            cutoffs.append(r['expected_onset_frame'])
+    if cutoffs:
+        pytest.xfail(
+            f'Frozen sfizz: preload cutoff before response window at {cutoffs}'
+        )
 
 
 @pytest.mark.parametrize(

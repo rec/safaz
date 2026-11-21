@@ -495,7 +495,7 @@ def run_reference_case(
     report.update(
         reference_frames=len(reference),
         padding_frames=len(reference) - horizon,
-        reference_comparison='measured; failures remain failures',
+        reference_comparison='measured against unchanged limits; see pytest outcome',
         reference_vs_authored=compare(reference[:horizon], expected),
         reference_notes=measure_notes(case, reference[:horizon]),
         native_vs_reference=compare(native, reference)
