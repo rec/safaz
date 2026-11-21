@@ -1,5 +1,66 @@
 # Initial reference findings
 
+## Windows asset loading and locked reference rerun, 2026-11-21
+
+reccy `4757c0a` supplies a Windows asset opener for the path that previously
+failed on `os.O_DIRECTORY`. Windows opens each asset component relative to an
+already open directory handle and checks the opened object for reparse points,
+including symlinks and junctions. POSIX uses its existing directory-fd walk.
+The reccy suite passed 629 tests locally, including nested binary import and
+file and directory symlink rejection. safaz passed 414 tests with the new pin.
+
+[First run 44922246111](https://github.com/rec/safaz/actions/runs/44922246111)
+uses safaz `bd57d93`. Linux and macOS each report 421 passed, 213 failed,
+121 skipped and zero errors, with all 128 native render reports passing.
+Windows still could not produce native renders. It replaced the original
+missing-constant error with an aggregated `AssetCacheError` during sample
+import. Its JUnit totals are 50 passed, 220 failed, 121 skipped and 364 errors.
+
+reccy `878920f` supplies the expanded access mask for synchronous Windows
+file reads, with the explicit `SYNCHRONIZE` bit required by
+[`NtCreateFile`](https://learn.microsoft.com/windows/win32/api/winternl/nf-winternl-ntcreatefile).
+safaz pins that revision and adds a focused installed-wheel snapshot check that
+exposes the failing operation directly if the error recurs.
+[Run 44923385625](https://github.com/rec/safaz/actions/runs/44923385625)
+uses safaz `b40108b`. Both runs use unmodified sfizz
+`f5c6e29f23b8057867c08e88f5f6ac6738baa30b` and existing comparison limits.
+
+| Platform | Passed | Failed | Skipped | Errors | Native reports passing |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Linux x86_64 | 422 | 213 | 121 | 0 | 128/128 |
+| macOS arm64 | 419 | 216 | 121 | 0 | 128/128 |
+| Windows x86_64 | 422 | 213 | 121 | 0 | 128/128 |
+
+The binary snapshot check passes on all three platforms. Native audio agrees
+with the authored oracle to a maximum error of **2.604e-8** on every runner.
+Decoded float32 PCM hashes agree across the three platforms for the unity and
+attack-release native WAVs, and for the attack-release NumPy WAV. This closes
+the Windows asset-loading blocker and qualifies the bounded native matrix
+with the amplifier-release correction on all three platforms.
+
+The workflows still conclude with failure because external comparison
+assertions remain active. Windows and Linux have the same 212 external
+waveform failures and one block-repeatability failure. For the captured
+filter-envelope cases the native/sfizz maximum errors range from **0.00756 to
+0.02934** on all three platforms, against the existing **6.303515625e-5**
+waveform limit. Repeated 256-frame sfizz renders agree exactly in this run.
+The 64-frame render differs by **0.10699463** on Linux/Windows and
+**0.10693359** on macOS. The 257-frame comparison stays within the limit:
+zero error on Linux/Windows and one PCM16 step on macOS.
+
+On macOS this rerun adds three external failures compared with Linux.
+`filter-amplitude-order-native-256` has no audible sfizz note and fails both
+waveform assertions. The sfizz notch render `filter-static-brf_2p-6-native-256`
+ends at frame 8,561, versus 24,388 on Linux. That is consistent with the known
+early cutoff and leaves the 12,000–24,000-frame response window without signal,
+adding one response failure. Both native renders pass their authored checks.
+
+All three final artifacts contain JUnit, case reports and WAVs. The downloaded
+evidence is under `/tmp/safaz-reference-44923385625/{linux,macos,windows}`; the
+first run's evidence is under `/tmp/safaz-reference-44922246111`. The
+intermittent-cutoff reproducer remains held for human review before reporting
+upstream.
+
 ## Amplifier-release mapping correction, 2026-11-14
 
 The amplifier compatibility gap identified below is now corrected at the SFZ
