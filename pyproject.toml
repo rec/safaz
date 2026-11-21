@@ -27,13 +27,14 @@ reference = ["enge", "numpy", "mido"]
 
 [tool.uv]
 override-dependencies = [
+    "reccy @ git+https://github.com/rec/reccy.git@4757c0a9537217e627aea57888c451d34185f71f",
     "meedee @ git+ssh://git@github.com/rec/meedee.git@26e3891546efeb3cda8c570f0d4fdb72b74985b7",
     "ufor @ git+ssh://git@github.com/rec/ufor.git@fcf6f596b138baa7f07e7cf1feb758ccf02840e5",
     "envelfo @ git+ssh://git@github.com/rec/envelfo.git@181bad83532c427963948bcf19fed02aa2c22646",
 ]
 
 [tool.uv.sources]
-reccy = { git = "https://github.com/rec/reccy.git", branch = "main" }
+reccy = { git = "https://github.com/rec/reccy.git", rev = "4757c0a9537217e627aea57888c451d34185f71f" }
 enge = { git = "ssh://git@github.com/rec/enge.git", rev = "2c73c327f54071bb5d7b61c5f4a1afe282602bcd" }
 ufor = { git = "ssh://git@github.com/rec/ufor.git", rev = "fcf6f596b138baa7f07e7cf1feb758ccf02840e5" }
 envelfo = { git = "ssh://git@github.com/rec/envelfo.git", rev = "181bad83532c427963948bcf19fed02aa2c22646" }
