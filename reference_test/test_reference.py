@@ -6,6 +6,17 @@ import numpy as np
 import pytest
 import soundfile
 
+from safaz.assets import open_sample
+
+
+def test_installed_sample_snapshot_preserves_binary_data(tmp_path: Path) -> None:
+    # Exercise the same snapshot used by reader.read before errors are aggregated.
+    sample = tmp_path / 'échantillon.bin'
+    contents = b'asset\r\n\x1a'
+    sample.write_bytes(contents)
+    with open_sample(sample) as stream:
+        assert stream.read() == contents
+
 
 @pytest.fixture(
     scope='module', params=harness.CASES + harness.PAN_CASES, ids=lambda c: c.name
