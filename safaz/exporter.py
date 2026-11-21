@@ -16,6 +16,8 @@ from ufor.samples.instrument import (
 )
 from ufor.streams import AudioType
 
+from .filter_envelope import filter_envelope_values
+from .filters import FILTER_RESPONSES, cutoff_limit, inverse_value
 from .model import (
     InstrumentLocation,
     Opcode,
@@ -150,13 +152,6 @@ def _sound_issues(
     path: str,
     issues: list[UnimplementedFeature],
 ) -> None:
-    for i, value in enumerate(settings.processing.filters):
-        _issue(
-            issues,
-            f'{path}.processing.filters[{i}]',
-            value,
-            'Resonant filters have no implemented SFZ conversion',
-        )
     for i, value in enumerate(settings.processing.equalizer):
         _issue(
             issues,
@@ -190,6 +185,7 @@ def _region(
 ) -> list[Opcode] | None:
     path = f'body.slots[{index}]'
     if slot.control_trigger is not None:
+        _filter_opcodes(document, slot, path, issues)
         _slot_issues(slot, path, issues)
         return None
     sample_slice = next(s for s in document.body.slices if s.name == slot.slice)
@@ -273,8 +269,10 @@ def _region(
     opcodes.extend(_processing_opcodes(document, slot, path, issues))
     opcodes.extend(_envelope_opcodes(document, slot, path, issues))
     opcodes.extend(_crossfade_opcodes(slot, path, issues))
-    opcodes.extend(_modulation_opcodes(slot, path, issues))
-    _slot_issues(slot, path, issues)
+    filters, binding = _filter_opcodes(document, slot, path, issues)
+    opcodes.extend(filters)
+    opcodes.extend(_modulation_opcodes(slot, path, issues, binding))
+    _slot_issues(slot, path, issues, binding)
     return opcodes
 
 
@@ -316,8 +314,9 @@ def _diagnose_omitted_slot(
         )
     _envelope_opcodes(document, slot, path, issues)
     _crossfade_opcodes(slot, path, issues)
-    _modulation_opcodes(slot, path, issues)
-    _slot_issues(slot, path, issues)
+    _, binding = _filter_opcodes(document, slot, path, issues)
+    _modulation_opcodes(slot, path, issues, binding)
+    _slot_issues(slot, path, issues, binding)
 
 
 def _mapping_eligible(
@@ -730,11 +729,146 @@ def _envelope_opcodes(
     return [Opcode(name=n, value=_number_text(v)) for n, v in values.items()]
 
 
+def _filter_opcodes(
+    document: SampleInstrumentScore,
+    slot: SampleSlot,
+    path: str,
+    issues: list[UnimplementedFeature],
+) -> tuple[list[Opcode], processing.GeneratorBinding | None]:
+    local = slot.processing
+    common = document.body.settings.processing
+    filters = [
+        *((f, f'{path}.processing.filters[{i}]') for i, f in enumerate(local.filters)),
+        *(
+            (f, f'body.settings.processing.filters[{i}]')
+            for i, f in enumerate(common.filters)
+        ),
+    ]
+    if not filters:
+        return [], None
+    output = document.outputs[0].stream
+    assert isinstance(output, AudioType)
+    rate = next(t.rate for t in document.timebases if t.name == output.timebase)
+    output_rate = rate.numerator / rate.denominator
+    upper = cutoff_limit(output_rate)
+    order = local.filter_order if local.filters else common.filter_order
+    values: dict[str, str] = {}
+    for index, (filter, location) in enumerate(filters):
+        response = next(
+            (n for n, r in FILTER_RESPONSES.items() if r == filter.response), None
+        )
+        resonance = inverse_value(
+            20 * math.log10(filter.q), lambda n: 10 ** (n / 20), filter.q, 0, 40
+        )
+        canonical = processing.ResonantFilter(
+            name=filter.name,
+            response=filter.response,
+            cutoff_hz=filter.cutoff_hz,
+            q=filter.q,
+        )
+        reason = None
+        if len(filters) > 2:
+            reason = 'SFZ supports at most two ordered filters'
+        elif order != processing.FilterOrder.after_amplitude:
+            reason = 'SFZ requires filters after the amplitude envelope'
+        elif response is None or filter != canonical:
+            reason = (
+                'Filter does not use a supported single two-pole response and bounds'
+            )
+        elif not 1 <= filter.cutoff_hz <= upper or resonance is None:
+            reason = 'Filter cutoff or resonance is outside the verified SFZ profile'
+        if reason is not None:
+            _issue(issues, location, filter, reason)
+            continue
+        assert response is not None and resonance is not None
+        suffix = '2' if index else ''
+        values[f'fil{suffix}_type'] = response
+        values[f'cutoff{suffix}'] = _number_text(filter.cutoff_hz)
+        values[f'resonance{suffix}'] = _number_text(resonance)
+    if len(values) != 3 * len(filters):
+        return [], None
+    envelope, binding = _filter_envelope_export(slot, filters[0][0], output_rate, upper)
+    values.update(envelope)
+    return [Opcode(name=n, value=v) for n, v in values.items()], binding
+
+
+def _filter_envelope_export(
+    slot: SampleSlot,
+    filter: processing.ResonantFilter,
+    output_rate: float,
+    upper: float,
+) -> tuple[dict[str, str], processing.GeneratorBinding | None]:
+    if slot.trigger != enums.TriggerKind.start or slot.event_connections:
+        return {}, None
+    target = modulation.Target(name=f'filter-{filter.name}', parameter='cutoff_hz')
+    routes = [r for r in slot.modulation.routes if r.target == target]
+    if len(routes) != 1:
+        return {}, None
+    route = routes[0]
+    if (
+        route.operation != modulation.Operation.multiply
+        or route.unit != modulation.Unit.ratio
+        or route.interpolation != modulation.Interpolation.exponential
+        or len(route.points) != 2
+        or route.points[0] != modulation.Point(input=0, amount=1)
+        or route.points[1].input != 1
+        or sum(r.source == route.source for r in slot.modulation.routes) != 1
+    ):
+        return {}, None
+    binding = next((b for b in slot.bindings if b.name == route.source), None)
+    if (
+        not isinstance(binding, processing.GeneratorBinding)
+        or binding.output is not None
+        or binding.release_timing != processing.ReleaseTiming.voice
+        or sum(
+            isinstance(b, processing.GeneratorBinding)
+            and b.reference == binding.reference
+            for b in slot.bindings
+        )
+        != 1
+    ):
+        return {}, None
+    body = slot.envelfos.get(binding.reference)
+    if not isinstance(body, envelfo.Envelope):
+        return {}, None
+    if any(
+        p.target.name == f'envelfo-{binding.reference}'
+        for p in slot.modulation.parameters
+    ):
+        return {}, None
+    ratio = route.points[1].amount
+    cutoff = filter.cutoff_hz
+    low, high = cutoff * min(1, ratio), cutoff * max(1, ratio)
+    if ratio == 1 or not 1 <= low <= high <= upper:
+        return {}, None
+    parameter = modulation.Parameter(
+        target=target,
+        unit=modulation.Unit.hz,
+        scope=Scope.voice,
+        minimum=low,
+        maximum=high,
+        default=cutoff,
+    )
+    if parameter not in slot.modulation.parameters:
+        return {}, None
+    depth = inverse_value(
+        1200 * math.log2(ratio), lambda n: 2 ** (n / 1200), ratio, -12000, 12000
+    )
+    if depth is None or (values := filter_envelope_values(body, output_rate)) is None:
+        return {}, None
+    return values | {'fileg_depth': _number_text(depth)}, binding
+
+
 def _modulation_opcodes(
-    slot: SampleSlot, path: str, issues: list[UnimplementedFeature]
+    slot: SampleSlot,
+    path: str,
+    issues: list[UnimplementedFeature],
+    filter_envelope: processing.GeneratorBinding | None,
 ) -> list[Opcode]:
     supported: list[modulation.Route] = []
     for i, curve in enumerate(slot.modulation.routes):
+        if filter_envelope is not None and curve.source == filter_envelope.name:
+            continue
         if (
             curve.target == modulation.Target(name='processing', parameter='amplitude')
             and any(
@@ -751,7 +885,7 @@ def _modulation_opcodes(
                 issues,
                 f'{path}.modulation.routes[{i}]',
                 curve,
-                'Only linear amplitude-by-velocity modulation maps exactly to SFZ',
+                'Modulation route has no implemented exact SFZ mapping',
             )
     if len(supported) > 1:
         for curve in supported:
@@ -830,7 +964,10 @@ def _crossfade_opcodes(
 
 
 def _slot_issues(
-    slot: SampleSlot, path: str, issues: list[UnimplementedFeature]
+    slot: SampleSlot,
+    path: str,
+    issues: list[UnimplementedFeature],
+    filter_envelope: processing.GeneratorBinding | None = None,
 ) -> None:
     for name in ('key_conditions', 'previous_key', 'control_trigger'):
         value = getattr(slot, name)
@@ -858,13 +995,6 @@ def _slot_issues(
                 value,
                 'Seeded variation has no exact SFZ conversion',
             )
-    for i, value in enumerate(slot.processing.filters):
-        _issue(
-            issues,
-            f'{path}.processing.filters[{i}]',
-            value,
-            'Resonant filters have no implemented SFZ conversion',
-        )
     if slot.selection:
         _issue(
             issues,
@@ -887,11 +1017,13 @@ def _slot_issues(
             'Control conditions require an external SFZ controller binding',
         )
     for name, value in slot.envelfos.items():
+        if filter_envelope is not None and name == filter_envelope.reference:
+            continue
         _issue(
             issues,
             f'{path}.envelfos.{name}',
             value,
-            'Instrument envelfos have no implemented SFZ conversion',
+            'Envelfo has no implemented exact SFZ region mapping',
         )
 
 

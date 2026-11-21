@@ -30,6 +30,7 @@ from ufor.streams import AudioType
 from ufor.time import Rate, Timebase
 
 from .filter_envelope import filter_envelope
+from .filters import FILTER_RESPONSES, cutoff_limit
 from .model import (
     ParsedOpcode,
     ParsedRegion,
@@ -1337,12 +1338,6 @@ def _filters(
     unimplemented: list[UnimplementedFeature],
 ) -> list[processing.ResonantFilter]:
     result: list[processing.ResonantFilter] = []
-    responses = {
-        'lpf_2p': processing.FilterResponse.lowpass,
-        'hpf_2p': processing.FilterResponse.highpass,
-        'bpf_2p': processing.FilterResponse.bandpass,
-        'brf_2p': processing.FilterResponse.notch,
-    }
     second_names = (
         'fil2_type',
         'cutoff2',
@@ -1378,7 +1373,7 @@ def _filters(
             raise ValueError(f'{cutoff_name} must be finite and nonnegative')
         if not 0 <= resonance <= 40:
             raise ValueError(f'{resonance_name} must be between 0 and 40 dB')
-        if filter_type not in responses:
+        if filter_type not in FILTER_RESPONSES:
             _add_unimplemented(
                 unimplemented,
                 declarations[type_name],
@@ -1401,7 +1396,7 @@ def _filters(
             continue
         if cutoff == 0:
             reason = 'SFZ players disagree on cutoff=0 filter behavior'
-        elif not 1 <= cutoff <= min(20_000, 0.999 * output_rate / 2):
+        elif not 1 <= cutoff <= cutoff_limit(output_rate):
             reason = (
                 'SFZ cutoff exceeds the verified unclamped static filter range '
                 'at the output sample rate'
@@ -1415,7 +1410,7 @@ def _filters(
             result.append(
                 processing.ResonantFilter(
                     name=f'sfz-filter-{index}',
-                    response=responses[filter_type],
+                    response=FILTER_RESPONSES[filter_type],
                     cutoff_hz=cutoff,
                     q=10 ** (resonance / 20),
                 )
@@ -1438,7 +1433,7 @@ def _filter_tracking_modulation(
 ) -> tuple[list[modulation.Parameter], list[modulation.Route]]:
     parameters: list[modulation.Parameter] = []
     routes: list[modulation.Route] = []
-    upper = min(20_000, 0.999 * output_rate / 2)
+    upper = cutoff_limit(output_rate)
     for index, prefix in enumerate(('fil', 'fil2'), 1):
         track_name, center_name = f'{prefix}_keytrack', f'{prefix}_keycenter'
         velocity_name = f'{prefix}_veltrack'

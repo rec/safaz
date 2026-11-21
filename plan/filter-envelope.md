@@ -6,7 +6,7 @@ ownership are recorded in [the design](../doc/filter-envelope-design.md) and
 
 ## Remaining work
 
-Scope richer modifiers, filter-envelope export and nested/repeated stage
+Scope richer modifiers and nested/repeated stage
 traversal separately. They remain diagnosed or rejected rather than
 approximated by the bounded profile.
 

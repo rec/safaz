@@ -74,9 +74,10 @@ Static two-pole lowpass, highpass, bandpass, and notch filter responses now
 import with the explicit `sfizz_rbj` response choice, including a second
 filter in series and inherited defaults. The default diagnoses active filters
 without importing them. Accepted responses select native filtering after
-amplitude, resolving the former ordering diagnostic. Zero cutoff, unclamped
-range boundaries, unsupported types,
-modulation, and export remain diagnosed.
+amplitude, resolving the former ordering diagnostic. Export writes up to two
+supported static filters and the bounded first-filter envelope when they can
+round-trip at the same profile and rate. Zero cutoff, out-of-range settings,
+unsupported types, and other filter modulation remain diagnosed.
 Keyboard tracking now imports `fil_keytrack`/`fil_keycenter` and their
 second-filter counterparts through the existing integer-key modulation model.
 The explicit `sfizz_rbj` choice remains required. Tracking is verified over

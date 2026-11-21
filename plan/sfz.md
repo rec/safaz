@@ -9,11 +9,11 @@ only. A standard opcode classification is not a claim of complete support.
 
 The bounded filter-envelope implementation was approved on 2026-11-14 and now
 spans uFor, enveLFO, enge and safaz. See [the design](../doc/filter-envelope-design.md),
-[remaining envelope qualification](filter-envelope.md) and the reference findings.
+[remaining envelope work](filter-envelope.md) and the reference findings.
 
 ## Remaining feature priorities
 
-1. Scope richer filter-envelope modifiers and export.
+1. Scope richer filter-envelope modifiers.
 2. Richer expressive controls: aftertouch, stepped/smoothed bend, controller
    curves, additional LFO shapes and controller modulation.
 3. Remaining articulation rules: release-region controller/keyswitch history,

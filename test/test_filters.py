@@ -9,6 +9,7 @@ from envelfo.runtime import envelfo_at, initial_envelfo
 from pytest_regressions.data_regression import DataRegressionFixture
 from ufor import modulation
 from ufor.samples import processing
+from ufor.samples.instrument import SampleInstrumentScore
 from ufor.samples.metadata import AudioMetadata
 from ufor.time import Rate, Timebase
 
@@ -45,6 +46,14 @@ def test_static_filters_preserve_response_cutoff_and_resonance(
             name='sfz-filter-1', response=response, cutoff_hz=2000, q=q
         )
     ]
+    exported = exporter.write(result.instrument)
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents, filter_response='sfizz_rbj')
+    assert restored.complete and restored.instrument is not None
+    assert (
+        restored.instrument.body.slots[0].processing
+        == result.instrument.body.slots[0].processing
+    )
 
 
 def test_filter_import_requires_explicit_response_acceptance() -> None:
@@ -75,8 +84,34 @@ def test_filter_conformance_preserves_inheritance_and_serial_order() -> None:
         for s in result.instrument.body.slots
     ] == expected
     exported = exporter.write(result.instrument)
-    assert not exported.complete
-    assert any('Resonant filters' in f.reason for f in exported.unimplemented)
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents, filter_response='sfizz_rbj')
+    assert restored.complete and restored.instrument is not None
+    assert [s.processing for s in restored.instrument.body.slots] == [
+        s.processing for s in result.instrument.body.slots
+    ]
+
+
+def test_export_flattens_shared_filter_after_the_region_filter() -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav fil_type=hpf_2p cutoff=200 '
+        'fil2_type=brf_2p cutoff2=1000 resonance2=7',
+        filter_response='sfizz_rbj',
+    )
+    assert result.complete and result.instrument is not None
+    raw = result.instrument.model_dump(mode='json')
+    local = raw['body']['slots'][0]['processing']['filters']
+    raw['body']['settings']['processing'].update(
+        filters=[local.pop()], filter_order='after_amplitude'
+    )
+    exported = exporter.write(SampleInstrumentScore.model_validate(raw))
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents, filter_response='sfizz_rbj')
+    assert restored.complete and restored.instrument is not None
+    assert (
+        restored.instrument.body.slots[0].processing.filters
+        == result.instrument.body.slots[0].processing.filters
+    )
 
 
 def test_second_filter_retains_settings_with_implicit_first_filter_diagnosed() -> None:
@@ -617,7 +652,10 @@ def test_filter_lfo_starts_zero_rising_and_maps_signed_depth(depth: float) -> No
         assert cutoff == pytest.approx(1000 * 2 ** (depth * triangle / 1200))
     exported = exporter.write(result.instrument)
     assert not exported.complete
-    assert any('envelfos' in f.reason.lower() for f in exported.unimplemented)
+    assert any(
+        f.location.path == 'body.slots[0].envelfos.sfz-filter-lfo'
+        for f in exported.unimplemented
+    )
 
 
 @pytest.mark.parametrize('delay,fade', [(0.1, 0), (0, 0.2), (0.1, 0.2)])

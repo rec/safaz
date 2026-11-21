@@ -191,8 +191,10 @@ diagnosed without clamping. This profile asserts mathematical waveform and
 mapping semantics, not bit-identical floating-point playback.
 
 Unsupported filter modulation retains its source diagnostic alongside any
-accepted static filter. Filter export, higher-order and alternate filter
-types, controller modulation and richer LFO behavior remain unsupported. The [SFZ fixture](../conformance/filters.sfz) and
+accepted static filter. Export writes up to two supported two-pole filters in
+serial order after amplitude. Cutoff and resonance must be representable
+within the same verified profile and output rate. Other responses, additional
+stages, tracking and LFO export remain diagnosed. The [SFZ fixture](../conformance/filters.sfz) and
 [native filter settings](../conformance/filters.json) demonstrate inheritance
 and the static two-filter mapping without asserting complete playback equivalence.
 The [keyboard tracking fixture](../conformance/filter-key-tracking.sfz) covers
@@ -225,7 +227,13 @@ The voice-scoped named Envelope follows the voice release gate. Its cutoff ratio
 is `2**(depth * value / 1200)`. Keyboard, velocity, LFO and envelope ratios
 multiply. An out-of-range combined cutoff diagnoses every active first-filter
 route and retains its static settings. The second filter remains independent.
-Filter-envelope export is not implemented. See the
+Export writes `fileg_*` for a single voice-release envelope that shapes the first
+filter and can be rebuilt by the importer. Re-import with `sfizz_rbj`,
+`portable_exponential` and the same output rate. Delay and hold use canonical
+decimal values in the original frame buckets. Positive decay times below the
+floor export at the floor, and attack from 100 percent exports as zero because
+its native duration is zero. A shape, route, or combination that cannot be
+recreated retains a diagnostic. See the
 [design and audit](filter-envelope-design.md) and
 [qualification findings](../reference_test/findings.md).
 
