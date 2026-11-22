@@ -127,7 +127,8 @@ def support_table() -> str:
         'oldest-immediate retirement. By default, the instrument is retained '
         'with a diagnostic; `polyphony_overflow="oldest_immediate"` accepts '
         'the choice. Conflicting limits, legato values, and limits that may '
-        'reject simultaneous layers remain diagnosed.',
+        'reject simultaneous layers remain diagnosed. Export preserves eligible '
+        'pools with the same explicit retirement profile.',
         '',
         'Static two-pole `lpf_2p`, `hpf_2p`, `bpf_2p`, and `brf_2p` filters '
         'require `filter_response="sfizz_rbj"` to accept the verified sfizz '

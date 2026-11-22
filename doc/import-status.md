@@ -55,7 +55,8 @@ Numeric SFZ `polyphony` now maps to group-scoped native voice pools with
 oldest-immediate retirement. The default retains the instrument with a located
 assumption diagnostic; callers can accept the rule explicitly. Conflicting
 limits, legato variants, and limits that may reject simultaneous layers remain
-diagnosed.
+diagnosed. Eligible pools round-trip when import and export select the same
+retirement profile. The round-robin counter profile is also symmetric.
 Sticky `sw_last` keyswitches now select regions per part, with optional
 `sw_default`; an unmapped key inside the declared switch range clears the
 selection. `loccN`/`hiccN` note-on conditions now use part-local controller

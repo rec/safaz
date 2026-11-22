@@ -22,7 +22,6 @@ spans uFor, enveLFO, enge and safaz. See [the design](../doc/filter-envelope-des
 4. Qualify runtime snapshot continuation for the imported seeded-variation
    profile and design export behavior for native seeded variation.
 5. EQ, after bandwidth and resonance transfer functions are specified and tested.
-6. Export gaps for supported import-only features, as listed in the catalog.
 
 Each feature needs precise defaults, bounds, inheritance, source-located
 diagnostics and focused regressions. A portable concept must be useful outside
@@ -62,11 +61,11 @@ claim support.
   when to read any live controls. Repeated notes and release tails need
   deterministic ordering with pedal changes, choke and voice-limit events.
   Qualify those rules with overlapping notes and identical-velocity triggers.
-- **Equalizer.** The current band parameters are frequency, gain and bandwidth.
-  Compare the SFZ and native transfer functions before selecting a static EQ
-  profile. Verify zero gain, both signed gains, center gain and both bandwidth
-  edges at several rates. Include filter and amplifier ordering in the
-  comparison. A shape mismatch needs a model or playback change.
+- **Equalizer.** uFor can describe frequency, gain and bandwidth, but the
+  pinned enge sampler has no EQ processing. Implement that stage and compare
+  its transfer function against SFZ before selecting a profile. Verify zero
+  gain, both signed gains, center gain and both bandwidth edges at several
+  rates. Include filter and amplifier ordering in the comparison.
 - **Seeded export.** SFZ cannot store the native seed or stream identities.
   A future export profile can preserve supported distributions explicitly,
   with separate verification of reproducibility when re-imported into uFor.

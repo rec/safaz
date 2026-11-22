@@ -754,6 +754,17 @@ def test_sfz_polyphony_maps_group_with_diagnosed_default() -> None:
         == VoiceOverflow.replace_oldest
     )
     assert {s.voice_pool for s in accepted.instrument.body.slots} == {'sfz-group-7'}
+    default_export = exporter.write(accepted.instrument)
+    assert not default_export.complete and 'polyphony=2' in default_export.contents
+    exported = exporter.write(
+        accepted.instrument, polyphony_overflow='oldest_immediate'
+    )
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents, polyphony_overflow='oldest_immediate')
+    assert restored.complete and restored.instrument is not None
+    (pool,) = restored.instrument.body.voice_pools
+    assert pool.policy == accepted.instrument.body.voice_pools[0].policy
+    assert {s.voice_pool for s in restored.instrument.body.slots} == {pool.name}
 
 
 def test_sfz_polyphony_keeps_conflicting_limits_and_legato_visible() -> None:
@@ -790,6 +801,9 @@ def test_sfz_polyphony_reports_simultaneous_layers_above_limit() -> None:
     assert len(result.instrument.body.voice_pools) == 1
     assert [i.location.opcode for i in result.unimplemented] == ['polyphony']
     assert 'simultaneous region layers' in result.unimplemented[0].reason
+    exported = exporter.write(result.instrument, polyphony_overflow='oldest_immediate')
+    assert not exported.complete and 'polyphony=' not in exported.contents
+    assert any(i.location.path == 'body.voice_pools[0]' for i in exported.unimplemented)
 
 
 def test_sfz_polyphony_distinguishes_unnumbered_group_headers() -> None:

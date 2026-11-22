@@ -566,6 +566,21 @@ def test_filter_lfo_export_round_trips_with_key_and_velocity_tracking(
     assert after.envelfos == before.envelfos
 
 
+@pytest.mark.parametrize('trigger', ['release', 'release_key'])
+def test_release_region_filter_keyboard_tracking_round_trips(trigger: str) -> None:
+    original = _compile(
+        f'<region> sample=audio/glass.wav lokey=60 hikey=65 trigger={trigger} '
+        'cutoff=1000 fil_keytrack=100 fil_keycenter=61',
+        filter_response='sfizz_rbj',
+    )
+    assert original.complete and original.instrument is not None
+    exported = exporter.write(original.instrument)
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents, filter_response='sfizz_rbj')
+    assert restored.complete and restored.instrument is not None
+    assert restored.instrument.body.slots[0] == original.instrument.body.slots[0]
+
+
 @pytest.mark.parametrize('change', ['fractional', 'linear', 'bounds'])
 def test_filter_velocity_export_diagnoses_unrepresentable_routes(change: str) -> None:
     result = _compile(

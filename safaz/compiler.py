@@ -49,6 +49,7 @@ from .parser import (
     _sfz_issue_position,
     sample_paths,
 )
+from .polyphony import oversized_batch
 from .registry import (
     AMP_VELOCITY_CURVE,
     CONTROLLER_CONDITION,
@@ -454,9 +455,7 @@ def _polyphony_pools(
                 'SFZ polyphony uses assumed oldest-immediate voice retirement; '
                 'pass polyphony_overflow=oldest_immediate to accept it'
             )
-            oversized = _oversized_polyphony_batch(
-                [slots[index] for index, _ in members], maximum
-            )
+            oversized = oversized_batch([slots[index] for index, _ in members], maximum)
             if overflow == 'oldest_immediate' and not oversized:
                 continue
             if overflow == 'oldest_immediate':
@@ -470,25 +469,6 @@ def _polyphony_pools(
                 _add_unimplemented(unimplemented, declaration, reason)
                 seen.add(location)
     return slots, pools
-
-
-def _oversized_polyphony_batch(slots: list[SampleSlot], maximum: int) -> bool:
-    for trigger in {s.trigger for s in slots}:
-        for key in range(128):
-            for velocity in range(128):
-                if (
-                    sum(
-                        s.trigger == trigger
-                        and s.mapping.lowest_key <= key <= s.mapping.highest_key
-                        and s.mapping.minimum_velocity
-                        <= velocity / 127
-                        <= s.mapping.maximum_velocity
-                        for s in slots
-                    )
-                    > maximum
-                ):
-                    return True
-    return False
 
 
 def _midi_binding(

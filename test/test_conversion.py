@@ -648,6 +648,15 @@ def test_sfz_sequence_requires_explicit_counter_rule() -> None:
     assert exported.unimplemented[0].location.path == 'body.slots[0].sequence'
     assert 'seq_length=2' in exported.contents
     assert 'seq_position=1' in exported.contents
+    accepted = exporter.write(opted_in.instrument, sequence_counter='all_note_ons')
+    assert accepted.complete, accepted.unimplemented
+    restored = compiler.compile_instrument(
+        parser.parse(accepted.contents), sequence_counter='all_note_ons', **kwargs
+    )
+    assert restored.complete and restored.instrument is not None
+    assert restored.instrument.body.slots[0].sequence == selection.SequencePosition(
+        length=2, position=1
+    )
 
 
 def test_voice_pool_round_trips_and_is_reported_by_sfz_export() -> None:

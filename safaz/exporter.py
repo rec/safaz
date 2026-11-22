@@ -2,6 +2,7 @@
 
 import json
 import math
+from typing import Literal
 
 from ufor import base, envelfo, envelope, modulation, segments
 from ufor.approach import ExponentialApproach
@@ -27,6 +28,7 @@ from .model import (
     _channel_routes,
 )
 from .modulators import lfo_values
+from .polyphony import oversized_batch
 from .spatial import stereo_opcodes
 
 
@@ -34,14 +36,21 @@ def write(
     instrument: SampleInstrumentScore,
     *,
     midi_binding: PerformanceBindingScore | None = None,
+    polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
+    sequence_counter: Literal['reject', 'all_note_ons'] = 'reject',
 ) -> SfzExportResult:
     """Serialize a native instrument without reading or writing sample assets."""
+    if polyphony_overflow not in ('diagnose', 'oldest_immediate'):
+        raise ValueError(f'Unknown SFZ polyphony overflow rule: {polyphony_overflow}')
+    if sequence_counter not in ('reject', 'all_note_ons'):
+        raise ValueError(f'Unknown SFZ sequence counter rule: {sequence_counter}')
     issues: list[UnimplementedFeature] = []
     _instrument_issues(instrument, issues)
     controllers, bend_control, control_lines, global_lines = _midi_export(
         instrument, midi_binding, issues
     )
-    groups, victims = _choke_groups(instrument, issues)
+    limits = _polyphony_limits(instrument, polyphony_overflow, issues)
+    groups, victims = _choke_groups(instrument, limits, issues)
     articulations = instrument.body.settings.articulations
     switches = _keyswitch_map(articulations)
     emitted_switches: set[int] = set()
@@ -57,12 +66,22 @@ def write(
                 | {'group': None, 'selection': effective_selection(slot, group)}
             )
         opcodes = _region(
-            instrument, slot, i, groups, victims, controllers, bend_control, issues
+            instrument,
+            slot,
+            i,
+            groups,
+            victims,
+            controllers,
+            bend_control,
+            sequence_counter,
+            issues,
         )
         conditions = _keyswitch_opcodes(slot, articulations, switches, i, issues)
         conditions.extend(_controller_conditions(slot, controllers, i, issues))
         if opcodes is None:
             continue
+        if slot.voice_pool is not None and slot.voice_pool in limits:
+            opcodes.append(Opcode(name='polyphony', value=str(limits[slot.voice_pool])))
         emitted_switches.update(int(o.value) for o in conditions if o.name == 'sw_last')
         has_switch_condition |= any(
             o.name in ('sw_last', 'sw_down', 'sw_up') for o in conditions
@@ -146,13 +165,6 @@ def _instrument_issues(
             document.body.pan_law,
             'SFZ playback uses the sfizz pan convention, not the native pan law',
         )
-    for i, pool in enumerate(document.body.voice_pools):
-        _issue(
-            issues,
-            f'body.voice_pools[{i}]',
-            pool,
-            'Voice pools have no exact SFZ conversion',
-        )
     if instrument.voice_policy is not None:
         _issue(
             issues,
@@ -222,6 +234,7 @@ def _region(
     victims: dict[str, tuple[int, enums.ChokeMode]],
     controllers: dict[str, int],
     bend_control: str | None,
+    sequence_counter: Literal['reject', 'all_note_ons'],
     issues: list[UnimplementedFeature],
 ) -> list[Opcode] | None:
     path = f'body.slots[{index}]'
@@ -295,12 +308,12 @@ def _region(
         opcodes.insert(0, Opcode(name='region_label', value=slot.title))
     opcodes.extend(control or _mapping(slot.mapping))
     if slot.sequence is not None:
-        if slot.sequence.length > 100:
+        if slot.sequence.length > 100 or slot.trigger != enums.TriggerKind.start:
             _issue(
                 issues,
                 f'{path}.sequence',
                 slot.sequence,
-                'SFZ sequence length must not exceed 100',
+                'SFZ sequence requires a note-on trigger and a length of at most 100',
             )
         else:
             opcodes.extend(
@@ -309,12 +322,13 @@ def _region(
                     Opcode(name='seq_position', value=str(slot.sequence.position)),
                 ]
             )
-            _issue(
-                issues,
-                f'{path}.sequence',
-                slot.sequence,
-                'SFZ players do not share one sequence counter rule',
-            )
+            if sequence_counter == 'reject':
+                _issue(
+                    issues,
+                    f'{path}.sequence',
+                    slot.sequence,
+                    'Pass sequence_counter=all_note_ons to accept the SFZ counter rule',
+                )
     opcodes.extend(_random_range_opcodes(slot.random_range))
     if not control:
         opcodes.extend(_trigger_opcodes(slot, path, issues))
@@ -751,23 +765,62 @@ def _keyswitch_opcodes(
     return result
 
 
+def _polyphony_limits(
+    document: SampleInstrumentScore,
+    overflow: Literal['diagnose', 'oldest_immediate'],
+    issues: list[UnimplementedFeature],
+) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for i, pool in enumerate(document.body.voice_pools):
+        members = [s for s in document.body.slots if s.voice_pool == pool.name]
+        maximum = pool.policy.maximum_voices
+        reason = None
+        if (
+            pool.policy.overflow != enums.VoiceOverflow.replace_oldest
+            or pool.policy.same_key != enums.SameKey.stack
+        ):
+            reason = 'SFZ group polyphony requires stacked notes and oldest replacement'
+        elif not members or len({_choke_signature(s) for s in members}) != 1:
+            reason = 'SFZ polyphony requires one shared group per used voice pool'
+        elif oversized_batch(members, maximum):
+            reason = 'SFZ polyphony limit can reject simultaneous region layers'
+        else:
+            result[pool.name] = maximum
+            if overflow == 'diagnose':
+                reason = (
+                    'Pass polyphony_overflow=oldest_immediate '
+                    'to accept the SFZ group retirement rule'
+                )
+        if reason is not None:
+            _issue(issues, f'body.voice_pools[{i}]', pool, reason)
+    return result
+
+
+def _choke_signature(slot: SampleSlot) -> tuple[tuple[str, str], ...]:
+    return tuple(
+        sorted(
+            (c.group, c.mode.value)
+            for c in slot.chokes
+            if c.mode != enums.ChokeMode.fade
+        )
+    )
+
+
 def _choke_groups(
-    document: SampleInstrumentScore, issues: list[UnimplementedFeature]
+    document: SampleInstrumentScore,
+    limits: dict[str, int],
+    issues: list[UnimplementedFeature],
 ) -> tuple[dict[str, int], dict[str, tuple[int, enums.ChokeMode]]]:
-    signatures: dict[tuple[tuple[str, str], ...], int] = {}
+    signatures: dict[tuple[str | None, tuple[tuple[str, str], ...]], int] = {}
     groups: dict[str, int] = {}
     for slot in document.body.slots:
-        signature = tuple(
-            sorted(
-                (c.group, c.mode.value)
-                for c in slot.chokes
-                if c.mode != enums.ChokeMode.fade
-            )
-        )
-        if signature:
-            if signature not in signatures:
-                signatures[signature] = len(signatures) + 1
-            groups[slot.name] = signatures[signature]
+        pool = slot.voice_pool if slot.voice_pool in limits else None
+        signature = _choke_signature(slot)
+        if pool is not None or signature:
+            key = pool, signature
+            if key not in signatures:
+                signatures[key] = len(signatures) + 1
+            groups[slot.name] = signatures[key]
     incoming: dict[str, set[tuple[int, enums.ChokeMode]]] = {}
     for slot in document.body.slots:
         for choke in slot.chokes:
@@ -1195,7 +1248,11 @@ def _filter_opcodes(
         return [], [], set()
     generators: set[str] = set()
     exported_routes: list[modulation.Route] = []
-    if slot.trigger == enums.TriggerKind.start:
+    if slot.trigger in (
+        enums.TriggerKind.start,
+        enums.TriggerKind.release,
+        enums.TriggerKind.logical_release,
+    ):
         for index, (filter, _) in enumerate(filters):
             prefix = 'fil2' if index else 'fil'
             tracking, routes, references = _filter_cutoff_opcodes(
@@ -1238,6 +1295,8 @@ def _filter_cutoff_opcodes(
             values[f'{prefix}_keycenter'] = str(center)
             kind = 'key'
         elif _filter_exponential_route(route):
+            if slot.trigger != enums.TriggerKind.start:
+                return {}, [], set()
             if (depth := _filter_velocity_depth(slot, route)) is not None:
                 values[f'{prefix}_veltrack'] = str(depth)
                 kind = 'velocity'

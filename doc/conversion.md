@@ -160,7 +160,8 @@ quantize velocity to MIDI integers. Velocity binding is shared with other
 velocity-dependent settings. Zero depth creates no route.
 
 Export writes keyboard and velocity tracking for ordinary note-on filters
-when their routes and combined bounds match this profile. A single-key
+when their routes and combined bounds match this profile. Release regions
+can also export keyboard tracking. A single-key
 region can export an equivalent tracking depth and center that yield the
 same cutoff for that key. The bounded first-filter envelope can share a
 filter with both tracking routes. Re-import with `sfizz_rbj` at the same
@@ -351,9 +352,16 @@ remain diagnosed and their regions are omitted.
 SFZ import reports `seq_length` and `seq_position` as unsupported by
 default; callers must explicitly request `sequence_counter='all_note_ons'`.
 That rule advances once for every note-on in the part, even when no slot is
-eligible. It is not a claim that all SFZ players count
-identically. SFZ export writes the corresponding opcodes but reports that the
-player-dependent counter rule cannot be guaranteed by the file.
+eligible. Export writes the corresponding opcodes and retains the
+player-dependent diagnostic unless the caller selects
+`sequence_counter='all_note_ons'`. Re-import with the same profile.
+
+Numeric group polyphony uses the separately selected
+`polyphony_overflow='oldest_immediate'` profile on import and export.
+Export recognizes stacked-note pools using oldest replacement and one
+shared SFZ group per pool. Groups that could reject simultaneous layers
+retain diagnostics. The profile does not select a retirement rule for
+other SFZ players.
 
 ## Seeded variation
 
