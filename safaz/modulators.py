@@ -9,6 +9,8 @@ from ufor import envelfo, segments
 from .model import ParsedOpcode, UnimplementedFeature
 from .parser import _add_unimplemented
 
+FilterLfoResponse = Literal['diagnose', 'sfizz_triangle', 'sfizz_parabolic']
+
 
 def accepted_lfo(
     values: dict[str, str],
@@ -120,7 +122,7 @@ def parabolic_lfo(
 
 
 def lfo_values(
-    body: envelfo.EnveLFO, prefix: str, output_rate: float
+    body: envelfo.EnveLFO, prefix: str, output_rate: float, *, parabolic: bool
 ) -> dict[str, str] | None:
     oscillator = (
         body.envelfos.get('oscillator') if isinstance(body, envelfo.Patch) else body
@@ -164,7 +166,7 @@ def lfo_values(
             return None
         values[f'{prefix}_delay'] = repr(delay_value)
         values[f'{prefix}_fade'] = fade_text
-    build = triangle_lfo if prefix == 'fillfo' else parabolic_lfo
+    build = parabolic_lfo if parabolic else triangle_lfo
     return values if build(values, prefix, output_rate) == body else None
 
 

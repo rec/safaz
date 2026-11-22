@@ -181,17 +181,18 @@ inherited, decreasing, combined, and zero-override tracking.
 
 ### Basic filter LFO
 
-Import additionally requires `filter_lfo_response="sfizz_triangle"` alongside
-`filter_response="sfizz_rbj"`. This separate choice selects the existing triangle
-convention. Pinned sfizz's v1 default instead uses a parabolic sine approximation;
-see the [waveform audit](../reference_test/findings.md). Both
-`compile_instrument` and `read` expose the explicit triangle choice.
+Import additionally requires a waveform profile alongside
+`filter_response="sfizz_rbj"`. Use `filter_lfo_response="sfizz_parabolic"`
+to select the pinned player's v1 parabolic waveform. The existing
+`filter_lfo_response="sfizz_triangle"` profile preserves the portable triangle
+convention. Both `compile_instrument` and `read` accept either choice.
 
 `fillfo_freq` imports fixed frequency from 0 to 20 Hz; `fillfo_depth` imports
 signed depth from -1200 to 1200 cents. Both default to zero, which makes the
-LFO inactive without creating a envelfo. Active LFOs use a voice-local native
-triangle at phase 1/4, starting at zero rising. Negative depth inverts its
-cutoff effect. The cutoff ratio is `2^(depth * triangle / 1200)`, represented
+LFO inactive without creating an envelfo. Both waveforms start at zero rising
+after the delay, and the parabolic profile maps the triangle signal `u` to
+`u * (2 - abs(u))`. Negative depth inverts its cutoff effect. The cutoff
+ratio is `2^(depth * signal / 1200)`, represented
 by a positive exponential route. Each new ordinary note-on voice starts its
 own oscillator; it runs through release until that voice finishes.
 
@@ -205,13 +206,14 @@ remains independent. See the [inheritance fixture](../conformance/filter-lfo.sfz
 
 Nonzero `fillfo_delay` and `fillfo_fade` compose a phase-offset oscillator and
 activation envelope, scaling the signal before cents-to-ratio conversion.
-Export preserves this triangle, delay and fade when it can recreate the native
-generator and cutoff routes at the same rate. Re-import with both filter
-profiles enabled. Controller and nonordinary note triggers, SFZ 2 LFOs,
+Export recognizes either waveform, delay and fade when it can recreate the
+native generator and cutoff routes at the same rate. Re-import with the
+original waveform profile and the static filter profile. Controller and
+nonordinary note triggers, SFZ 2 LFOs,
 and controller/aftertouch modulation remain diagnosed. Malformed or
 nonfinite numbers fail explicitly; values outside the verified ranges are
-diagnosed without clamping. This profile asserts mathematical waveform and
-mapping semantics, not bit-identical floating-point playback.
+diagnosed without clamping. The [reference findings](../reference_test/findings.md)
+record the remaining signed audio residual against pinned sfizz.
 
 Unsupported filter modulation retains its source diagnostic alongside any
 accepted static filter. Export writes up to two supported two-pole filters in

@@ -11,8 +11,9 @@ are implemented. Their contract and historical rollout are in
 1. Investigate retained signed waveform and block-repeatability failures.
    Native/authored agreement and matching failure counts do not establish
    sfizz equivalence or identify which implementation is responsible.
-2. Keep the filter triangle/parabolic convention difference explicit. A change
-   to the existing filter profile requires a separate playback decision.
+2. Isolate remaining residuals for both first-filter LFO profiles. The
+   parabolic profile uses the pinned player's waveform equation, and the
+   triangle profile retains its original convention.
 3. Wait for the user's human review before reporting the packaged intermittent
    sfizz cutoff upstream. The reproducer is committed under
    `reference_test/reproducers/sfizz-preload-cutoff/`.

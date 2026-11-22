@@ -41,7 +41,7 @@ from .model import (
     UnimplementedFeature,
     _channel_routes,
 )
-from .modulators import accepted_lfo, parabolic_lfo, triangle_lfo
+from .modulators import FilterLfoResponse, accepted_lfo, parabolic_lfo, triangle_lfo
 from .parser import (
     NOTE,
     NOTES,
@@ -73,7 +73,7 @@ def compile_instrument(
     sequence_counter: Literal['reject', 'all_note_ons'] = 'reject',
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
-    filter_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
+    filter_lfo_response: FilterLfoResponse = 'diagnose',
     filter_envelope_response: Literal['diagnose', 'portable_exponential'] = 'diagnose',
     pitch_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
     amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
@@ -89,7 +89,7 @@ def compile_instrument(
         raise ValueError(f'Unknown SFZ polyphony overflow rule: {polyphony_overflow}')
     if filter_response not in ('diagnose', 'sfizz_rbj'):
         raise ValueError(f'Unknown SFZ filter response: {filter_response}')
-    if filter_lfo_response not in ('diagnose', 'sfizz_triangle'):
+    if filter_lfo_response not in ('diagnose', 'sfizz_triangle', 'sfizz_parabolic'):
         raise ValueError(f'Unknown SFZ filter LFO response: {filter_lfo_response}')
     if filter_envelope_response not in ('diagnose', 'portable_exponential'):
         raise ValueError(
@@ -588,7 +588,7 @@ def _slot(
     articulations: selection.Articulations | None,
     output_rate: float,
     filter_response: Literal['diagnose', 'sfizz_rbj'],
-    filter_lfo_response: Literal['diagnose', 'sfizz_triangle'],
+    filter_lfo_response: FilterLfoResponse,
     filter_envelope_response: Literal['diagnose', 'portable_exponential'],
     pitch_lfo_response: Literal['diagnose', 'sfizz_parabolic'],
     amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'],
@@ -948,10 +948,16 @@ def _slot(
         )
         routes.extend(envelope_routes)
     if lfo_routes := [r for r in filter_routes if r.source == 'filter-lfo']:
-        oscillator = triangle_lfo(values, 'fillfo', output_rate)
+        parabolic = filter_lfo_response == 'sfizz_parabolic'
+        build = parabolic_lfo if parabolic else triangle_lfo
+        oscillator = build(values, 'fillfo', output_rate)
         generators['sfz-filter-lfo'] = oscillator
+        # The two correlated triangles in the parabolic patch have a conservative bound.
+        extent = 2 if parabolic else 1
         sources.append(
-            modulation.Source(name='filter-lfo', scope='voice', minimum=-1, maximum=1)
+            modulation.Source(
+                name='filter-lfo', scope='voice', minimum=-extent, maximum=extent
+            )
         )
         bindings.append(
             processing.GeneratorBinding(
@@ -1497,7 +1503,7 @@ def _filter_tracking_modulation(
     mapping: playback.Mapping,
     output_rate: float,
     control_triggered: bool,
-    filter_lfo_response: Literal['diagnose', 'sfizz_triangle'],
+    filter_lfo_response: FilterLfoResponse,
     envelope: envelfo.Envelope | None,
     unimplemented: list[UnimplementedFeature],
 ) -> tuple[list[modulation.Parameter], list[modulation.Route]]:
@@ -1667,7 +1673,7 @@ def _filter_lfo_modulation(
     filter: processing.ResonantFilter | None,
     upper: float,
     control_triggered: bool,
-    response: Literal['diagnose', 'sfizz_triangle'],
+    response: FilterLfoResponse,
     unimplemented: list[UnimplementedFeature],
 ) -> modulation.Route | None:
     settings = {
@@ -1701,8 +1707,8 @@ def _filter_lfo_modulation(
         )
     elif response == 'diagnose':
         reason = (
-            'SFZ filter LFO requires filter_lfo_response="sfizz_triangle" '
-            'to accept its verified waveform and phase'
+            'SFZ filter LFO requires filter_lfo_response="sfizz_parabolic" '
+            'or filter_lfo_response="sfizz_triangle" to select its waveform'
         )
     if reason is not None:
         _add_unimplemented(unimplemented, declarations['fillfo_depth'], reason)

@@ -1556,7 +1556,12 @@ def _lfo_export(
         or [p.input for p in route.points] != [-1, 1]
     ):
         return None
-    extent = 1 if prefix == 'fillfo' else 2
+    triangle = (
+        prefix == 'fillfo'
+        and modulation.Source(name=route.source, scope='voice', minimum=-1, maximum=1)
+        in slot.modulation.sources
+    )
+    extent = 1 if triangle else 2
     if (
         modulation.Source(
             name=route.source, scope='voice', minimum=-extent, maximum=extent
@@ -1618,7 +1623,7 @@ def _lfo_export(
         'signal' if isinstance(body, envelfo.Patch) else None
     ):
         return None
-    values = lfo_values(body, prefix, output_rate)
+    values = lfo_values(body, prefix, output_rate, parabolic=not triangle)
     if values is None:
         return None
     return values | {f'{prefix}_depth': _number_text(depth)}, binding.reference, depth

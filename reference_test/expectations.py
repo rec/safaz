@@ -76,6 +76,7 @@ WAVEFORM_MISMATCHES = {
     'filter-lfo-2--1200',
     'filter-lfo-5-600',
     'filter-lfo-combined',
+    'filter-lfo-parabolic',
     'filter-lfo-timing-0.1-0',
     'filter-lfo-timing-0-0.2',
     'filter-lfo-timing-0.1-0.2',

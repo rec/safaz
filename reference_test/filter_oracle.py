@@ -18,6 +18,7 @@ class FilterSpec(BaseModel, frozen=True):
     lfo_depth: float = 0
     lfo_delay: float = 0
     lfo_fade: float = 0
+    lfo_shape: Literal['triangle', 'parabolic'] = 'triangle'
 
 
 class FilterProfile(BaseModel, frozen=True):
@@ -65,13 +66,15 @@ def cutoffs(
     gate = (age >= np.ceil(spec.lfo_delay * rate) / rate).astype(float)
     if spec.lfo_fade:
         gate *= np.minimum(1, delayed_age / spec.lfo_fade)
-    triangle = (
-        1 - 4 * np.abs((spec.lfo_frequency * delayed_age + 0.25) % 1 - 0.5)
-    ) * gate
+    if spec.lfo_shape == 'parabolic':
+        phase = 2 * ((spec.lfo_frequency * delayed_age) % 1) - 1
+        lfo = -4 * phase * (1 - np.abs(phase))
+    else:
+        lfo = 1 - 4 * np.abs((spec.lfo_frequency * delayed_age + 0.25) % 1 - 0.5)
     cents = (
         spec.keytrack * (key - spec.keycenter)
         + spec.veltrack * velocity
-        + spec.lfo_depth * triangle
+        + spec.lfo_depth * lfo * gate
     )
     return spec.cutoff * 2 ** (cents / 1200)
 

@@ -1965,3 +1965,13 @@ valid; corrected three-platform qualification is incomplete.
 
 sfizz, its source inputs, and all numerical tolerances remain unchanged. The
 upstream cutoff report remains parked for the user's human review.
+## Parabolic first-filter LFO qualification
+
+The `filter-lfo-parabolic` fixture selects the pinned player's v1 parabolic
+waveform in safaz. Both enge backends agree with the independent authored
+cutoff and filter oracle to within `2.23e-16` peak. The frozen sfizz output
+starts and ends both notes one frame earlier. Unshifted comparisons show
+`0.0110851` peak and `0.000290621` RMS residuals. The existing waveform
+budget remains unchanged, and the fixture reports the disagreement using
+the suite's named expected-failure policy. The observed frame difference
+does not establish the cause of the entire residual.

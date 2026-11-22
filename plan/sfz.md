@@ -32,8 +32,9 @@ SFZ. Unsupported behavior must stay visible rather than be approximated.
 
 See [reference qualification](reference-test.md). Native/authored agreement is
 established for the tested profiles; full sfizz waveform equivalence and
-repeatability are not. The existing triangle filter-LFO convention differs from
-sfizz's default parabolic waveform; changing it is a separate playback decision.
+repeatability are not. The parabolic filter-LFO profile matches the pinned
+player's waveform equation. Its remaining rendered residual is tracked
+alongside the existing triangle profile's different waveform.
 
 ## Designs that need a separate contract
 

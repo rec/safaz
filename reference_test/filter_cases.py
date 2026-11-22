@@ -129,37 +129,58 @@ TRACKING_CASES = [
     ]
 ]
 
-LFO_CASES = [
-    Case(
-        name=f'filter-lfo-{f}-{d}',
-        notes=[Note(tick=11), Note(tick=5001)],
-        end_tick=10000,
-        source_channels=1,
-        filter_profile=FilterProfile(
-            filters=[FilterSpec(response='lpf_2p', lfo_frequency=f, lfo_depth=d)]
+LFO_CASES = (
+    [
+        Case(
+            name='filter-lfo-parabolic',
+            notes=[Note(tick=11), Note(tick=3001)],
+            end_tick=6000,
+            source_channels=1,
+            filter_profile=FilterProfile(
+                filters=[
+                    FilterSpec(
+                        response='lpf_2p',
+                        lfo_frequency=2,
+                        lfo_depth=1200,
+                        lfo_shape='parabolic',
+                    )
+                ]
+            ),
         ),
-    )
-    for f, d in [(2, 1200), (2, -1200), (5, 600)]
-] + [
-    Case(
-        name='filter-lfo-combined',
-        notes=[Note(tick=11), Note(tick=5001, key=62, velocity=64)],
-        end_tick=10000,
-        source_channels=1,
-        filter_profile=FilterProfile(
-            filters=[
-                FilterSpec(
-                    response='lpf_2p',
-                    keytrack=100,
-                    veltrack=-600,
-                    lfo_frequency=3,
-                    lfo_depth=900,
-                ),
-                FilterSpec(response='hpf_2p', cutoff=300),
-            ]
+    ]
+    + [
+        Case(
+            name=f'filter-lfo-{f}-{d}',
+            notes=[Note(tick=11), Note(tick=5001)],
+            end_tick=10000,
+            source_channels=1,
+            filter_profile=FilterProfile(
+                filters=[FilterSpec(response='lpf_2p', lfo_frequency=f, lfo_depth=d)]
+            ),
+        )
+        for f, d in [(2, 1200), (2, -1200), (5, 600)]
+    ]
+    + [
+        Case(
+            name='filter-lfo-combined',
+            notes=[Note(tick=11), Note(tick=5001, key=62, velocity=64)],
+            end_tick=10000,
+            source_channels=1,
+            filter_profile=FilterProfile(
+                filters=[
+                    FilterSpec(
+                        response='lpf_2p',
+                        keytrack=100,
+                        veltrack=-600,
+                        lfo_frequency=3,
+                        lfo_depth=900,
+                    ),
+                    FilterSpec(response='hpf_2p', cutoff=300),
+                ]
+            ),
         ),
-    ),
-]
+    ]
+)
 
 LFO_CASES += [
     Case(

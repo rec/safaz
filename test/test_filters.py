@@ -8,6 +8,7 @@ from envelfo import patch
 from envelfo.runtime import envelfo_at, initial_envelfo
 from pytest_regressions.data_regression import DataRegressionFixture
 from ufor import modulation
+from ufor.envelfo import Patch
 from ufor.samples import processing
 from ufor.samples.instrument import SampleInstrumentScore
 from ufor.samples.metadata import AudioMetadata
@@ -15,6 +16,7 @@ from ufor.time import Rate, Timebase
 
 from safaz import compiler, exporter, parser, registry
 from safaz.model import SfzCompileResult, SfzLocation
+from safaz.modulators import FilterLfoResponse
 
 
 @pytest.mark.parametrize(
@@ -756,18 +758,20 @@ def test_velocity_cutoff_bounds_include_output_rate_and_lower_limit(
 
 
 @pytest.mark.parametrize('depth', [-1200, -333.5, 333.5, 1200])
-def test_filter_lfo_starts_zero_rising_and_maps_signed_depth(depth: float) -> None:
+@pytest.mark.parametrize('profile', ['sfizz_triangle', 'sfizz_parabolic'])
+def test_filter_lfo_starts_zero_rising_and_maps_signed_depth(
+    depth: float, profile: FilterLfoResponse
+) -> None:
     result = _compile(
         '<region> sample=audio/glass.wav cutoff=1000 '
         f'fillfo_freq=2 fillfo_depth={depth}',
         filter_response='sfizz_rbj',
-        filter_lfo_response='sfizz_triangle',
+        filter_lfo_response=profile,
     )
     assert result.complete
     assert result.instrument is not None
     slot = result.instrument.body.slots[0]
     oscillator = slot.envelfos['sfz-filter-lfo']
-    state = initial_envelfo(oscillator, Fraction(0))
     for at, triangle in [
         (Fraction(0), 0),
         (Fraction(1, 16), 0.5),
@@ -776,12 +780,23 @@ def test_filter_lfo_starts_zero_rising_and_maps_signed_depth(depth: float) -> No
         (Fraction(3, 8), -1),
         (Fraction(1, 2), 0),
     ]:
-        observation = envelfo_at(oscillator, state, at)
-        assert observation.value == pytest.approx(triangle)
+        if isinstance(oscillator, Patch):
+            signal = patch.advance_patch(
+                oscillator,
+                patch.initial_patch(oscillator, Fraction(0)),
+                at,
+                next_delivery=at + 1,
+            ).values['signal']
+            expected = triangle * (2 - abs(triangle))
+        else:
+            signal = envelfo_at(
+                oscillator, initial_envelfo(oscillator, Fraction(0)), at
+            ).value
+            expected = triangle
+        assert signal == pytest.approx(expected)
         values = {
             s.name: modulation.SourceValue(
-                value=observation.value if s.name == 'filter-lfo' else 1,
-                weight=observation.weight if s.name == 'filter-lfo' else 1,
+                value=signal if s.name == 'filter-lfo' else 1,
             )
             for s in slot.modulation.sources
         }
@@ -790,13 +805,13 @@ def test_filter_lfo_starts_zero_rising_and_maps_signed_depth(depth: float) -> No
             for v in modulation.evaluate(slot.modulation, values)
             if v.target.parameter == 'cutoff_hz'
         )
-        assert cutoff == pytest.approx(1000 * 2 ** (depth * triangle / 1200))
+        assert cutoff == pytest.approx(1000 * 2 ** (depth * expected / 1200))
     exported = exporter.write(result.instrument)
     assert exported.complete, exported.unimplemented
     restored = _compile(
         exported.contents,
         filter_response='sfizz_rbj',
-        filter_lfo_response='sfizz_triangle',
+        filter_lfo_response=profile,
     )
     assert restored.complete and restored.instrument is not None
     assert restored.instrument.body.slots[0].modulation == slot.modulation
@@ -1070,7 +1085,7 @@ def _compile(
     text: str,
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
     rate: int = 48_000,
-    filter_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
+    filter_lfo_response: FilterLfoResponse = 'diagnose',
 ) -> SfzCompileResult:
     return compiler.compile_instrument(
         parser.parse(text),

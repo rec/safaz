@@ -378,9 +378,12 @@ def run_native_case(
         filter_envelope_response='portable_exponential'
         if case.filter_profile and case.filter_profile.envelope
         else 'diagnose',
-        filter_lfo_response='sfizz_triangle'
-        if case.filter_profile
-        and any(f.lfo_frequency for f in case.filter_profile.filters)
+        filter_lfo_response=(
+            'sfizz_parabolic'
+            if case.filter_profile.filters[0].lfo_shape == 'parabolic'
+            else 'sfizz_triangle'
+        )
+        if case.filter_profile and case.filter_profile.filters[0].lfo_frequency
         else 'diagnose',
         midi_binding=SfzMidiBindingRequest(
             instrument=ScoreReference(path='instrument.json'),

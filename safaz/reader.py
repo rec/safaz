@@ -15,6 +15,7 @@ from ufor.time import Rate, Timebase
 from .assets import inspect_audio, open_sample
 from .compiler import compile_instrument
 from .model import SfzCompileResult, SfzMidiBindingRequest
+from .modulators import FilterLfoResponse
 from .parser import parse, sample_paths
 
 
@@ -26,7 +27,7 @@ def read(
     sequence_counter: Literal['reject', 'all_note_ons'] = 'reject',
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
-    filter_lfo_response: Literal['diagnose', 'sfizz_triangle'] = 'diagnose',
+    filter_lfo_response: FilterLfoResponse = 'diagnose',
     filter_envelope_response: Literal['diagnose', 'portable_exponential'] = 'diagnose',
     pitch_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
     amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
