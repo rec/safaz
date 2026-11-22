@@ -6,7 +6,7 @@ import numpy as np
 import soundfile
 from enge.performance import MidiConverter
 from enge.sample_instrument import OfflineSampler, SamplerSnapshot, prepare
-from meedee.messages import NoteOn, PitchBend
+from middy.messages import NoteOn, PitchBend
 from modulation_oracle import ModulationProfile
 from ufor.interface import ScoreReference
 from ufor.samples import trace

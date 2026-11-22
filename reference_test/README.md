@@ -10,9 +10,9 @@ playback already agrees. See [current findings](findings.md).
 
 ## Run locally
 
-Install the optional group with `uv sync --frozen --group reference`.
-Building enge and its meedee dependency requires Rust; CI pins its build
-toolchain to 1.87.0, meedee's declared minimum.
+Install the optional group with `uv sync --frozen --group reference --no-editable`.
+Building enge and its middy dependency requires Rust. CI uses Rust 1.87.0
+and fetches public Cargo Git dependencies through the Git CLI.
 Linux also requires ALSA development headers and pkg-config; the workflow
 installs `libasound2-dev` and `pkg-config` before building the locked dependencies.
 Check out sfizz separately at the revision above and initialize its recursive
