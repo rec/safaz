@@ -2,6 +2,7 @@
 
 import json
 import re
+from collections.abc import Callable
 from pathlib import PurePosixPath
 
 from pydantic import ValidationError
@@ -14,6 +15,7 @@ from .model import (
     SfzLocation,
     SfzSource,
     SlotMetadata,
+    SourceLine,
     UnimplementedFeature,
 )
 from .registry import (
@@ -31,8 +33,16 @@ from .registry import (
 )
 
 
-def parse(text: str) -> SfzSource:
-    """Parse SFZ text without opening files or invoking vendor preprocessors."""
+def parse(
+    text: str,
+    *,
+    include_loader: Callable[[str], str] | None = None,
+    source_name: str = '<instrument>',
+) -> SfzSource:
+    """Parse SFZ text; an optional caller-provided inventory resolves includes."""
+    source_lines: list[SourceLine] = []
+    if include_loader is not None:
+        text, source_lines = _expand_includes(text, source_name, include_loader)
     metadata, slots, metadata_issues = _metadata(text)
     regions, control_opcodes, issues = _parse(text)
     if not regions and not issues:
@@ -42,7 +52,10 @@ def parse(text: str) -> SfzSource:
         control_opcodes=control_opcodes,
         instrument_metadata=metadata or {},
         slot_metadata=slots,
-        unimplemented=[*issues, *metadata_issues],
+        unimplemented=[
+            _locate_feature(i, source_lines) for i in [*issues, *metadata_issues]
+        ],
+        source_lines=source_lines,
     )
 
 
@@ -141,7 +154,34 @@ def _metadata(
 
 def _sfz_issue_position(feature: UnimplementedFeature) -> tuple[int, int]:
     assert isinstance(feature.location, SfzLocation)
-    return feature.location.line, feature.location.column
+    return (
+        feature.location.expanded_line or feature.location.line,
+        feature.location.column,
+    )
+
+
+def _locate_feature(
+    feature: UnimplementedFeature, source_lines: list[SourceLine]
+) -> UnimplementedFeature:
+    location = feature.location
+    if (
+        not source_lines
+        or not isinstance(location, SfzLocation)
+        or location.file is not None
+    ):
+        return feature
+    origin = source_lines[location.line - 1]
+    return feature.model_copy(
+        update={
+            'location': location.model_copy(
+                update={
+                    'file': origin.file,
+                    'line': origin.line,
+                    'expanded_line': location.line,
+                }
+            )
+        }
+    )
 
 
 def _parse(
@@ -309,6 +349,66 @@ def _blank_comment(match: re.Match[str]) -> str:
     return ''.join('\n' if c == '\n' else ' ' for c in match.group())
 
 
+def _expand_includes(
+    text: str, source_name: str, loader: Callable[[str], str]
+) -> tuple[str, list[SourceLine]]:
+    output: list[str] = []
+    locations: list[SourceLine] = []
+    variables: dict[str, str] = {}
+
+    def expand(contents: str, chain: tuple[str, ...]) -> None:
+        name = chain[-1]
+        lines = contents.splitlines()
+        if not lines:
+            return
+        without_blocks = BLOCK_COMMENT.sub(_blank_comment, '\n'.join(lines))
+        lines = without_blocks.split('\n')
+        directives = LINE_COMMENT.sub('', without_blocks).split('\n')
+        for line, (authored, visible) in enumerate(
+            zip(lines, directives, strict=True), 1
+        ):
+            directive = visible.strip()
+            if define := DEFINE_LINE.fullmatch(directive):
+                variables[define.group(1)] = define.group(2)
+            if INCLUDE_DIRECTIVE.match(directive):
+                match = INCLUDE_LINE.fullmatch(directive)
+                if match is None:
+                    raise ValueError(
+                        f'{name}:{line}: expected a quoted SFZ include path'
+                    )
+                try:
+                    reference = _expand_variables(match.group(1), variables, line)
+                except ValueError as error:
+                    raise ValueError(f'{name}:{line}: {error}') from error
+                include = str(PurePosixPath(reference.replace('\\', '/')))
+                try:
+                    RelativeFileLocation(path=include)
+                except ValueError as error:
+                    raise ValueError(
+                        f'{name}:{line}: invalid SFZ include path {reference!r}'
+                    ) from error
+                if include in chain:
+                    ancestry = ' -> '.join((*chain, include))
+                    raise ValueError(f'{name}:{line}: SFZ include cycle: {ancestry}')
+                if len(chain) >= 32:
+                    raise ValueError(f'{name}:{line}: SFZ include depth exceeds 32')
+                try:
+                    child = loader(include)
+                except (KeyError, OSError) as error:
+                    raise ValueError(
+                        f'{name}:{line}: cannot read SFZ include {include!r}'
+                    ) from error
+                except ValueError as error:
+                    raise ValueError(f'{name}:{line}: {error}') from error
+                expand(child, (*chain, include))
+            else:
+                output.append(authored + '\n')
+                locations.append(SourceLine(file=name, line=line))
+
+    expand(text, (source_name,))
+    return ''.join(output), locations
+
+
 def _remove_preprocessors(
     text: str, unimplemented: list[UnimplementedFeature]
 ) -> tuple[str, list[tuple[int, str, str]]]:
@@ -373,5 +473,8 @@ BLOCK_COMMENT = re.compile(r'/\*.*?\*/', re.DOTALL)
 LINE_COMMENT = re.compile(r'//.*$', re.MULTILINE)
 PREPROCESSOR = re.compile(r'^\s*#', re.MULTILINE)
 DEFINE = re.compile(r'(\$[A-Za-z_][A-Za-z0-9_]*)\s+(.+)')
+DEFINE_LINE = re.compile(r'#\s*define\s+' + DEFINE.pattern)
+INCLUDE_DIRECTIVE = re.compile(r'#\s*include(?:\s|$)')
+INCLUDE_LINE = re.compile(r'#\s*include\s+"([^"]+)"')
 VARIABLE = re.compile(r'\$[A-Za-z_][A-Za-z0-9_]*')
 RECS_METADATA = re.compile(r'//\s*recs:(instrument|slot)\s+(\{.*\})')

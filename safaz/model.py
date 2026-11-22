@@ -17,6 +17,8 @@ class SfzLocation(base.Model):
     opcode: str | None
     line: int
     column: int
+    file: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    expanded_line: int | None = Field(default=None, exclude=True)
 
 
 class InstrumentLocation(base.Model):
@@ -82,12 +84,20 @@ class SlotMetadata(base.Model):
     tags: list[str]
 
 
+class SourceLine(base.Model):
+    file: str
+    line: int
+
+
 class SfzSource(base.Model):
     regions: list[ParsedRegion]
     control_opcodes: list[ParsedOpcode]
     instrument_metadata: dict[str, object]
     slot_metadata: dict[int, dict[str, object]]
     unimplemented: list[UnimplementedFeature]
+    source_lines: list[SourceLine] = Field(
+        default_factory=list, exclude_if=lambda v: not v
+    )
 
 
 class SfzMidiBindingRequest(base.Model):

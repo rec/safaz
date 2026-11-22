@@ -1072,3 +1072,104 @@ def test_package_preserves_sfz_and_sample_bytes(tmp_path: Path) -> None:
     assert read(destination / source.name).complete
     with pytest.raises(FileExistsError):
         package(source, destination)
+
+
+def test_nested_includes_share_macros_and_keep_source_locations(tmp_path: Path) -> None:
+    instrument_file = tmp_path / 'instrument.sfz'
+    instrument_file.write_text(
+        '#define $LAYERS parts/layers.sfzh\n'
+        '<control> default_path=samples/\n'
+        '// #include "ignored.sfzh"\n'
+        '#include "$LAYERS"\n'
+        '<region> sample=a.wav key=61 volume=$GAIN unknown_root=1\n'
+    )
+    (tmp_path / 'parts').mkdir()
+    (tmp_path / 'parts/layers.sfzh').write_text('#include "macros.sfzh"\n')
+    (tmp_path / 'macros.sfzh').write_text(
+        '#define $GAIN -8\n<region> sample=a.wav key=60 volume=$GAIN eq1_gain=2\n'
+    )
+    _write_wav(tmp_path / 'samples/a.wav')
+
+    result = read(instrument_file, resolve_includes=True)
+    assert result.instrument is not None
+    assert [s.mapping.lowest_key for s in result.instrument.body.slots] == [60, 61]
+    assert [s.processing.volume_db for s in result.instrument.body.slots] == [-8, -8]
+    assert result.instrument.assets[0].location == RelativeFileLocation(
+        path='samples/a.wav'
+    )
+    assert [
+        (i.location.file, i.location.line, i.location.opcode)
+        for i in result.unimplemented
+        if isinstance(i.location, SfzLocation)
+    ] == [('macros.sfzh', 2, 'eq1_gain'), ('instrument.sfz', 5, 'unknown_root')]
+
+
+def test_package_preserves_include_bytes_and_sample_closure(tmp_path: Path) -> None:
+    from reccy.runtime.asset_sets import verify_package
+
+    from safaz.reader import package
+
+    source = tmp_path / 'instrument.sfz'
+    source.write_text('#include "parts/region.sfzh"\n')
+    (tmp_path / 'parts').mkdir()
+    include = tmp_path / 'parts/region.sfzh'
+    include.write_bytes(b'\xef\xbb\xbf<region> sample=samples/one.wav\r\n')
+    _write_wav(tmp_path / 'samples/one.wav')
+    destination = tmp_path / 'export'
+    manifest = package(source, destination, resolve_includes=True)
+    verify_package(destination, manifest)
+    assert set(manifest.files) == {
+        'instrument.sfz',
+        'parts/region.sfzh',
+        'samples/one.wav',
+    }
+    assert (destination / 'parts/region.sfzh').read_bytes() == include.read_bytes()
+    assert read(destination / source.name, resolve_includes=True).complete
+
+
+@pytest.mark.parametrize(
+    ('reference', 'message'),
+    [
+        ('missing.sfzh', 'cannot read SFZ include'),
+        ('../outside.sfzh', 'invalid SFZ include path'),
+        ('instrument.sfz', 'SFZ include cycle'),
+    ],
+)
+def test_read_include_errors_identify_the_directive_file_and_line(
+    tmp_path: Path, reference: str, message: str
+) -> None:
+    source = tmp_path / 'instrument.sfz'
+    source.write_text(f'// Heading\n#include "{reference}"\n')
+    with pytest.raises(ValueError, match=f'instrument.sfz:2: {message}'):
+        read(source, resolve_includes=True)
+
+
+def test_pure_include_inventory_reuses_file_under_current_macro_state() -> None:
+    from safaz.parser import parse, sample_paths
+
+    source = parse(
+        '#define $SAMPLE first.wav\n/* comment\n*/ #include "region.sfzh"\n'
+        '#define $SAMPLE second.wav\n# include "region.sfzh"\n',
+        include_loader={'region.sfzh': '<region> sample=$SAMPLE'}.__getitem__,
+    )
+    assert not source.unimplemented
+    assert sample_paths(source) == ['first.wav', 'second.wav']
+
+
+def test_include_cannot_escape_through_symlink(tmp_path: Path) -> None:
+    instrument_dir = tmp_path / 'instrument'
+    instrument_dir.mkdir()
+    outside = tmp_path / 'outside.sfzh'
+    outside.write_text('<region> sample=a.wav')
+    try:
+        (instrument_dir / 'linked.sfzh').symlink_to(outside)
+    except OSError as error:
+        if getattr(error, 'winerror', None) != 1314:
+            raise
+        pytest.skip('Windows requires Developer Mode or symlink privileges')
+    source = instrument_dir / 'source.sfz'
+    source.write_text('#include "linked.sfzh"')
+    with pytest.raises(
+        ValueError, match='source.sfz:1: SFZ include escapes the instrument directory'
+    ):
+        read(source, resolve_includes=True)

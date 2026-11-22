@@ -46,6 +46,7 @@ from .parser import (
     NOTE,
     NOTES,
     _add_unimplemented,
+    _locate_feature,
     _sfz_issue_position,
     sample_paths,
 )
@@ -293,6 +294,7 @@ def compile_instrument(
             )
             | source.instrument_metadata
         )
+    unimplemented = [_locate_feature(f, source.source_lines) for f in unimplemented]
     unimplemented.sort(key=_sfz_issue_position)
     return SfzCompileResult(
         instrument=document,

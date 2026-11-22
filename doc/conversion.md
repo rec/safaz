@@ -87,6 +87,24 @@ is 48 kHz stereo output; callers may select another supported output layout/rate
 It does not generate audio. `safaz.reader` and `safaz.assets` own file acquisition
 and asset inspection.
 
+## Local SFZ includes
+
+`read(path, resolve_includes=True)` and
+`package(path, destination, resolve_includes=True)` enable quoted
+`#include` directives. Include names resolve relative to the main SFZ
+directory, including nested directives. Defines are shared in source order
+and apply to include paths. Assembly keeps the same region and inheritance
+state across file boundaries. Sample and `default_path` resolution still
+uses the main SFZ directory.
+
+The local adapter rejects absolute paths, parent traversal, escaping symlinks,
+cycles, and missing files. Package publication preserves every resolved include
+and sample byte-for-byte. The pure parser can resolve the same layout through
+`parse(text, include_loader=inventory.__getitem__, source_name="instrument.sfz")`.
+Structured diagnostics identify the original file, line, and column.
+Export writes the compiled regions into one SFZ document. Other preprocessing
+directives and vendor opcodes retain diagnostics.
+
 ## Static filter responses
 
 `read()` and `compile_instrument()` accept

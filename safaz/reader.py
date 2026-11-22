@@ -1,7 +1,9 @@
 """Read SFZ files and seal their local sample assets."""
 
+from contextlib import ExitStack
+from functools import cache
 from pathlib import Path
-from typing import Literal
+from typing import BinaryIO, Literal
 
 from reccy.runtime.asset_sets import (
     AssetPreparationError,
@@ -24,6 +26,7 @@ def read(
     output_rate: int = 48_000,
     output_channels: list[str] | None = None,
     *,
+    resolve_includes: bool = False,
     sequence_counter: Literal['reject', 'all_note_ons'] = 'reject',
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
@@ -38,8 +41,17 @@ def read(
     midi_binding: SfzMidiBindingRequest | None = None,
 ) -> SfzCompileResult:
     """Seal local assets and import with explicit stereo/48 kHz output defaults."""
-    source = parse(path.read_text(encoding='utf-8-sig'))
     root = path.parent.resolve()
+
+    @cache
+    def load(reference: str) -> str:
+        return _included_file(root, reference).read_text(encoding='utf-8-sig')
+
+    source = parse(
+        path.read_text(encoding='utf-8-sig'),
+        source_name=path.name,
+        include_loader=load if resolve_includes else None,
+    )
     requests = {}
     for reference in sample_paths(source):
         sample = root.joinpath(reference).resolve()
@@ -77,14 +89,29 @@ def read(
     )
 
 
-def package(path: Path, destination: Path) -> PackageManifest:
+def package(
+    path: Path, destination: Path, *, resolve_includes: bool = False
+) -> PackageManifest:
     """Publish a verified local SFZ and its samples without changing their bytes."""
-    with open_sample(path) as document:
-        source = parse(document.read().decode('utf-8-sig'))
-        references = sample_paths(source)
-        if path.name in references:
-            raise ValueError('SFZ document conflicts with a sample path')
+    with ExitStack() as stack:
+        document = stack.enter_context(open_sample(path))
+        includes: dict[str, BinaryIO] = {}
         root = path.parent.resolve()
+
+        @cache
+        def load(reference: str) -> str:
+            stream = stack.enter_context(open_sample(_included_file(root, reference)))
+            includes[reference] = stream
+            return stream.read().decode('utf-8-sig')
+
+        source = parse(
+            document.read().decode('utf-8-sig'),
+            source_name=path.name,
+            include_loader=load if resolve_includes else None,
+        )
+        references = sample_paths(source)
+        if {path.name, *includes} & set(references):
+            raise ValueError('SFZ source conflicts with a sample path')
         requests = {}
         for reference in references:
             sample = root.joinpath(reference).resolve()
@@ -99,10 +126,20 @@ def package(path: Path, destination: Path) -> PackageManifest:
             manifest = PackageManifest(
                 files={
                     path.name: stream_identity(document),
+                    **{n: stream_identity(s) for n, s in includes.items()},
                     **prepared.identities,
                 }
             )
             export_package(
-                destination, {path.name: document, **prepared.streams}, manifest
+                destination,
+                {path.name: document, **includes, **prepared.streams},
+                manifest,
             )
             return manifest
+
+
+def _included_file(root: Path, reference: str) -> Path:
+    path = root.joinpath(reference).resolve(strict=True)
+    if not path.is_relative_to(root):
+        raise ValueError(f'SFZ include escapes the instrument directory: {reference}')
+    return path
