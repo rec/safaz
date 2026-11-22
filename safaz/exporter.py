@@ -269,9 +269,9 @@ def _region(
     opcodes.extend(_processing_opcodes(document, slot, path, issues))
     opcodes.extend(_envelope_opcodes(document, slot, path, issues))
     opcodes.extend(_crossfade_opcodes(slot, path, issues))
-    filters, binding = _filter_opcodes(document, slot, path, issues)
+    filters, filter_routes, binding = _filter_opcodes(document, slot, path, issues)
     opcodes.extend(filters)
-    opcodes.extend(_modulation_opcodes(slot, path, issues, binding))
+    opcodes.extend(_modulation_opcodes(slot, path, issues, filter_routes))
     _slot_issues(slot, path, issues, binding)
     return opcodes
 
@@ -314,8 +314,8 @@ def _diagnose_omitted_slot(
         )
     _envelope_opcodes(document, slot, path, issues)
     _crossfade_opcodes(slot, path, issues)
-    _, binding = _filter_opcodes(document, slot, path, issues)
-    _modulation_opcodes(slot, path, issues, binding)
+    _, filter_routes, binding = _filter_opcodes(document, slot, path, issues)
+    _modulation_opcodes(slot, path, issues, filter_routes)
     _slot_issues(slot, path, issues, binding)
 
 
@@ -734,7 +734,7 @@ def _filter_opcodes(
     slot: SampleSlot,
     path: str,
     issues: list[UnimplementedFeature],
-) -> tuple[list[Opcode], processing.GeneratorBinding | None]:
+) -> tuple[list[Opcode], list[modulation.Route], processing.GeneratorBinding | None]:
     local = slot.processing
     common = document.body.settings.processing
     filters = [
@@ -745,7 +745,7 @@ def _filter_opcodes(
         ),
     ]
     if not filters:
-        return [], None
+        return [], [], None
     output = document.outputs[0].stream
     assert isinstance(output, AudioType)
     rate = next(t.rate for t in document.timebases if t.name == output.timebase)
@@ -786,24 +786,39 @@ def _filter_opcodes(
         values[f'cutoff{suffix}'] = _number_text(filter.cutoff_hz)
         values[f'resonance{suffix}'] = _number_text(resonance)
     if len(values) != 3 * len(filters):
-        return [], None
-    envelope, binding = _filter_envelope_export(slot, filters[0][0], output_rate, upper)
-    values.update(envelope)
-    return [Opcode(name=n, value=v) for n, v in values.items()], binding
+        return [], [], None
+    binding = None
+    exported_routes: list[modulation.Route] = []
+    if slot.trigger == enums.TriggerKind.start:
+        for index, (filter, _) in enumerate(filters):
+            route = _filter_cutoff_route(slot, filter, upper)
+            if route is None:
+                continue
+            if (depth := _filter_velocity_depth(slot, route)) is not None:
+                prefix = 'fil2' if index else 'fil'
+                values[f'{prefix}_veltrack'] = str(depth)
+                exported_routes.append(route)
+            elif index == 0:
+                envelope, binding = _filter_envelope_export(slot, route, output_rate)
+                values.update(envelope)
+                if binding is not None:
+                    exported_routes.append(route)
+    return (
+        [Opcode(name=n, value=v) for n, v in values.items()],
+        exported_routes,
+        binding,
+    )
 
 
-def _filter_envelope_export(
+def _filter_cutoff_route(
     slot: SampleSlot,
     filter: processing.ResonantFilter,
-    output_rate: float,
     upper: float,
-) -> tuple[dict[str, str], processing.GeneratorBinding | None]:
-    if slot.trigger != enums.TriggerKind.start or slot.event_connections:
-        return {}, None
+) -> modulation.Route | None:
     target = modulation.Target(name=f'filter-{filter.name}', parameter='cutoff_hz')
     routes = [r for r in slot.modulation.routes if r.target == target]
     if len(routes) != 1:
-        return {}, None
+        return None
     route = routes[0]
     if (
         route.operation != modulation.Operation.multiply
@@ -812,6 +827,45 @@ def _filter_envelope_export(
         or len(route.points) != 2
         or route.points[0] != modulation.Point(input=0, amount=1)
         or route.points[1].input != 1
+    ):
+        return None
+    ratio = route.points[1].amount
+    cutoff = filter.cutoff_hz
+    low, high = cutoff * min(1, ratio), cutoff * max(1, ratio)
+    if ratio == 1 or not 1 <= low <= high <= upper:
+        return None
+    parameter = modulation.Parameter(
+        target=target,
+        unit=modulation.Unit.hz,
+        scope=Scope.voice,
+        minimum=low,
+        maximum=high,
+        default=cutoff,
+    )
+    return route if parameter in slot.modulation.parameters else None
+
+
+def _filter_velocity_depth(slot: SampleSlot, route: modulation.Route) -> int | None:
+    if (
+        not any(b.name == route.source and b.kind == 'velocity' for b in slot.bindings)
+        or modulation.Source(name=route.source, scope='voice', minimum=0, maximum=1)
+        not in slot.modulation.sources
+    ):
+        return None
+    ratio = route.points[1].amount
+    depth = round(1200 * math.log2(ratio))
+    if -9600 <= depth <= 9600 and depth and 2 ** (depth / 1200) == ratio:
+        return depth
+    return None
+
+
+def _filter_envelope_export(
+    slot: SampleSlot,
+    route: modulation.Route,
+    output_rate: float,
+) -> tuple[dict[str, str], processing.GeneratorBinding | None]:
+    if (
+        slot.event_connections
         or sum(r.source == route.source for r in slot.modulation.routes) != 1
     ):
         return {}, None
@@ -837,20 +891,6 @@ def _filter_envelope_export(
     ):
         return {}, None
     ratio = route.points[1].amount
-    cutoff = filter.cutoff_hz
-    low, high = cutoff * min(1, ratio), cutoff * max(1, ratio)
-    if ratio == 1 or not 1 <= low <= high <= upper:
-        return {}, None
-    parameter = modulation.Parameter(
-        target=target,
-        unit=modulation.Unit.hz,
-        scope=Scope.voice,
-        minimum=low,
-        maximum=high,
-        default=cutoff,
-    )
-    if parameter not in slot.modulation.parameters:
-        return {}, None
     depth = inverse_value(
         1200 * math.log2(ratio), lambda n: 2 ** (n / 1200), ratio, -12000, 12000
     )
@@ -863,11 +903,11 @@ def _modulation_opcodes(
     slot: SampleSlot,
     path: str,
     issues: list[UnimplementedFeature],
-    filter_envelope: processing.GeneratorBinding | None,
+    filter_routes: list[modulation.Route],
 ) -> list[Opcode]:
     supported: list[modulation.Route] = []
     for i, curve in enumerate(slot.modulation.routes):
-        if filter_envelope is not None and curve.source == filter_envelope.name:
+        if curve in filter_routes:
             continue
         if (
             curve.target == modulation.Target(name='processing', parameter='amplitude')

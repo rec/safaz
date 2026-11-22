@@ -121,7 +121,8 @@ def test_filter_envelope_requires_explicit_choice_and_imported_filter() -> None:
             44100,
             'fileg_depth=-821.3 fileg_delay=0.000025 fileg_hold=0.00005 '
             'fileg_start=33.3333 fileg_attack=0.4 fileg_decay=0.3 '
-            'fileg_sustain=31.37 fileg_release=0 cutoff2=1234 resonance=6.17',
+            'fileg_sustain=31.37 fileg_release=0 cutoff2=1234 resonance=6.17 '
+            'fil2_veltrack=-713',
         ),
         (
             48000,

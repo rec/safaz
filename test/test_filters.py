@@ -481,6 +481,69 @@ def test_filter_velocity_tracks_continuously_in_both_directions(
         assert tracked[0].interpolation == modulation.Interpolation.exponential
 
 
+@pytest.mark.parametrize(('first', 'second'), [(-9600, 9600), (713, -487), (0, -1200)])
+def test_filter_velocity_export_recreates_both_cutoff_routes(
+    first: int, second: int
+) -> None:
+    result = _compile(
+        '<region> sample=audio/glass.wav key=60 cutoff=320 cutoff2=32 '
+        f'fil_veltrack={first} fil2_veltrack={second}',
+        filter_response='sfizz_rbj',
+        rate=44100,
+    )
+    assert result.complete and result.instrument is not None
+    exported = exporter.write(result.instrument)
+    assert exported.complete, exported.unimplemented
+    assert 'fil2_veltrack=' + str(second) in exported.contents
+    if first:
+        assert 'fil_veltrack=' + str(first) in exported.contents
+    else:
+        assert 'fil_veltrack=' not in exported.contents
+    restored = _compile(exported.contents, filter_response='sfizz_rbj', rate=44100)
+    assert restored.complete and restored.instrument is not None
+    before, after = result.instrument.body.slots[0], restored.instrument.body.slots[0]
+    assert after.processing == before.processing
+    assert after.modulation == before.modulation
+    assert after.bindings == before.bindings
+
+
+@pytest.mark.parametrize('change', ['fractional', 'linear', 'mixed'])
+def test_filter_velocity_export_diagnoses_unrepresentable_routes(change: str) -> None:
+    extra = 'fil_keytrack=100 fil_keycenter=59' if change == 'mixed' else ''
+    result = _compile(
+        '<region> sample=audio/glass.wav key=60 cutoff=1000 fil_veltrack=1200 '
+        'cutoff2=500 fil2_veltrack=-1200 ' + extra,
+        filter_response='sfizz_rbj',
+    )
+    assert result.complete and result.instrument is not None
+    raw = result.instrument.model_dump(mode='json')
+    routing = raw['body']['slots'][0]['modulation']
+    first_route = next(
+        r
+        for r in routing['routes']
+        if r['source'] == 'velocity' and r['target']['name'] == 'filter-sfz-filter-1'
+    )
+    if change == 'fractional':
+        ratio = 2 ** (1200.5 / 1200)
+        first_route['points'][1]['amount'] = ratio
+        parameter = next(
+            p for p in routing['parameters'] if p['target'] == first_route['target']
+        )
+        parameter['maximum'] = 1000 * ratio
+    elif change == 'linear':
+        first_route['interpolation'] = 'linear'
+    exported = exporter.write(SampleInstrumentScore.model_validate(raw))
+    assert not exported.complete
+    assert 'fil_veltrack=' not in exported.contents
+    assert 'cutoff=1000' in exported.contents
+    assert 'fil2_veltrack=-1200' in exported.contents
+    index = routing['routes'].index(first_route)
+    assert any(
+        i.location.path == f'body.slots[0].modulation.routes[{index}]'
+        for i in exported.unimplemented
+    )
+
+
 def test_filter_velocity_conformance_preserves_inheritance_and_combined_cutoffs(
     data_regression: DataRegressionFixture,
 ) -> None:

@@ -138,7 +138,8 @@ def support_table() -> str:
         "map exact integer-key cutoff ratios over each region's playable keys. "
         'Tracking is 0-1200 cents per key, with center key 60 by default. '
         '`fil_veltrack`/`fil2_veltrack` map exact continuous exponential velocity '
-        'ratios from -9600 to 9600 cents. Keyboard and velocity ratios multiply; '
+        'ratios from -9600 to 9600 cents. Export recognizes the exact standalone '
+        'velocity route on either filter. Keyboard and velocity ratios multiply; '
         'an out-of-range combination retains only the static filter. '
         'Controller and release-trigger velocity tracking remain diagnosed. '
         'Unverified tracking and tracked cutoff outside the verified range '
@@ -153,7 +154,7 @@ def support_table() -> str:
         'use a voice-local triangle starting at zero rising after its delay. '
         'Fade scales the signal before cutoff exponentiation. '
         'Nonordinary triggers remain diagnosed. Combined cutoff modulation '
-        'outside bounds retains only the static filter. LFO and tracking export '
+        'outside bounds retains only the static filter. LFO and key tracking export '
         'remain unsupported. '
         'First-filter envelopes additionally require '
         '`filter_envelope_response="portable_exponential"`: fixed DAHDSR/start '

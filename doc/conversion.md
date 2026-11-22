@@ -147,6 +147,13 @@ interpolation expresses this exactly with two ratio points; it does not
 quantize velocity to MIDI integers. Velocity binding is shared with other
 velocity-dependent settings. Zero depth creates no route.
 
+Export writes `fil_veltrack` or `fil2_veltrack` for an ordinary note-on filter
+whose sole cutoff route has this exact shape and an in-range integer depth.
+Re-import with `sfizz_rbj` at the same output rate. An envelope on the first
+filter can round-trip independently of velocity tracking on the second.
+Other cutoff routes on the same filter, fractional depths, and
+non-exponential curves retain diagnostics.
+
 Keyboard and velocity ratios multiply. Bounds cover every playable key and
 the full native note-velocity domain [0,1], including output-rate limits.
 If individually valid routes exceed the cutoff limits when combined, both
@@ -194,7 +201,7 @@ Unsupported filter modulation retains its source diagnostic alongside any
 accepted static filter. Export writes up to two supported two-pole filters in
 serial order after amplitude. Cutoff and resonance must be representable
 within the same verified profile and output rate. Other responses, additional
-stages, tracking and LFO export remain diagnosed. The [SFZ fixture](../conformance/filters.sfz) and
+stages, key tracking and LFO export remain diagnosed. The [SFZ fixture](../conformance/filters.sfz) and
 [native filter settings](../conformance/filters.json) demonstrate inheritance
 and the static two-filter mapping without asserting complete playback equivalence.
 The [keyboard tracking fixture](../conformance/filter-key-tracking.sfz) covers
