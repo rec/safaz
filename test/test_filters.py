@@ -507,12 +507,35 @@ def test_filter_velocity_export_recreates_both_cutoff_routes(
     assert after.bindings == before.bindings
 
 
-@pytest.mark.parametrize('change', ['fractional', 'linear', 'mixed'])
+@pytest.mark.parametrize(
+    'tracking',
+    [
+        'key=60 fil_keytrack=100 fil_keycenter=60 fil2_keytrack=77 fil2_keycenter=59',
+        'lokey=59 hikey=62 fil_keytrack=713 fil_keycenter=66 fil2_keytrack=1200',
+    ],
+)
+def test_filter_export_round_trips_key_and_velocity_tracking(tracking: str) -> None:
+    original = _compile(
+        '<region> sample=audio/glass.wav cutoff=800 cutoff2=640 '
+        f'fil_veltrack=933 fil2_veltrack=-1200 {tracking}',
+        filter_response='sfizz_rbj',
+    )
+    assert original.complete and original.instrument is not None
+    exported = exporter.write(original.instrument)
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents, filter_response='sfizz_rbj')
+    assert restored.complete and restored.instrument is not None
+    before, after = original.instrument.body.slots[0], restored.instrument.body.slots[0]
+    assert after.processing == before.processing
+    assert after.modulation == before.modulation
+    assert after.bindings == before.bindings
+
+
+@pytest.mark.parametrize('change', ['fractional', 'linear', 'bounds'])
 def test_filter_velocity_export_diagnoses_unrepresentable_routes(change: str) -> None:
-    extra = 'fil_keytrack=100 fil_keycenter=59' if change == 'mixed' else ''
     result = _compile(
         '<region> sample=audio/glass.wav key=60 cutoff=1000 fil_veltrack=1200 '
-        'cutoff2=500 fil2_veltrack=-1200 ' + extra,
+        'cutoff2=500 fil2_veltrack=-1200',
         filter_response='sfizz_rbj',
     )
     assert result.complete and result.instrument is not None
@@ -532,6 +555,11 @@ def test_filter_velocity_export_diagnoses_unrepresentable_routes(change: str) ->
         parameter['maximum'] = 1000 * ratio
     elif change == 'linear':
         first_route['interpolation'] = 'linear'
+    else:
+        parameter = next(
+            p for p in routing['parameters'] if p['target'] == first_route['target']
+        )
+        parameter['maximum'] *= 1.1
     exported = exporter.write(SampleInstrumentScore.model_validate(raw))
     assert not exported.complete
     assert 'fil_veltrack=' not in exported.contents

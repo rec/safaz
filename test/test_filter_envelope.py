@@ -122,7 +122,7 @@ def test_filter_envelope_requires_explicit_choice_and_imported_filter() -> None:
             'fileg_depth=-821.3 fileg_delay=0.000025 fileg_hold=0.00005 '
             'fileg_start=33.3333 fileg_attack=0.4 fileg_decay=0.3 '
             'fileg_sustain=31.37 fileg_release=0 cutoff2=1234 resonance=6.17 '
-            'fil2_veltrack=-713',
+            'fil2_veltrack=-713 fil_keytrack=100 fil_keycenter=61 fil_veltrack=713',
         ),
         (
             48000,
@@ -168,6 +168,9 @@ def test_filter_export_diagnoses_unsupported_shapes(change: str) -> None:
         slot['envelfos']['sfz-filter-envelope']['release'][0]['transition_seconds'] = (
             0.1
         )
+    else:
+        route = next(r for r in slot['modulation']['routes'] if r['source'] == 'key')
+        route['points'][0]['amount'] *= 1.01
     exported = exporter.write(SampleInstrumentScore.model_validate(raw))
     assert not exported.complete
     assert 'fileg_depth=' not in exported.contents

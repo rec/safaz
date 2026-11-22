@@ -91,6 +91,8 @@ outside the verified bounds diagnose both routes and retain the static filter.
 Controller and release-trigger velocity semantics remain diagnosed. Native
 consumers restricted to direct linear routes continue to reject exponential
 routes explicitly.
+Export recreates verified keyboard and velocity tracking on either filter,
+including combinations with the bounded first-filter envelope.
 Basic first-filter LFOs now import fixed frequency and signed depth with a
 separate `filter_lfo_response="sfizz_triangle"` choice. They reuse a voice-local
 native triangle at quarter-cycle phase and an exponential cutoff ratio.
@@ -124,7 +126,8 @@ entry/release levels and resolves to ordinary curved/linear segments, with
 snapshot continuation in Python and Rust and named-modulation support in enge.
 The explicit continuous convention retains known sfizz sample/block-boundary
 differences. Combined cutoff bounds include keyboard, velocity, LFO and envelope
-routes. Richer modifiers and export remain diagnosed.
+routes. Bounded envelope export preserves combinations with keyboard and
+velocity tracking. Richer modifiers remain diagnosed.
 
 Local reads snapshot samples before inspecting their hash, decoded metadata and
 embedded-loop information, so compilation uses one verified asset version.

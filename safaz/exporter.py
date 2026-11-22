@@ -791,18 +791,14 @@ def _filter_opcodes(
     exported_routes: list[modulation.Route] = []
     if slot.trigger == enums.TriggerKind.start:
         for index, (filter, _) in enumerate(filters):
-            route = _filter_cutoff_route(slot, filter, upper)
-            if route is None:
-                continue
-            if (depth := _filter_velocity_depth(slot, route)) is not None:
-                prefix = 'fil2' if index else 'fil'
-                values[f'{prefix}_veltrack'] = str(depth)
-                exported_routes.append(route)
-            elif index == 0:
-                envelope, binding = _filter_envelope_export(slot, route, output_rate)
-                values.update(envelope)
-                if binding is not None:
-                    exported_routes.append(route)
+            prefix = 'fil2' if index else 'fil'
+            tracking, routes, generator = _filter_cutoff_opcodes(
+                slot, filter, prefix, output_rate
+            )
+            values.update(tracking)
+            exported_routes.extend(routes)
+            if generator is not None:
+                binding = generator
     return (
         [Opcode(name=n, value=v) for n, v in values.items()],
         exported_routes,
@@ -810,39 +806,126 @@ def _filter_opcodes(
     )
 
 
-def _filter_cutoff_route(
+def _filter_cutoff_opcodes(
     slot: SampleSlot,
     filter: processing.ResonantFilter,
-    upper: float,
-) -> modulation.Route | None:
+    prefix: str,
+    output_rate: float,
+) -> tuple[dict[str, str], list[modulation.Route], processing.GeneratorBinding | None]:
     target = modulation.Target(name=f'filter-{filter.name}', parameter='cutoff_hz')
     routes = [r for r in slot.modulation.routes if r.target == target]
-    if len(routes) != 1:
-        return None
-    route = routes[0]
-    if (
-        route.operation != modulation.Operation.multiply
-        or route.unit != modulation.Unit.ratio
-        or route.interpolation != modulation.Interpolation.exponential
-        or len(route.points) != 2
-        or route.points[0] != modulation.Point(input=0, amount=1)
-        or route.points[1].input != 1
-    ):
-        return None
-    ratio = route.points[1].amount
+    if not routes:
+        return {}, [], None
+    binding = None
+    values: dict[str, str] = {}
+    bounds: dict[str, tuple[float, float]] = {}
     cutoff = filter.cutoff_hz
-    low, high = cutoff * min(1, ratio), cutoff * max(1, ratio)
-    if ratio == 1 or not 1 <= low <= high <= upper:
-        return None
+    low = high = cutoff
+    upper = cutoff_limit(output_rate)
+    for route in routes:
+        minimum = min(p.amount for p in route.points)
+        maximum = max(p.amount for p in route.points)
+        if not 1 <= cutoff * minimum <= cutoff * maximum <= upper:
+            return {}, [], None
+        if (key := _filter_key_tracking(slot, route)) is not None:
+            tracking, center = key
+            values[f'{prefix}_keytrack'] = str(tracking)
+            values[f'{prefix}_keycenter'] = str(center)
+            kind = 'key'
+        elif _filter_exponential_route(route):
+            if (depth := _filter_velocity_depth(slot, route)) is not None:
+                values[f'{prefix}_veltrack'] = str(depth)
+                kind = 'velocity'
+            elif prefix == 'fil':
+                envelope, generator = _filter_envelope_export(slot, route, output_rate)
+                if generator is None:
+                    return {}, [], None
+                values.update(envelope)
+                binding = generator
+                kind = 'envelope'
+            else:
+                return {}, [], None
+        else:
+            return {}, [], None
+        if kind in bounds:
+            return {}, [], None
+        bounds[kind] = minimum, maximum
+    for kind in ('key', 'velocity', 'envelope'):
+        if kind in bounds:
+            minimum, maximum = bounds[kind]
+            low *= minimum
+            high *= maximum
+    if not 1 <= low <= high <= upper:
+        return {}, [], None
     parameter = modulation.Parameter(
         target=target,
         unit=modulation.Unit.hz,
         scope=Scope.voice,
-        minimum=low,
-        maximum=high,
+        minimum=min(cutoff, low),
+        maximum=max(cutoff, high),
         default=cutoff,
     )
-    return route if parameter in slot.modulation.parameters else None
+    if parameter not in slot.modulation.parameters:
+        return {}, [], None
+    return values, routes, binding
+
+
+def _filter_key_tracking(
+    slot: SampleSlot, route: modulation.Route
+) -> tuple[int, int] | None:
+    keys = range(slot.mapping.lowest_key, slot.mapping.highest_key + 1)
+    if (
+        route.operation != modulation.Operation.multiply
+        or route.unit != modulation.Unit.ratio
+        or route.interpolation != modulation.Interpolation.linear
+        or [p.input for p in route.points] != list(keys)
+        or any(p.amount <= 0 for p in route.points)
+        or not any(b.name == route.source and b.kind == 'key' for b in slot.bindings)
+        or modulation.Source(name=route.source, scope='voice', minimum=0, maximum=127)
+        not in slot.modulation.sources
+    ):
+        return None
+    offset = round(1200 * math.log2(route.points[0].amount))
+    if len(keys) == 1:
+        if route.points[0].amount == 1:
+            return 100, keys.start
+        candidates = [
+            (offset // (keys.start - c), c)
+            for c in sorted(range(128), key=lambda k: abs(k - 60))
+            if c != keys.start and offset % (keys.start - c) == 0
+        ]
+    else:
+        tracking = round(
+            (1200 * math.log2(route.points[-1].amount) - offset) / (len(keys) - 1)
+        )
+        if not 1 <= tracking <= 1200 or offset % tracking:
+            return None
+        candidates = [(tracking, keys.start - offset // tracking)]
+    return next(
+        (
+            (t, c)
+            for t, c in candidates
+            if 1 <= t <= 1200
+            and 0 <= c <= 127
+            and all(
+                2 ** (t * (k - c) / 1200) == p.amount
+                for k, p in zip(keys, route.points, strict=True)
+            )
+        ),
+        None,
+    )
+
+
+def _filter_exponential_route(route: modulation.Route) -> bool:
+    return (
+        route.operation == modulation.Operation.multiply
+        and route.unit == modulation.Unit.ratio
+        and route.interpolation == modulation.Interpolation.exponential
+        and len(route.points) == 2
+        and route.points[0] == modulation.Point(input=0, amount=1)
+        and route.points[1].input == 1
+        and route.points[1].amount != 1
+    )
 
 
 def _filter_velocity_depth(slot: SampleSlot, route: modulation.Route) -> int | None:
@@ -866,6 +949,8 @@ def _filter_envelope_export(
 ) -> tuple[dict[str, str], processing.GeneratorBinding | None]:
     if (
         slot.event_connections
+        or modulation.Source(name=route.source, scope='voice', minimum=0, maximum=1)
+        not in slot.modulation.sources
         or sum(r.source == route.source for r in slot.modulation.routes) != 1
     ):
         return {}, None

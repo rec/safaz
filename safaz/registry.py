@@ -138,8 +138,8 @@ def support_table() -> str:
         "map exact integer-key cutoff ratios over each region's playable keys. "
         'Tracking is 0-1200 cents per key, with center key 60 by default. '
         '`fil_veltrack`/`fil2_veltrack` map exact continuous exponential velocity '
-        'ratios from -9600 to 9600 cents. Export recognizes the exact standalone '
-        'velocity route on either filter. Keyboard and velocity ratios multiply; '
+        'ratios from -9600 to 9600 cents. Export recognizes exact keyboard and '
+        'velocity routes on either filter. Keyboard and velocity ratios multiply; '
         'an out-of-range combination retains only the static filter. '
         'Controller and release-trigger velocity tracking remain diagnosed. '
         'Unverified tracking and tracked cutoff outside the verified range '
@@ -154,7 +154,7 @@ def support_table() -> str:
         'use a voice-local triangle starting at zero rising after its delay. '
         'Fade scales the signal before cutoff exponentiation. '
         'Nonordinary triggers remain diagnosed. Combined cutoff modulation '
-        'outside bounds retains only the static filter. LFO and key tracking export '
+        'outside bounds retains only the static filter. LFO export '
         'remain unsupported. '
         'First-filter envelopes additionally require '
         '`filter_envelope_response="portable_exponential"`: fixed DAHDSR/start '
@@ -163,7 +163,8 @@ def support_table() -> str:
         'threshold observation. Combined modulation must stay within cutoff bounds. '
         'Only ordinary note-on triggers are supported. Export writes the bounded '
         'first-filter envelope if it can recreate the native shape at the same '
-        'rate. Richer modifiers and mixed cutoff modulation remain diagnosed.',
+        'rate, including combinations with supported tracking. Richer modifiers '
+        'and other cutoff modulation remain diagnosed.',
         '',
         'Pitch LFOs require `pitch_lfo_response="sfizz_parabolic"`. '
         'Fixed frequency (0-20 Hz), signed depth (-1200 to 1200 cents), delay '
