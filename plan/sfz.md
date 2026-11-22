@@ -19,12 +19,10 @@ spans uFor, enveLFO, enge and safaz. See [the design](../doc/filter-envelope-des
 3. Remaining articulation rules: release-region controller/keyswitch history,
    richer controller-trigger combinations, repeated-note masking and release-tail
    termination. Specify portable rules before importing them.
-4. Export coverage for sparse stereo width and position matrices. Static import
-   and verified matrix export are covered in the conversion contract.
-5. Qualify runtime snapshot continuation for the imported seeded-variation
+4. Qualify runtime snapshot continuation for the imported seeded-variation
    profile and design export behavior for native seeded variation.
-6. EQ, after bandwidth and resonance transfer functions are specified and tested.
-7. Export gaps for supported import-only features, as listed in the catalog.
+5. EQ, after bandwidth and resonance transfer functions are specified and tested.
+6. Export gaps for supported import-only features, as listed in the catalog.
 
 Each feature needs precise defaults, bounds, inheritance, source-located
 diagnostics and focused regressions. A portable concept must be useful outside
@@ -37,13 +35,43 @@ established for the tested profiles; full sfizz waveform equivalence and
 repeatability are not. The existing triangle filter-LFO convention differs from
 sfizz's default parabolic waveform; changing it is a separate playback decision.
 
-## Larger deferred designs
+## Designs that need a separate contract
 
-Beat-synchronized SFZ controls need a declared transport mapping. Buses, sends
-and effects need routing semantics. Generated waveforms and waveguides need a
-synthesis-source model. Vendor extensions, including `#include`, remain outside
-the compatibility promise. Player-dependent sample-unit interpretations and
-other disputed conventions need explicit profiles rather than guesses.
+These features remain diagnostic with the pinned dependencies. Each design
+lists the contract needed before a converter or compatibility profile can
+claim support.
+
+| Area | Ownership and acceptance boundary |
+| --- | --- |
+| Beat-synchronized controls | uFor and consumers need a sampler transport contract that identifies the beat clock available to a voice. Define phase origin, behavior across tempo changes, and whether retriggers reset phase. Verify the same event sequence across block partitions and snapshot restore. safaz supplies opcode defaults and reports absent transport configuration. |
+| Buses, sends and effects | Map SFZ output numbers and named buses to explicit audio destinations. Define where dry and wet signals branch relative to voice gain, filtering and pan. The sample score and consumer must agree on per-voice versus shared effect state and tail lifetime. Verify multi-output routing, dry/wet gain and tails independently before mapping particular effects. |
+| Generated sources and waveguides | uFor needs a source model for generated voices with pitch, channel and lifetime semantics independently of a file asset. Consumers must implement generation and preserve oscillator or waveguide state on restore. safaz maps each supported source family and diagnoses waveform or physical-model options without a matching source. |
+| Preprocessor includes and vendor opcodes | An include profile must define path and macro scope, asset-relative paths, include order and export expectations. A pure parser can consume a caller-supplied source inventory. The file adapter and package reader must resolve the same contained files, report missing files and cycles, and retain filenames in diagnostics. Vendor opcodes also require a named compatibility profile with tests for conflicts with the standard spellings. |
+| Player-dependent sample units | Establish the player, version, units and rounding for each affected opcode. Test endpoint inclusivity, reverse and loop behavior, source versus output rates, and embedded loop metadata. Use a profile when conventions differ. |
+
+### Remaining playback and conversion contracts
+
+- **Filter envelopes and expressive controls.** Specify whether each modifier is
+  sampled at voice start or evaluated while a voice sounds. uFor and the
+  consumer must agree on parameter targets, interpolation, release capture
+  and snapshot state. Aftertouch also needs an input contract that distinguishes
+  channel pressure from per-note pressure. Controller curves and LFO shapes
+  need verified endpoints, defaults and precedence across inherited sections.
+- **Articulation history and retirement.** Release-region conditions need
+  per-trigger records of the note-on conditions and an explicit choice of
+  when to read any live controls. Repeated notes and release tails need
+  deterministic ordering with pedal changes, choke and voice-limit events.
+  Qualify those rules with overlapping notes and identical-velocity triggers.
+- **Equalizer.** The current band parameters are frequency, gain and bandwidth.
+  Compare the SFZ and native transfer functions before selecting a static EQ
+  profile. Verify zero gain, both signed gains, center gain and both bandwidth
+  edges at several rates. Include filter and amplifier ordering in the
+  comparison. A shape mismatch needs a model or playback change.
+- **Seeded export.** SFZ cannot store the native seed or stream identities.
+  A future export profile can preserve supported distributions explicitly,
+  with separate verification of reproducibility when re-imported into uFor.
+  It must account for gain and pitch recentering and for delay and offset
+  bounds in the same playback slice.
 
 ## Additional work beyond the prompt
 

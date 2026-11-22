@@ -321,13 +321,20 @@ def _region(
     opcodes.extend(_choking(slot, path, groups, victims, issues))
     opcodes.extend(_playback_opcodes(document, slot, path, issues))
     opcodes.extend(_processing_opcodes(document, slot, path, issues))
-    opcodes.extend(_envelope_opcodes(document, slot, path, issues))
+    envelopes, envelope_routes = _envelope_opcodes(document, slot, path, issues)
+    opcodes.extend(envelopes)
     opcodes.extend(_crossfade_opcodes(slot, path, issues))
     filters, filter_routes, generators = _filter_opcodes(document, slot, path, issues)
     opcodes.extend(filters)
     opcodes.extend(
         _modulation_opcodes(
-            document, slot, path, issues, filter_routes, generators, bend_control
+            document,
+            slot,
+            path,
+            issues,
+            filter_routes + envelope_routes,
+            generators,
+            bend_control,
         )
     )
     _slot_issues(slot, path, issues, generators)
@@ -371,11 +378,17 @@ def _diagnose_omitted_slot(
             band,
             'Instrument equalizer bands have no implemented SFZ conversion',
         )
-    _envelope_opcodes(document, slot, path, issues)
+    _, envelope_routes = _envelope_opcodes(document, slot, path, issues)
     _crossfade_opcodes(slot, path, issues)
     _, filter_routes, generators = _filter_opcodes(document, slot, path, issues)
     _modulation_opcodes(
-        document, slot, path, issues, filter_routes, generators, bend_control
+        document,
+        slot,
+        path,
+        issues,
+        filter_routes + envelope_routes,
+        generators,
+        bend_control,
     )
     _slot_issues(slot, path, issues, generators)
 
@@ -1010,7 +1023,7 @@ def _envelope_opcodes(
     slot: SampleSlot,
     path: str,
     issues: list[UnimplementedFeature],
-) -> list[Opcode]:
+) -> tuple[list[Opcode], list[modulation.Route]]:
     value = slot.envelope or document.body.settings.envelope
     envelope_path = (
         f'{path}.envelope' if slot.envelope is not None else 'body.settings.envelope'
@@ -1051,7 +1064,7 @@ def _envelope_opcodes(
             'SFZ requires a seconds-based delay/attack/hold/decay envelope '
             'with linear attack, curved decay and a captured exponential release',
         )
-        return []
+        return [], []
     assert isinstance(initial, float)
     values = dict(
         zip(
@@ -1063,8 +1076,66 @@ def _envelope_opcodes(
     values['ampeg_sustain'] = finite[-1].to * 100
     if initial:
         values['ampeg_start'] = initial * 100
-    values['ampeg_release'] = release[0].time_constant * 9
-    return [Opcode(name=n, value=_number_text(v)) for n, v in values.items()]
+    constant = release[0].time_constant
+    release_seconds = constant * 9
+    values['ampeg_release'] = (
+        inverse_value(release_seconds, lambda n: n / 9, constant, 0, math.inf)
+        or release_seconds
+    )
+    routes: list[modulation.Route] = []
+    for name, parameter in (
+        ('delay', 'on-0-duration'),
+        ('attack', 'on-1-duration'),
+        ('hold', 'on-2-duration'),
+        ('decay', 'on-3-duration'),
+        ('release', 'release-0-time_constant'),
+    ):
+        base = constant if name == 'release' else values[f'ampeg_{name}']
+        target = modulation.Target(name='envelope', parameter=parameter)
+        route = _envelope_velocity_route(slot, target, base)
+        if route is None:
+            continue
+        amount = route.points[1].amount
+        if name == 'release':
+            amount = inverse_value(amount * 9, lambda n: n / 9, amount, -100, 100)
+        if (
+            amount is not None
+            and -100 <= amount <= 100
+            and values[f'ampeg_{name}'] + amount >= 0
+        ):
+            values[f'ampeg_vel2{name}'] = amount
+            routes.append(route)
+    return [Opcode(name=n, value=_number_text(v)) for n, v in values.items()], routes
+
+
+def _envelope_velocity_route(
+    slot: SampleSlot, target: modulation.Target, base: float
+) -> modulation.Route | None:
+    routes = [r for r in slot.modulation.routes if r.target == target]
+    if len(routes) != 1:
+        return None
+    route = routes[0]
+    if (
+        route.operation != modulation.Operation.add
+        or route.unit != modulation.Unit.seconds
+        or route.interpolation != modulation.Interpolation.linear
+        or [p.input for p in route.points] != [0, 1]
+        or route.points[0].amount != 0
+        or not _event_source(slot, route, 'velocity', 1)
+    ):
+        return None
+    end = base + route.points[1].amount
+    if not math.isfinite(end):
+        return None
+    parameter = modulation.Parameter(
+        target=target,
+        unit=modulation.Unit.seconds,
+        scope=Scope.voice,
+        minimum=min(base, end),
+        maximum=max(base, end),
+        default=base,
+    )
+    return route if parameter in slot.modulation.parameters else None
 
 
 def _filter_opcodes(
@@ -1615,7 +1686,7 @@ def _modulation_opcodes(
     slot: SampleSlot,
     path: str,
     issues: list[UnimplementedFeature],
-    filter_routes: list[modulation.Route],
+    exported_routes: list[modulation.Route],
     generators: set[str],
     bend_control: str | None,
 ) -> list[Opcode]:
@@ -1627,7 +1698,7 @@ def _modulation_opcodes(
         generators.add(generator)
     result = [Opcode(name=n, value=v) for n, v in pitch.items()]
     for i, curve in enumerate(slot.modulation.routes):
-        if curve in filter_routes or curve in pitch_routes:
+        if curve in exported_routes or curve in pitch_routes:
             continue
         if _amplitude_velocity_route(slot, curve):
             supported.append(curve)

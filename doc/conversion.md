@@ -65,9 +65,10 @@ independent, and 0 sends the same mix to both outputs. Gains come from the
 unquantized equal-power curves. Where necessary the compiler bakes all three
 stages into the channel map, since uFor requires the canonical map when
 using its balance parameter. Mono sources ignore width and position.
-Export reconstructs SFZ controls when it can verify the resulting matrix.
-Some sparse matrices, such as a hard-pan input combined with a hard-position
-output after intermediate width, retain a channel-routing diagnostic.
+Export reconstructs SFZ controls when it can verify the resulting matrix,
+including hard pan, hard position and width endpoints. Several settings can
+produce the same matrix. Export preserves the gains and may choose a different
+set of equivalent controls. Custom matrices outside this law retain diagnostics.
 SFZ `off_by` identifies the existing voice to stop when a new region in the
 named `group` starts. Import maps this victim-side rule to native trigger-side
 `chokes`; export reverses that mapping and diagnoses graphs SFZ cannot express.
@@ -220,6 +221,14 @@ stages remain diagnosed. The [SFZ fixture](../conformance/filters.sfz) and
 and the static two-filter mapping without asserting complete playback equivalence.
 The [keyboard tracking fixture](../conformance/filter-key-tracking.sfz) covers
 inherited tracking, independent centers, and a per-region zero override.
+
+## Amplifier envelope velocity
+
+The `ampeg_vel2delay`, `ampeg_vel2attack`, `ampeg_vel2hold`,
+`ampeg_vel2decay` and `ampeg_vel2release` routes round-trip when their
+linear velocity domains and time bounds match the original envelope.
+Release targets the exponential time constant before the positive release
+floor. Export recovers its seconds value from the native base and delta.
 
 ## Filter envelopes
 

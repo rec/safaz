@@ -490,18 +490,21 @@ def test_sfz_envelope_start_rejects_out_of_range_level(start: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ('width', 'pan', 'position', 'exportable'),
+    ('width', 'pan', 'position'),
     [
-        (50, 0, 0, True),
-        (-100, 25, 0, True),
-        (0, 30, 50, True),
-        (100, 0, -20, True),
-        (-25, -100, 100, False),
-        (100, -100, 100, True),
+        (50, 0, 0),
+        (-100, 25, -30),
+        (0, 30, 50),
+        (100, 40, -20),
+        (-25, -100, 100),
+        (100, -100, 100),
+        (25, 100, -25),
+        (-25, 30, -100),
+        (-25, -20, 100),
     ],
 )
 def test_sfz_stereo_width_applies_between_pan_and_position(
-    width: int, pan: int, position: int, exportable: bool
+    width: int, pan: int, position: int
 ) -> None:
     result = _compile(
         f'<region> sample=sample.wav width={width} pan={pan} position={position}',
@@ -529,12 +532,6 @@ def test_sfz_stereo_width_applies_between_pan_and_position(
     }
     assert [routes.get(p, 0) * factors[p[1]] for p in pairs] == pytest.approx(expected)
     exported = exporter.write(result.instrument)
-    if not exportable:
-        assert not exported.complete
-        assert any(
-            i.location.path == 'body.slots[0].channels' for i in exported.unimplemented
-        )
-        return
     assert exported.complete, exported.unimplemented
     restored = _compile(
         exported.contents, output_channels=['left', 'right'], sample_channels=2

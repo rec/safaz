@@ -18,6 +18,8 @@ Key-dependent amplitude, partial pitch-key tracking, pitch-by-velocity, and
 velocity-dependent amplifier envelope times are also imported. Amplifier release
 uses the captured SFZ exponential law, positive time floor and terminal fade;
 its velocity route targets the time constant before that floor.
+Export writes the verified velocity-dependent amplifier envelope times,
+including release times below the positive floor.
 Key and velocity crossfades preserve the separate mapping eligibility ranges;
 deterministic SFZ random ranges have their own selection condition. The
 documented `lovel` default of MIDI velocity 1 is preserved. Finite `loop_count`

@@ -7,6 +7,7 @@ from test_modulators import compile_modulation
 from ufor.approach import ExponentialApproach
 from ufor.envelfo import EnvelfoEvent
 
+from safaz import exporter
 from safaz.compiler import amplitude_envelope
 
 
@@ -71,3 +72,20 @@ def test_velocity_release_modulates_time_constant_before_the_positive_floor(
     stage = slot.envelope.release[0]
     assert isinstance(stage, ExponentialApproach)
     assert stage.minimum_time_constant == 0.006 / 9
+
+
+@pytest.mark.parametrize('release', ['0', '0.001', '0.1'])
+def test_velocity_envelope_times_export_and_round_trip(release: str) -> None:
+    original = compile_modulation(
+        'ampeg_delay=0.1 ampeg_attack=0.2 ampeg_hold=0.3 ampeg_decay=0.4 '
+        f'ampeg_release={release} ampeg_vel2release=0.3 ampeg_vel2delay=0.2 '
+        'ampeg_vel2attack=-0.1 ampeg_vel2hold=0.2 ampeg_vel2decay=-0.15'
+    )
+    assert original.complete and original.instrument is not None
+    exported = exporter.write(original.instrument)
+    assert exported.complete, exported.unimplemented
+    restored = compile_modulation(exported.contents, document=True)
+    assert restored.complete and restored.instrument is not None
+    before, after = original.instrument.body.slots[0], restored.instrument.body.slots[0]
+    assert after.envelope == before.envelope
+    assert after.modulation == before.modulation

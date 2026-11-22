@@ -1,6 +1,6 @@
 """Static SFZ stereo routing under the mathematical sfizz pan law."""
 
-from math import atan2, cos, isclose, pi, sin, sqrt
+from math import acos, asin, atan2, cos, isclose, pi, sin, sqrt
 
 from ufor.samples.processing import ChannelRoute
 
@@ -47,6 +47,8 @@ def stereo_opcodes(routes: list[ChannelRoute]) -> tuple[float, float, float] | N
                 _position(atan2(sqrt(lr) * sqrt(rr), sqrt(ll) * sqrt(rl))),
             )
         )
+    elif (sparse := _sparse_controls(ll, lr, rl, rr)) is not None:
+        candidates.append(sparse)
     for candidate in candidates:
         reconstructed = {(r.input, r.output): r.gain for r in stereo_routes(*candidate)}
         if all(
@@ -55,6 +57,44 @@ def stereo_opcodes(routes: list[ChannelRoute]) -> tuple[float, float, float] | N
         ):
             return candidate
     return None
+
+
+def _sparse_controls(
+    ll: float, lr: float, rl: float, rr: float
+) -> tuple[float, float, float] | None:
+    if not (lr or rl):
+        pan, position = _diagonal_pan(ll, rr)
+        return 1, pan, position
+    if not (ll or rr):
+        pan, position = _diagonal_pan(lr, rl)
+        return -1, pan, -position
+    if not (rl or rr):
+        width, position = _sine_pan(ll, lr)
+        return width, -1, position
+    if not (ll or lr):
+        width, position = _sine_pan(rl, rr)
+        return -width, 1, position
+    if not (lr or rr):
+        width, pan = _sine_pan(ll, rl)
+        return width, pan, -1
+    if not (ll or rl):
+        width, pan = _sine_pan(lr, rr)
+        return -width, pan, 1
+    return None
+
+
+def _diagonal_pan(first: float, second: float) -> tuple[float, float]:
+    # The two diagonal gains are 2 cos(a) cos(b) and 2 sin(a) sin(b).
+    total = acos(min(1, max(-1, (first - second) / 2)))
+    difference = acos(min(1, (first + second) / 2))
+    return _position((total + difference) / 2), _position((total - difference) / 2)
+
+
+def _sine_pan(first: float, second: float) -> tuple[float, float]:
+    # The surviving gains are 2 sin(a) cos(b) and 2 cos(a) sin(b).
+    total = asin(min(1, (first + second) / 2))
+    difference = asin(min(1, max(-1, (first - second) / 2)))
+    return _position((total + difference) / 2), _position((total - difference) / 2)
 
 
 def _stage_gains(position: float) -> tuple[float, float]:
@@ -68,7 +108,7 @@ def _stage_gains(position: float) -> tuple[float, float]:
 
 
 def _position(angle: float) -> float:
-    position = 4 * angle / pi - 1
+    position = min(1.0, max(-1.0, 4 * angle / pi - 1))
     # Keep common decimal spellings when the trigonometric inverse adds noise.
     rounded = round(position, 14)
     return rounded if isclose(position, rounded, rel_tol=1e-14) else position
