@@ -289,8 +289,11 @@ values are retained with source-located binding diagnostics. Repeated identical
 values are accepted across `<control>` sections. Conflicting values diagnose
 every declaration and leave the controller at its existing default rather than
 choosing a value. Declarations outside `<control>` are diagnosed and omitted.
-Initial controller export remains unsupported under the existing named-control
-diagnostics.
+Pass the corresponding `PerformanceBindingScore` as
+`write(score, midi_binding=...)` to export the shared channel range,
+7-bit initial values, note-on controller conditions and the verified
+pitch-bend curve. One contiguous channel range and unscaled inputs are
+required. Without the binding, named controls retain diagnostics.
 
 ## Held and previous-note conditions
 
@@ -330,8 +333,9 @@ identity, and does not update physical presses, previous-note history, or
 note-on sequence counters. Voices finish naturally; existing chokes and voice
 limits can retire them. Note release, sustain, and leaving the controller range
 do not release them. The binding request and shared channel-range requirements
-match other imported controller conditions. Export remains diagnosed and omits
-control-triggered regions.
+match other imported controller conditions. With that binding, export
+round-trips the note-independent one-shot profile. Unrepresentable triggers
+remain diagnosed and their regions are omitted.
 
 ## Sequence counters
 

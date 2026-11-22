@@ -188,6 +188,9 @@ def test_initial_controller_accepts_bounds_without_region_conditions(
         for c in result.binding.body.midi[0].controllers
     )
     assert not exporter.write(result.instrument).complete
+    with_binding = exporter.write(result.instrument, midi_binding=result.binding)
+    assert with_binding.complete, with_binding.unimplemented
+    assert f'set_cc{number}={value}' in with_binding.contents
 
 
 def test_initial_controller_rejects_invalid_controller_number() -> None:
@@ -947,16 +950,18 @@ def test_held_keys_without_one_shared_range_remain_diagnosed(switches: str) -> N
 def test_cc_messages_start_only_one_shot_voices_with_explicit_binding(
     data_regression: DataRegressionFixture,
 ) -> None:
+    request = SfzMidiBindingRequest(
+        instrument=ScoreReference(path='instrument.toml'),
+        part='main',
+        repeated_key_release='newest',
+    )
     result = _compile(
         '<control> set_cc74=127 '
+        '<global> lochan=2 hichan=3 '
         '<region> sample=sample.wav key=-1 loop_mode=one_shot '
         'pitch_keytrack=0 amp_veltrack=0 on_locc74=64 on_hicc74=127 '
         'locc74=64 hicc74=64',
-        midi_binding=SfzMidiBindingRequest(
-            instrument=ScoreReference(path='instrument.toml'),
-            part='main',
-            repeated_key_release='newest',
-        ),
+        midi_binding=request,
     )
     assert result.complete
     assert result.instrument is not None
@@ -1004,6 +1009,12 @@ def test_cc_messages_start_only_one_shot_voices_with_explicit_binding(
     assert len(prepared.snapshots[0].voices) == 2
     assert not exporter.write(result.instrument).complete
     assert '<region>' not in exporter.write(result.instrument).contents
+    exported = exporter.write(result.instrument, midi_binding=result.binding)
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents, midi_binding=request)
+    assert restored.complete and restored.instrument is not None
+    assert restored.instrument.body == result.instrument.body
+    assert restored.binding == result.binding
 
 
 @pytest.mark.parametrize(

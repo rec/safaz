@@ -56,21 +56,24 @@ def compile_modulation(
 
 @pytest.mark.parametrize('velocity', [0, 100])
 def test_pitch_and_amplitude_lfos_export_and_round_trip(velocity: int) -> None:
+    bend = 'bend_up=700 bend_down=-150 ' if velocity else ''
     original = compile_modulation(
-        f'pitchlfo_freq=2.00000000000000001 pitchlfo_depth=-333.5 '
+        f'{bend}pitchlfo_freq=2.00000000000000001 pitchlfo_depth=-333.5 '
         f'amp_veltrack={velocity} pitch_keytrack=-150 pitch_veltrack=1200 '
         'amp_keytrack=-0.15 amp_keycenter=50 volume=-8 '
-        'amplfo_freq=4 amplfo_depth=-2.2 amplfo_delay=0.00004 amplfo_fade=0.2 tune=17'
+        'amplfo_freq=4 amplfo_depth=-2.2 amplfo_delay=0.00004 amplfo_fade=0.2 tune=17',
+        midi=bool(bend),
     )
     assert original.complete and original.instrument is not None
-    exported = exporter.write(original.instrument)
+    exported = exporter.write(original.instrument, midi_binding=original.binding)
     assert exported.complete, exported.unimplemented
-    restored = compile_modulation(exported.contents, document=True)
+    restored = compile_modulation(exported.contents, document=True, midi=bool(bend))
     assert restored.complete and restored.instrument is not None
     before, after = original.instrument.body.slots[0], restored.instrument.body.slots[0]
     assert after.envelfos == before.envelfos
     assert after.bindings == before.bindings
     assert after.modulation == before.modulation
+    assert restored.binding == original.binding
 
 
 @pytest.mark.parametrize('depth', [-1200, 333.5, 1200])

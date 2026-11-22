@@ -186,12 +186,14 @@ def support_table() -> str:
         'bend (`bend_smooth=0`, `bend_step=1`) is supported. Other smoothing, '
         'steps, nonordinary triggers and mixed channel ranges remain diagnosed. '
         'No bend is added to instruments without explicit bend declarations.',
+        'Export with the MIDI binding preserves the verified bend curve.',
         '',
         '`set_ccN` imports under `<control>` as a named-control default, '
         'including sustain for CC 64. It remains classified as '
         '`controller_binding`: without an explicit MIDI binding request or '
         'a shared channel range, the default is retained with a diagnostic. '
-        'Conflicting initial values remain diagnosed. Export is unsupported.',
+        'Conflicting initial values remain diagnosed. Export with a MIDI binding '
+        'preserves exact 7-bit defaults.',
         '',
         '`sw_down` and `sw_up` require a shared consumed switch range; '
         '`sw_previous` tracks every prior note-on in the part. Release-region '
@@ -199,8 +201,8 @@ def support_table() -> str:
         'switch range, sticky default, held conditions and previous note for '
         'representable regions. `on_loccN`/`on_hiccN` import '
         'only the explicit one-shot, note-independent subset with a MIDI '
-        'binding; uncertain combinations remain diagnosed. Controller triggers '
-        'have no implemented export.',
+        'binding; uncertain combinations remain diagnosed. Export with a MIDI '
+        'binding preserves this subset and exact 7-bit CC conditions.',
         '',
         'Static stereo `width` and `position` use the mathematical sfizz pan '
         'law. Input pan precedes width mixing and output position follows it. '

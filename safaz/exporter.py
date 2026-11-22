@@ -7,6 +7,7 @@ from ufor import base, envelfo, envelope, modulation, segments
 from ufor.approach import ExponentialApproach
 from ufor.assets import RelativeFileLocation
 from ufor.control import Clock, Scope
+from ufor.performance_binding import MidiPitchBend, PerformanceBindingScore
 from ufor.samples import controls, crossfade, enums, playback, processing, selection
 from ufor.samples.instrument import (
     SampleInstrumentScore,
@@ -29,10 +30,17 @@ from .modulators import lfo_values
 from .spatial import stereo_opcodes
 
 
-def write(instrument: SampleInstrumentScore) -> SfzExportResult:
+def write(
+    instrument: SampleInstrumentScore,
+    *,
+    midi_binding: PerformanceBindingScore | None = None,
+) -> SfzExportResult:
     """Serialize a native instrument without reading or writing sample assets."""
     issues: list[UnimplementedFeature] = []
     _instrument_issues(instrument, issues)
+    controllers, bend_control, control_lines, global_lines = _midi_export(
+        instrument, midi_binding, issues
+    )
     groups, victims = _choke_groups(instrument, issues)
     articulations = instrument.body.settings.articulations
     switches = _keyswitch_map(articulations)
@@ -48,12 +56,17 @@ def write(instrument: SampleInstrumentScore) -> SfzExportResult:
                 | effective_settings(slot, group).model_dump()
                 | {'group': None, 'selection': effective_selection(slot, group)}
             )
-        opcodes = _region(instrument, slot, i, groups, victims, issues)
+        opcodes = _region(
+            instrument, slot, i, groups, victims, controllers, bend_control, issues
+        )
         conditions = _keyswitch_opcodes(slot, articulations, switches, i, issues)
+        conditions.extend(_controller_conditions(slot, controllers, i, issues))
         if opcodes is None:
             continue
         emitted_switches.update(int(o.value) for o in conditions if o.name == 'sw_last')
-        has_switch_condition |= any(o.name != 'sw_previous' for o in conditions)
+        has_switch_condition |= any(
+            o.name in ('sw_last', 'sw_down', 'sw_up') for o in conditions
+        )
         opcodes.extend(conditions)
         metadata = '// recs:slot ' + _json(
             {
@@ -101,14 +114,22 @@ def write(instrument: SampleInstrumentScore) -> SfzExportResult:
             )
         if switches is not None and has_switch_condition:
             keys = [k.key for k in articulations.keys]
-            lines.extend(
-                ['', '<global>', f'sw_lokey={min(keys)}', f'sw_hikey={max(keys)}']
-            )
+            global_lines.extend([f'sw_lokey={min(keys)}', f'sw_hikey={max(keys)}'])
             if (
                 articulations.default is not None
                 and (key := switches[articulations.default]) in emitted_switches
             ):
-                lines.append(f'sw_default={key}')
+                global_lines.append(f'sw_default={key}')
+    if control_lines:
+        lines.extend(['', '<control>', *control_lines])
+    if global_lines:
+        lines.extend(['', '<global>', *global_lines])
+    if bend_control is not None and not any(
+        line.startswith('bend_up=') for region in regions for line in region
+    ):
+        _issue(
+            issues, 'midi_binding', bend_control, 'No region can export the MIDI bend'
+        )
     for region in regions:
         lines.extend(['', *region])
     return SfzExportResult(contents='\n'.join(lines) + '\n', unimplemented=issues)
@@ -155,20 +176,12 @@ def _instrument_issues(
                 'SFZ alternate-selection behavior is not represented',
             )
     canonical_sustain = selection.Sustain(control='sustain')
-    canonical_controls = {'sustain': controls.ControlDeclaration()}
     if instrument.sustain != canonical_sustain:
         _issue(
             issues,
             'body.settings.sustain',
             instrument.sustain,
             'SFZ only provides its implicit canonical sustain-pedal behavior',
-        )
-    if instrument.controls != canonical_controls:
-        _issue(
-            issues,
-            'body.settings.controls',
-            instrument.controls,
-            'Named instrument controls require an external SFZ input binding',
         )
     _sound_issues(instrument, 'body.settings', issues)
 
@@ -207,10 +220,13 @@ def _region(
     index: int,
     groups: dict[str, int],
     victims: dict[str, tuple[int, enums.ChokeMode]],
+    controllers: dict[str, int],
+    bend_control: str | None,
     issues: list[UnimplementedFeature],
 ) -> list[Opcode] | None:
     path = f'body.slots[{index}]'
-    if slot.control_trigger is not None:
+    control = _control_trigger_export(document, slot, controllers, path, issues)
+    if slot.control_trigger is not None and not control:
         _filter_opcodes(document, slot, path, issues)
         _slot_issues(slot, path, issues)
         return None
@@ -262,7 +278,9 @@ def _region(
         )
     mapping_eligible = _mapping_eligible(slot.mapping, path, issues)
     if not sample_safe or not mapping_eligible:
-        _diagnose_omitted_slot(document, slot, path, groups, victims, issues)
+        _diagnose_omitted_slot(
+            document, slot, path, groups, victims, bend_control, issues
+        )
         return None
 
     opcodes = [Opcode(name='sample', value=sample)]
@@ -275,7 +293,7 @@ def _region(
             opcodes.append(Opcode(name='position', value=_number_text(100 * position)))
     if slot.title is not None and _safe_value(slot.title):
         opcodes.insert(0, Opcode(name='region_label', value=slot.title))
-    opcodes.extend(_mapping(slot.mapping))
+    opcodes.extend(control or _mapping(slot.mapping))
     if slot.sequence is not None:
         if slot.sequence.length > 100:
             _issue(
@@ -298,7 +316,8 @@ def _region(
                 'SFZ players do not share one sequence counter rule',
             )
     opcodes.extend(_random_range_opcodes(slot.random_range))
-    opcodes.extend(_trigger_opcodes(slot, path, issues))
+    if not control:
+        opcodes.extend(_trigger_opcodes(slot, path, issues))
     opcodes.extend(_choking(slot, path, groups, victims, issues))
     opcodes.extend(_playback_opcodes(document, slot, path, issues))
     opcodes.extend(_processing_opcodes(document, slot, path, issues))
@@ -307,7 +326,9 @@ def _region(
     filters, filter_routes, generators = _filter_opcodes(document, slot, path, issues)
     opcodes.extend(filters)
     opcodes.extend(
-        _modulation_opcodes(document, slot, path, issues, filter_routes, generators)
+        _modulation_opcodes(
+            document, slot, path, issues, filter_routes, generators, bend_control
+        )
     )
     _slot_issues(slot, path, issues, generators)
     return opcodes
@@ -319,6 +340,7 @@ def _diagnose_omitted_slot(
     path: str,
     groups: dict[str, int],
     victims: dict[str, tuple[int, enums.ChokeMode]],
+    bend_control: str | None,
     issues: list[UnimplementedFeature],
 ) -> None:
     _trigger_opcodes(slot, path, issues)
@@ -352,7 +374,9 @@ def _diagnose_omitted_slot(
     _envelope_opcodes(document, slot, path, issues)
     _crossfade_opcodes(slot, path, issues)
     _, filter_routes, generators = _filter_opcodes(document, slot, path, issues)
-    _modulation_opcodes(document, slot, path, issues, filter_routes, generators)
+    _modulation_opcodes(
+        document, slot, path, issues, filter_routes, generators, bend_control
+    )
     _slot_issues(slot, path, issues, generators)
 
 
@@ -440,6 +464,196 @@ def _trigger_opcodes(
         'Sustain-transition triggers require an external SFZ input binding',
     )
     return []
+
+
+def _midi_export(
+    document: SampleInstrumentScore,
+    binding: PerformanceBindingScore | None,
+    issues: list[UnimplementedFeature],
+) -> tuple[dict[str, int], str | None, list[str], list[str]]:
+    settings = document.body.settings
+    if binding is None:
+        if settings.controls != {'sustain': controls.ControlDeclaration()}:
+            _issue(
+                issues,
+                'body.settings.controls',
+                settings.controls,
+                'Named instrument controls require an external SFZ input binding',
+            )
+        return {}, None, [], []
+    midi = binding.body.midi[0]
+    channels = sorted(midi.channels)
+    if (
+        len(binding.body.midi) != 1
+        or channels != list(range(channels[0], channels[-1] + 1))
+        or midi.tuning is not None
+        or len({c.control for c in midi.controllers}) != len(midi.controllers)
+        or not any(c.number == 64 for c in midi.controllers)
+        or any(
+            (c.minimum, c.maximum) != (0, 1)
+            or (c.number == 64) != (c.control == 'sustain')
+            for c in midi.controllers
+        )
+    ):
+        _issue(
+            issues,
+            'midi_binding',
+            binding,
+            'SFZ needs contiguous MIDI channels and unscaled CC bindings',
+        )
+        return {}, None, [], []
+    numbers = {c.control: c.number for c in midi.controllers}
+    bend_control = None
+    if (bend := midi.pitch_bend) is not None:
+        if (
+            bend != MidiPitchBend(control=bend.control)
+            or settings.controls.get(bend.control)
+            != controls.ControlDeclaration(polarity='bipolar')
+            or bend.control in numbers
+        ):
+            _issue(
+                issues,
+                'midi_binding',
+                bend,
+                'SFZ bend needs unscaled bipolar MIDI input',
+            )
+        else:
+            bend_control = bend.control
+    result: dict[str, int] = {}
+    defaults: list[str] = []
+    for name, declaration in settings.controls.items():
+        if name == bend_control:
+            continue
+        number = numbers.get(name)
+        if name == 'sustain' and declaration == controls.ControlDeclaration():
+            if number is not None:
+                result[name] = number
+            continue
+        initial = _velocity_number(declaration.default)
+        if (
+            number is None
+            or initial is None
+            or not 0 <= initial <= 127
+            or declaration != controls.ControlDeclaration(default=initial / 127)
+        ):
+            _issue(
+                issues,
+                f'body.settings.controls.{name}',
+                declaration,
+                'An SFZ control requires a MIDI CC binding and an exact 7-bit default',
+            )
+            continue
+        result[name] = number
+        defaults.append(f'set_cc{number}={initial}')
+    for name in numbers.keys() - settings.controls.keys():
+        _issue(issues, 'midi_binding', name, 'MIDI CC references an undeclared control')
+    global_lines = (
+        [f'lochan={channels[0]}', f'hichan={channels[-1]}']
+        if (channels[0], channels[-1]) != (1, 16)
+        else []
+    )
+    return result, bend_control, defaults, global_lines
+
+
+def _controller_conditions(
+    slot: SampleSlot,
+    controllers: dict[str, int],
+    index: int,
+    issues: list[UnimplementedFeature],
+) -> list[Opcode]:
+    result: list[Opcode] = []
+    for i, condition in enumerate(slot.control_conditions):
+        bounds = _controller_range(condition, controllers)
+        if (
+            bounds is None
+            or slot.trigger not in (enums.TriggerKind.start, enums.TriggerKind.control)
+            or sum(c.control == condition.control for c in slot.control_conditions) != 1
+        ):
+            _issue(
+                issues,
+                f'body.slots[{index}].control_conditions[{i}]',
+                condition,
+                'SFZ needs one exact 7-bit range per bound CC on note or control start',
+            )
+            continue
+        number, low, high = bounds
+        result.extend(
+            [
+                Opcode(name=f'locc{number}', value=str(low)),
+                Opcode(name=f'hicc{number}', value=str(high)),
+            ]
+        )
+    return result
+
+
+def _controller_range(
+    condition: selection.ControlCondition, controllers: dict[str, int]
+) -> tuple[int, int, int] | None:
+    number = controllers.get(condition.control)
+    low, high = map(
+        _velocity_number, (condition.minimum_value, condition.maximum_value)
+    )
+    if (
+        number is None
+        or low is None
+        or high is None
+        or not 0 <= low <= high <= 127
+        or (low / 127, high / 127) != (condition.minimum_value, condition.maximum_value)
+    ):
+        return None
+    return number, low, high
+
+
+def _control_trigger_export(
+    document: SampleInstrumentScore,
+    slot: SampleSlot,
+    controllers: dict[str, int],
+    path: str,
+    issues: list[UnimplementedFeature],
+) -> list[Opcode]:
+    trigger = slot.control_trigger
+    if trigger is None:
+        return []
+    bounds = _controller_range(trigger, controllers)
+    key = _pitch_key(trigger.pitch_hz)
+    playback_settings = document.body.settings.playback
+    if (
+        bounds is None
+        or key is None
+        or trigger.velocity != 1
+        or trigger.pitch_hz != 440.0 * 2 ** ((key - 69) / 12)
+        or (slot.playback.mode or playback_settings.mode) != enums.PlaybackMode.one_shot
+        or slot.playback.start_delay_seconds
+        or slot.mapping
+        != playback.Mapping(
+            lowest_key=0,
+            highest_key=127,
+            minimum_velocity=1 / 127,
+            pitch_tracking=False,
+        )
+        or slot.sequence is not None
+        or slot.random_range is not None
+        or slot.articulations
+        or slot.key_conditions
+        or slot.previous_key is not None
+        or slot.crossfades
+        or slot.modulation.routes
+    ):
+        _issue(
+            issues,
+            f'{path}.control_trigger',
+            trigger,
+            'SFZ control triggers need a 7-bit CC and independent one-shot playback',
+        )
+        return []
+    number, low, high = bounds
+    return [
+        Opcode(name='key', value='-1'),
+        Opcode(name='pitch_keytrack', value='0'),
+        Opcode(name='pitch_keycenter', value=str(key)),
+        Opcode(name=f'on_locc{number}', value=str(low)),
+        Opcode(name=f'on_hicc{number}', value=str(high)),
+    ]
 
 
 def _keyswitch_map(
@@ -1216,7 +1430,7 @@ def _processing_lfo_export(
 
 
 def _pitch_modulation_export(
-    document: SampleInstrumentScore, slot: SampleSlot
+    document: SampleInstrumentScore, slot: SampleSlot, bend_control: str | None
 ) -> tuple[dict[str, str], list[modulation.Route], str | None]:
     target = modulation.Target(name='processing', parameter='tuning_cents')
     routes = [r for r in slot.modulation.routes if r.target == target]
@@ -1239,8 +1453,14 @@ def _pitch_modulation_export(
             route.operation != modulation.Operation.add
             or route.unit != modulation.Unit.cents
             or route.interpolation != modulation.Interpolation.linear
-            or len(route.points) != 2
         ):
+            return {}, [], None
+        if len(route.points) == 4 and 'bend_up' not in values:
+            bend = _pitch_bend_export(slot, route, bend_control)
+            if bend is not None:
+                values.update(bend)
+                continue
+        if len(route.points) != 2:
             return {}, [], None
         start, end = route.points
         if (
@@ -1292,6 +1512,25 @@ def _pitch_modulation_export(
     if parameter not in slot.modulation.parameters:
         return {}, [], None
     return values, routes, generator
+
+
+def _pitch_bend_export(
+    slot: SampleSlot, route: modulation.Route, control: str | None
+) -> dict[str, str] | None:
+    if (
+        control is None
+        or slot.trigger != enums.TriggerKind.start
+        or processing.ControlBinding(name=route.source, control=control, smoothing=0)
+        not in slot.bindings
+        or modulation.Source(name=route.source, scope='part', minimum=-1, maximum=1)
+        not in slot.modulation.sources
+        or [p.input for p in route.points] != [-1, -8191 / 8192, 0, 1]
+    ):
+        return None
+    down, plateau, center, up = (p.amount for p in route.points)
+    if down != plateau or center or max(abs(up), abs(down)) > 12000:
+        return None
+    return {'bend_down': _number_text(down), 'bend_up': _number_text(up)}
 
 
 def _event_source(
@@ -1378,9 +1617,12 @@ def _modulation_opcodes(
     issues: list[UnimplementedFeature],
     filter_routes: list[modulation.Route],
     generators: set[str],
+    bend_control: str | None,
 ) -> list[Opcode]:
     supported: list[modulation.Route] = []
-    pitch, pitch_routes, generator = _pitch_modulation_export(document, slot)
+    pitch, pitch_routes, generator = _pitch_modulation_export(
+        document, slot, bend_control
+    )
     if generator is not None:
         generators.add(generator)
     result = [Opcode(name=n, value=v) for n, v in pitch.items()]
@@ -1486,13 +1728,6 @@ def _slot_issues(
     issues: list[UnimplementedFeature],
     exported_generators: set[str] | None = None,
 ) -> None:
-    if slot.control_trigger is not None:
-        _issue(
-            issues,
-            f'{path}.control_trigger',
-            slot.control_trigger,
-            'Control triggers have no implemented SFZ export',
-        )
     for name in ('take', 'microphone', 'alignment_frames'):
         if value := getattr(slot, name):
             _issue(
@@ -1515,13 +1750,6 @@ def _slot_issues(
             f'{path}.selection',
             slot.selection,
             'SFZ alternate-selection behavior is not represented',
-        )
-    for i, condition in enumerate(slot.control_conditions):
-        _issue(
-            issues,
-            f'{path}.control_conditions[{i}]',
-            condition,
-            'Control conditions require an external SFZ controller binding',
         )
     for name, value in slot.envelfos.items():
         if exported_generators is not None and name in exported_generators:

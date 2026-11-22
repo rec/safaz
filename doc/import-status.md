@@ -65,7 +65,8 @@ sustain for CC 64 and controllers with no other supported use. Explicit MIDI
 bindings include those controllers; missing bindings or mixed channel ranges
 retain the defaults with located diagnostics. Conflicting initial values and
 declarations outside `<control>` remain diagnosed. Initialization emits no
-events, and export remains unsupported.
+events. Export uses the explicit MIDI binding to recover initial values,
+the shared channel range and supported controller conditions.
 Held `sw_down`/`sw_up` conditions now use physical presses by trigger identity,
 with a shared consumed switch range. Independent held conditions combine with
 sticky selection. `sw_previous` uses part-local history of every note-on, checked
@@ -76,7 +77,8 @@ verified profile. `on_loccN`/`on_hiccN` now imports explicit
 one-shot note-independent regions with one controller and an explicit MIDI
 binding. Repeated matching messages trigger separate voices without changing
 note history. Ambiguous combinations, note-dependent processing, and sustained
-or looped controller voices remain diagnosed. Export remains unsupported.
+or looped controller voices remain diagnosed. These one-shot regions
+round-trip with their explicit MIDI binding.
 Static two-pole lowpass, highpass, bandpass, and notch filter responses now
 import with the explicit `sfizz_rbj` response choice, including a second
 filter in series and inherited defaults. The default diagnoses active filters
@@ -131,7 +133,8 @@ Explicit pitch-bend declarations now import through a MIDI binding with
 `pitch_bend_response="sfizz_symmetric"`. The negative endpoint plateau is
 expressed in the route; the generic MIDI converter is unchanged. Unsmoothed
 continuous bend supports signed asymmetric ranges, held notes and part-local
-state. Stepped/smoothed bend and mixed channel ranges remain diagnosed.
+state. The verified curve round-trips with its MIDI binding.
+Stepped/smoothed bend and mixed channel ranges remain diagnosed.
 
 Basic first-filter `fileg_*` DAHDSR, start level and signed depth now import with
 `filter_envelope_response="portable_exponential"`. The shared stage captures
