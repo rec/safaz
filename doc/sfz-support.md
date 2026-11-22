@@ -19,6 +19,8 @@ Export with the MIDI binding preserves the verified bend curve.
 
 `sw_down` and `sw_up` require a shared consumed switch range; `sw_previous` tracks every prior note-on in the part. Release-region history combinations remain diagnosed. Export preserves the shared switch range, sticky default, held conditions and previous note for representable regions. `on_loccN`/`on_hiccN` import only the explicit one-shot, note-independent subset with a MIDI binding; uncertain combinations remain diagnosed. Export with a MIDI binding preserves this subset and exact 7-bit CC conditions.
 
+Live CC crossfades require a shared MIDI binding, explicit 7-bit endpoints, `xf_cccurve=gain`, and `cc_crossfade_response="portable_ramp"`. The profile uses a 5 ms part-local linear controller ramp; SFZ power and player smoothing remain outside this profile. Export uses the same explicit choice.
+
 Static stereo `width` and `position` use the mathematical sfizz pan law. Input pan precedes width mixing and output position follows it. Export verifies the reconstructed channel matrix.
 
 `variation_response="portable_seeded"` accepts bounded random gain, pitch, offset and delay in ordinary note-on regions. It preserves the variation ranges using independent, deterministic native draws. Unsafe offsets, ambiguous delays and seeded export remain diagnosed.

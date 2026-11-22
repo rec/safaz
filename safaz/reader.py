@@ -32,6 +32,7 @@ def read(
     amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
     pitch_bend_response: Literal['diagnose', 'sfizz_symmetric'] = 'diagnose',
     variation_response: Literal['diagnose', 'portable_seeded'] = 'diagnose',
+    cc_crossfade_response: Literal['diagnose', 'portable_ramp'] = 'diagnose',
     midi_binding: SfzMidiBindingRequest | None = None,
 ) -> SfzCompileResult:
     """Seal local assets and import with explicit stereo/48 kHz output defaults."""
@@ -68,6 +69,7 @@ def read(
         amplitude_lfo_response=amplitude_lfo_response,
         pitch_bend_response=pitch_bend_response,
         variation_response=variation_response,
+        cc_crossfade_response=cc_crossfade_response,
         midi_binding=midi_binding,
     )
 

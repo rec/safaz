@@ -305,6 +305,26 @@ Pass the corresponding `PerformanceBindingScore` as
 pitch-bend curve. One contiguous channel range and unscaled inputs are
 required. Without the binding, named controls retain diagnostics.
 
+## Live CC layer crossfades
+
+`xfin_loccN`/`xfin_hiccN` and `xfout_loccN`/`xfout_hiccN` can
+round-trip with `cc_crossfade_response="portable_ramp"` and the shared
+MIDI binding. Import requires `xf_cccurve=gain` and two explicit,
+strictly increasing 7-bit endpoints for each fade. Controllers used only by
+a fade are included in the binding. CC 64 uses the sustain control.
+
+The portable profile ramps each part-local control over 5 ms, maps it to
+linear gain across the fade interval, and multiplies the active fade
+weights. A silent layer still starts and responds to subsequent CC values.
+Initial values come from the named-control defaults, including any
+`set_ccN` declarations. The pinned sfizz player smooths the combined gain
+after applying its crossfade curves. Its default `power` curve uses
+square roots and retains a diagnostic, as do missing or degenerate ranges.
+
+Export requires a matching MIDI binding and the same explicit profile.
+Native fades with other smoothing, curve, scope, or endpoint values retain
+diagnostics.
+
 ## Held and previous-note conditions
 
 `sw_down` requires a physically pressed key and `sw_up` requires a physically
@@ -380,7 +400,9 @@ declarations retain source diagnostics.
 The compiler recenters gain and pitch in the native base settings because the
 variation model draws symmetrically around zero. uFor resolves independent
 draws using the caller's seed, part, event identity and slot identity. Native
-playback uses the resulting voice values. The SFZ format carries no seed or
+playback uses the resulting voice values. The focused reference regression
+checks pending and active sampler snapshot continuation on enge's NumPy
+and native offline backends. The SFZ format carries no seed or
 shared random stream, and export retains a diagnostic for seeded variation.
 One-shot delayed note-off, release regions and controller triggers are outside
 this profile.

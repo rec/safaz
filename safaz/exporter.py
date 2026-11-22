@@ -38,12 +38,15 @@ def write(
     midi_binding: PerformanceBindingScore | None = None,
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     sequence_counter: Literal['reject', 'all_note_ons'] = 'reject',
+    cc_crossfade_response: Literal['diagnose', 'portable_ramp'] = 'diagnose',
 ) -> SfzExportResult:
     """Serialize a native instrument without reading or writing sample assets."""
     if polyphony_overflow not in ('diagnose', 'oldest_immediate'):
         raise ValueError(f'Unknown SFZ polyphony overflow rule: {polyphony_overflow}')
     if sequence_counter not in ('reject', 'all_note_ons'):
         raise ValueError(f'Unknown SFZ sequence counter rule: {sequence_counter}')
+    if cc_crossfade_response not in ('diagnose', 'portable_ramp'):
+        raise ValueError(f'Unknown SFZ CC crossfade response: {cc_crossfade_response}')
     issues: list[UnimplementedFeature] = []
     _instrument_issues(instrument, issues)
     controllers, bend_control, control_lines, global_lines = _midi_export(
@@ -78,6 +81,9 @@ def write(
         )
         conditions = _keyswitch_opcodes(slot, articulations, switches, i, issues)
         conditions.extend(_controller_conditions(slot, controllers, i, issues))
+        fades = _crossfade_opcodes(
+            slot, f'body.slots[{i}]', controllers, cc_crossfade_response, issues
+        )
         if opcodes is None:
             continue
         if slot.voice_pool is not None and slot.voice_pool in limits:
@@ -87,6 +93,7 @@ def write(
             o.name in ('sw_last', 'sw_down', 'sw_up') for o in conditions
         )
         opcodes.extend(conditions)
+        opcodes.extend(fades)
         metadata = '// recs:slot ' + _json(
             {
                 'name': slot.name,
@@ -337,7 +344,6 @@ def _region(
     opcodes.extend(_processing_opcodes(document, slot, path, issues))
     envelopes, envelope_routes = _envelope_opcodes(document, slot, path, issues)
     opcodes.extend(envelopes)
-    opcodes.extend(_crossfade_opcodes(slot, path, issues))
     filters, filter_routes, generators = _filter_opcodes(document, slot, path, issues)
     opcodes.extend(filters)
     opcodes.extend(
@@ -393,7 +399,6 @@ def _diagnose_omitted_slot(
             'Instrument equalizer bands have no implemented SFZ conversion',
         )
     _, envelope_routes = _envelope_opcodes(document, slot, path, issues)
-    _crossfade_opcodes(slot, path, issues)
     _, filter_routes, generators = _filter_opcodes(document, slot, path, issues)
     _modulation_opcodes(
         document,
@@ -1798,20 +1803,40 @@ def _modulation_opcodes(
 
 
 def _crossfade_opcodes(
-    slot: SampleSlot, path: str, issues: list[UnimplementedFeature]
+    slot: SampleSlot,
+    path: str,
+    controllers: dict[str, int],
+    response: Literal['diagnose', 'portable_ramp'],
+    issues: list[UnimplementedFeature],
 ) -> list[Opcode]:
     result: list[Opcode] = []
-    curves: dict[enums.CrossfadeInput, enums.FadeCurve] = {}
+    curves: dict[str, enums.FadeCurve] = {}
     for i, fade in enumerate(slot.crossfades):
-        if not isinstance(fade, crossfade.KeyCrossfade):
-            _issue(
-                issues,
-                f'{path}.crossfades[{i}]',
-                fade,
-                'Control crossfades require an external SFZ input binding',
-            )
-            continue
-        if fade.input == enums.CrossfadeInput.velocity:
+        cc_number = ''
+        if isinstance(fade, crossfade.ControlCrossfade):
+            number = controllers.get(fade.control)
+            start, end = map(_velocity_number, (fade.start, fade.end))
+            if (
+                number is None
+                or response != 'portable_ramp'
+                or fade.scope != 'part'
+                or fade.smoothing_seconds != 0.005
+                or fade.curve != enums.FadeCurve.linear
+                or start is None
+                or end is None
+                or not 0 <= start < end <= 127
+                or (fade.start, fade.end) != (start / 127, end / 127)
+            ):
+                _issue(
+                    issues,
+                    f'{path}.crossfades[{i}]',
+                    fade,
+                    'SFZ CC crossfade requires a bound 7-bit CC '
+                    'and the portable ramp profile',
+                )
+                continue
+            suffix, cc_number = 'cc', str(number)
+        elif fade.input == enums.CrossfadeInput.velocity:
             start = _velocity_number(fade.start)
             end = _velocity_number(fade.end)
             if start is None or end is None:
@@ -1825,7 +1850,7 @@ def _crossfade_opcodes(
             suffix = 'vel'
         else:
             start, end, suffix = fade.start, fade.end, 'key'
-        if fade.input in curves and curves[fade.input] != fade.curve:
+        if suffix in curves and curves[suffix] != fade.curve:
             _issue(
                 issues,
                 f'{path}.crossfades[{i}].curve',
@@ -1833,16 +1858,15 @@ def _crossfade_opcodes(
                 'SFZ permits only one crossfade curve per input in a region',
             )
             continue
-        curves[fade.input] = fade.curve
+        curves[suffix] = fade.curve
         prefix = 'xfin' if fade.direction == enums.FadeDirection.fade_in else 'xfout'
         result.extend(
             [
-                Opcode(name=f'{prefix}_lo{suffix}', value=str(start)),
-                Opcode(name=f'{prefix}_hi{suffix}', value=str(end)),
+                Opcode(name=f'{prefix}_lo{suffix}{cc_number}', value=str(start)),
+                Opcode(name=f'{prefix}_hi{suffix}{cc_number}', value=str(end)),
             ]
         )
-    for source, curve in curves.items():
-        suffix = 'key' if source == enums.CrossfadeInput.key else 'vel'
+    for suffix, curve in curves.items():
         result.append(
             Opcode(
                 name=f'xf_{suffix}curve',

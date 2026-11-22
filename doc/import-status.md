@@ -45,6 +45,8 @@ The explicit `portable_seeded` profile imports bounded random gain, pitch,
 offset and delay using deterministic uFor voice variation. Gain and pitch
 are recentered to preserve their authored ranges. Ambiguous trigger or slice
 behavior and seeded export retain diagnostics.
+The NumPy and native offline samplers preserve seeded voice variation when
+restoring pending and active snapshots.
 SFZ round-robin positions can be imported with the explicit `all_note_ons`
 counter rule; the default reports them as unsupported because SFZ players
 disagree on counter behavior.
@@ -70,6 +72,11 @@ retain the defaults with located diagnostics. Conflicting initial values and
 declarations outside `<control>` remain diagnosed. Initialization emits no
 events. Export uses the explicit MIDI binding to recover initial values,
 the shared channel range and supported controller conditions.
+Live CC layer crossfades now round-trip through the shared MIDI binding
+and the explicit `portable_ramp` profile for `xf_cccurve=gain`.
+The profile keeps layers eligible even at zero gain and ramps part-local
+control values over 5 ms. SFZ power and player-specific smoothing remain
+outside the profile.
 Held `sw_down`/`sw_up` conditions now use physical presses by trigger identity,
 with a shared consumed switch range. Independent held conditions combine with
 sticky selection. `sw_previous` uses part-local history of every note-on, checked

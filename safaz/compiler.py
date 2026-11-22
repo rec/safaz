@@ -53,6 +53,7 @@ from .polyphony import oversized_batch
 from .registry import (
     AMP_VELOCITY_CURVE,
     CONTROLLER_CONDITION,
+    CONTROLLER_CROSSFADE,
     CONTROLLER_TRIGGER,
     INITIAL_CONTROLLER,
     OPCODE_ALIASES,
@@ -78,6 +79,7 @@ def compile_instrument(
     amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
     pitch_bend_response: Literal['diagnose', 'sfizz_symmetric'] = 'diagnose',
     variation_response: Literal['diagnose', 'portable_seeded'] = 'diagnose',
+    cc_crossfade_response: Literal['diagnose', 'portable_ramp'] = 'diagnose',
     midi_binding: SfzMidiBindingRequest | None = None,
 ) -> SfzCompileResult:
     """Build a native document from parsed text and caller-supplied asset facts."""
@@ -103,6 +105,8 @@ def compile_instrument(
         raise ValueError(f'Unknown SFZ pitch bend response: {pitch_bend_response}')
     if variation_response not in ('diagnose', 'portable_seeded'):
         raise ValueError(f'Unknown SFZ variation response: {variation_response}')
+    if cc_crossfade_response not in ('diagnose', 'portable_ramp'):
+        raise ValueError(f'Unknown SFZ CC crossfade response: {cc_crossfade_response}')
     paths = sample_paths(source)
     if missing := [p for p in paths if p not in assets]:
         raise ValueError(f'Missing audio metadata for SFZ samples: {missing}')
@@ -148,6 +152,7 @@ def compile_instrument(
         if (
             match := CONTROLLER_CONDITION.fullmatch(opcode.opcode)
             or CONTROLLER_TRIGGER.fullmatch(opcode.opcode)
+            or CONTROLLER_CROSSFADE.fullmatch(opcode.opcode)
         )
     }
     controller_numbers.update(controller_defaults)
@@ -192,6 +197,7 @@ def compile_instrument(
                 binding is not None,
                 pitch_bend_response,
                 variation_response,
+                cc_crossfade_response,
             )
         ) is not None:
             slot, sample_slice = result
@@ -589,6 +595,7 @@ def _slot(
     midi_available: bool,
     pitch_bend_response: Literal['diagnose', 'sfizz_symmetric'],
     variation_response: Literal['diagnose', 'portable_seeded'],
+    cc_crossfade_response: Literal['diagnose', 'portable_ramp'],
 ) -> tuple[SampleSlot, playback.Slice] | None:
     control_trigger = None
     if any(CONTROLLER_TRIGGER.fullmatch(o.opcode) for o in region.opcodes):
@@ -1096,8 +1103,14 @@ def _slot(
             sources=sources, parameters=parameters, routes=routes
         )
         kwargs['bindings'] = bindings
-    if result := _crossfades(values):
-        kwargs['crossfades'] = result
+    fades = [
+        *_crossfades(values),
+        *_controller_crossfades(
+            declarations, cc_crossfade_response, midi_available, unimplemented
+        ),
+    ]
+    if fades:
+        kwargs['crossfades'] = fades
     if result := _trigger(values, declarations, unimplemented):
         kwargs['trigger'] = result
     if off_by := _group(values.get('off_by')):
@@ -2053,6 +2066,57 @@ def _crossfades(values: dict[str, str]) -> list[crossfade.KeyCrossfade]:
                     curve=curve,
                 )
             )
+    return result
+
+
+def _controller_crossfades(
+    declarations: dict[str, ParsedOpcode],
+    response: Literal['diagnose', 'portable_ramp'],
+    midi_available: bool,
+    unimplemented: list[UnimplementedFeature],
+) -> list[crossfade.ControlCrossfade]:
+    curve = declarations.get('xf_cccurve')
+    if curve is not None and curve.value not in ('gain', 'power'):
+        raise ValueError(f'Unsupported xf_cccurve: {curve.value}')
+    endpoints: dict[tuple[str, int], dict[str, ParsedOpcode]] = {}
+    for name, declaration in declarations.items():
+        if match := CONTROLLER_CROSSFADE.fullmatch(name):
+            direction, bound = match.group(1).split('_')
+            endpoints.setdefault((direction, int(match.group(2))), {})[bound] = (
+                declaration
+            )
+    result: list[crossfade.ControlCrossfade] = []
+    for (direction, number), pair in endpoints.items():
+        bounds = {
+            n: _integer(d.value, d.opcode, minimum=0, maximum=127)
+            for n, d in pair.items()
+        }
+        reason = None
+        if len(bounds) != 2 or bounds['lo'] >= bounds['hi']:
+            reason = 'SFZ CC crossfade requires two explicit increasing endpoints'
+        elif not midi_available:
+            reason = 'SFZ CC crossfade requires a shared MIDI channel binding request'
+        elif curve is None or curve.value != 'gain':
+            reason = 'SFZ CC power crossfade has no verified native gain law'
+        elif response == 'diagnose':
+            reason = 'SFZ CC crossfade requires cc_crossfade_response="portable_ramp"'
+        if reason is not None:
+            for declaration in pair.values():
+                _add_unimplemented(unimplemented, declaration, reason)
+            continue
+        result.append(
+            crossfade.ControlCrossfade(
+                input=enums.CrossfadeInput.control,
+                control='sustain' if number == 64 else f'cc-{number}',
+                direction=(
+                    enums.FadeDirection.fade_in
+                    if direction == 'xfin'
+                    else enums.FadeDirection.fade_out
+                ),
+                start=bounds['lo'] / 127,
+                end=bounds['hi'] / 127,
+            )
+        )
     return result
 
 

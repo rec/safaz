@@ -14,13 +14,17 @@ spans uFor, enveLFO, enge and safaz. See [the design](../doc/filter-envelope-des
 ## Remaining feature priorities
 
 1. Scope richer filter-envelope modifiers.
-2. Richer expressive controls: aftertouch, stepped/smoothed bend, controller
-   curves, additional LFO shapes and controller modulation.
+2. Richer expressive controls: aftertouch, stepped/smoothed bend, custom
+   controller curves, additional LFO shapes, and continuous CC modulation
+   beyond the live layer crossfade profile. CC crossfade power, omitted or
+   degenerate endpoints, and player-specific gain smoothing need their own
+   verified mapping.
 3. Remaining articulation rules: release-region controller/keyswitch history,
    richer controller-trigger combinations, repeated-note masking and release-tail
    termination. Specify portable rules before importing them.
-4. Qualify runtime snapshot continuation for the imported seeded-variation
-   profile and design export behavior for native seeded variation.
+4. Design export behavior for native seeded variation. A focused regression
+   now verifies imported delay, offset, gain and pitch across pending and
+   active snapshots on both enge offline backends.
 5. EQ, after bandwidth and resonance transfer functions are specified and tested.
 
 Each feature needs precise defaults, bounds, inheritance, source-located
@@ -53,14 +57,18 @@ claim support.
 - **Filter envelopes and expressive controls.** Specify whether each modifier is
   sampled at voice start or evaluated while a voice sounds. uFor and the
   consumer must agree on parameter targets, interpolation, release capture
-  and snapshot state. Aftertouch also needs an input contract that distinguishes
-  channel pressure from per-note pressure. Controller curves and LFO shapes
-  need verified endpoints, defaults and precedence across inherited sections.
+  and snapshot state. The pinned enge MIDI adapter ignores channel and
+  polyphonic key pressure. Aftertouch needs an input contract that maps their
+  distinct scopes. Controller curves and LFO shapes need verified endpoints,
+  defaults and precedence across inherited sections. The shared CC crossfade
+  runtime does not specify those rules for other modulation targets.
 - **Articulation history and retirement.** Release-region conditions need
   per-trigger records of the note-on conditions and an explicit choice of
   when to read any live controls. Repeated notes and release tails need
   deterministic ordering with pedal changes, choke and voice-limit events.
-  Qualify those rules with overlapping notes and identical-velocity triggers.
+  The new Rust release planner ports the existing key and sustain decisions.
+  Release-region history and controller-trigger combinations still need a
+  portable contract with overlapping notes and identical-velocity triggers.
 - **Equalizer.** uFor can describe frequency, gain and bandwidth, but the
   pinned enge sampler has no EQ processing. Implement that stage and compare
   its transfer function against SFZ before selecting a profile. Verify zero

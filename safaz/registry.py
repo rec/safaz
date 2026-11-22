@@ -31,6 +31,7 @@ def opcode_support(name: str) -> tuple[Support, str | None, str | None]:
         canonical in PARSABLE_OPCODES
         or CONTROLLER_CONDITION.fullmatch(canonical)
         or CONTROLLER_TRIGGER.fullmatch(canonical)
+        or CONTROLLER_CROSSFADE.fullmatch(canonical)
         or name == 'amp_velcurve_N'
         or AMP_VELOCITY_CURVE.fullmatch(canonical)
     ):
@@ -38,8 +39,10 @@ def opcode_support(name: str) -> tuple[Support, str | None, str | None]:
             return Support.asset_metadata, version, category
         if canonical in AMBIGUOUS_OPCODES:
             return Support.ambiguous, version, category
-        if canonical in CONDITIONAL_BINDING_OPCODES or CONTROLLER_TRIGGER.fullmatch(
-            canonical
+        if (
+            canonical in CONDITIONAL_BINDING_OPCODES
+            or CONTROLLER_TRIGGER.fullmatch(canonical)
+            or CONTROLLER_CROSSFADE.fullmatch(canonical)
         ):
             return Support.controller_binding, version, category
         return Support.supported, version, category
@@ -205,6 +208,12 @@ def support_table() -> str:
         'binding; uncertain combinations remain diagnosed. Export with a MIDI '
         'binding preserves this subset and exact 7-bit CC conditions.',
         '',
+        'Live CC crossfades require a shared MIDI binding, explicit 7-bit '
+        'endpoints, `xf_cccurve=gain`, and '
+        '`cc_crossfade_response="portable_ramp"`. The profile uses a 5 ms '
+        'part-local linear controller ramp; SFZ power and player smoothing '
+        'remain outside this profile. Export uses the same explicit choice.',
+        '',
         'Static stereo `width` and `position` use the mathematical sfizz pan '
         'law. Input pan precedes width mixing and output position follows it. '
         'Export verifies the reconstructed channel matrix.',
@@ -352,6 +361,7 @@ PARSABLE_OPCODES = {
     'volume',
     'width',
     'xf_keycurve',
+    'xf_cccurve',
     'xf_velcurve',
     'xfin_hikey',
     'xfin_hivel',
@@ -430,6 +440,7 @@ AMBIGUOUS_OPCODES = {
     'seq_position',
 }
 CONDITIONAL_BINDING_OPCODES = {
+    'xf_cccurve',
     'lochan',
     'hichan',
     'bend_up',
@@ -440,6 +451,7 @@ CONDITIONAL_BINDING_OPCODES = {
 AMP_VELOCITY_CURVE = re.compile(r'amp_velcurve_(\d+)')
 CONTROLLER_CONDITION = re.compile(r'(lo|hi)cc(\d+)')
 CONTROLLER_TRIGGER = re.compile(r'(on_lo|on_hi)cc(\d+)')
+CONTROLLER_CROSSFADE = re.compile(r'(xf(?:in|out)_(?:lo|hi))cc(\d+)')
 INITIAL_CONTROLLER = re.compile(r'set_cc(\d+)')
 STANDARD_OPCODES: dict[str, tuple[str, str]] = {
     '#define': ('SFZ v2', 'Instrument Settings'),

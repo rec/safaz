@@ -1156,6 +1156,102 @@ def test_sfz_variation_diagnoses_unverified_playback_combinations(
     assert [i.location.opcode for i in result.unimplemented] == [opcode]
 
 
+def test_sfz_cc_crossfades_preserve_live_ranges_without_restricting_notes() -> None:
+    request = SfzMidiBindingRequest(
+        instrument=ScoreReference(path='instrument.toml'),
+        part='main',
+        repeated_key_release='oldest',
+    )
+    result = _compile(
+        '<control> set_cc7=24\n'
+        '<global> xf_cccurve=gain xfin_locc7=12 xfin_hicc7=88\n'
+        '<region> sample=sample.wav key=60 xfin_hicc7=100 '
+        'xfout_locc64=40 xfout_hicc64=120 xfin_locc22=0 xfin_hicc22=127',
+        midi_binding=request,
+        cc_crossfade_response='portable_ramp',
+    )
+    assert result.complete and result.instrument is not None
+    assert result.binding is not None
+    slot = result.instrument.body.slots[0]
+    assert not slot.control_conditions
+    assert [
+        (f.control, str(f.direction), f.start, f.end, f.scope, f.smoothing_seconds)
+        for f in slot.crossfades
+    ] == [
+        ('cc-7', 'in', 12 / 127, 100 / 127, 'part', 0.005),
+        ('sustain', 'out', 40 / 127, 120 / 127, 'part', 0.005),
+        ('cc-22', 'in', 0, 1, 'part', 0.005),
+    ]
+    assert result.instrument.body.settings.controls['cc-7'].default == 24 / 127
+    assert [c.number for c in result.binding.body.midi[0].controllers] == [64, 7, 22]
+    default_export = exporter.write(result.instrument, midi_binding=result.binding)
+    assert not default_export.complete
+    assert 'xfin_locc7=' not in default_export.contents
+    exported = exporter.write(
+        result.instrument,
+        midi_binding=result.binding,
+        cc_crossfade_response='portable_ramp',
+    )
+    assert exported.complete, exported.unimplemented
+    restored = _compile(
+        exported.contents, midi_binding=request, cc_crossfade_response='portable_ramp'
+    )
+    assert restored.complete and restored.instrument is not None
+    assert restored.instrument.body == result.instrument.body
+    assert restored.binding == result.binding
+
+
+@pytest.mark.parametrize(
+    ('settings', 'profile', 'bind', 'reason'),
+    [
+        ('xf_cccurve=gain xfin_hicc22=127', 'portable_ramp', True, 'two explicit'),
+        (
+            'xf_cccurve=gain xfin_locc22=4 xfin_hicc22=4',
+            'portable_ramp',
+            True,
+            'increasing',
+        ),
+        ('xfin_locc22=0 xfin_hicc22=127', 'portable_ramp', True, 'power'),
+        (
+            'xf_cccurve=gain xfin_locc22=0 xfin_hicc22=127',
+            'diagnose',
+            True,
+            'portable_ramp',
+        ),
+        (
+            'xf_cccurve=gain xfin_locc22=0 xfin_hicc22=127',
+            'portable_ramp',
+            False,
+            'binding',
+        ),
+    ],
+)
+def test_sfz_cc_crossfade_keeps_located_diagnostics_for_unverified_settings(
+    settings: str,
+    profile: Literal['diagnose', 'portable_ramp'],
+    bind: bool,
+    reason: str,
+) -> None:
+    result = _compile(
+        f'<global> {settings}\n<region> sample=sample.wav',
+        midi_binding=SfzMidiBindingRequest(
+            instrument=ScoreReference(path='instrument.toml'),
+            part='main',
+            repeated_key_release='oldest',
+        )
+        if bind
+        else None,
+        cc_crossfade_response=profile,
+    )
+    assert (
+        result.instrument is not None and not result.instrument.body.slots[0].crossfades
+    )
+    assert result.unimplemented
+    assert all(
+        i.location.line == 1 and reason in i.reason for i in result.unimplemented
+    )
+
+
 def _compile(
     text: str,
     output_channels: list[str] | None = None,
@@ -1164,6 +1260,7 @@ def _compile(
     sample_channels: int = 1,
     midi_binding: SfzMidiBindingRequest | None = None,
     variation_response: Literal['diagnose', 'portable_seeded'] = 'diagnose',
+    cc_crossfade_response: Literal['diagnose', 'portable_ramp'] = 'diagnose',
 ) -> SfzCompileResult:
     return compiler.compile_instrument(
         parser.parse(text),
@@ -1186,4 +1283,5 @@ def _compile(
         polyphony_overflow=polyphony_overflow,
         midi_binding=midi_binding,
         variation_response=variation_response,
+        cc_crossfade_response=cc_crossfade_response,
     )
