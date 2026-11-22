@@ -1,7 +1,7 @@
 """Read and seal existing audio assets for Ufor sample instruments."""
 
 import struct
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -20,7 +20,7 @@ def read_audio_metadata(path: Path) -> AudioMetadata:
 
 
 @contextmanager
-def open_sample(path: Path) -> Iterator[BinaryIO]:
+def open_sample(path: Path) -> Generator[BinaryIO]:
     """Snapshot a local sample once, bounded by its observed file length."""
     with TemporaryDirectory(prefix='safaz-sample-') as directory:
         store = AssetStore(Path(directory), credential_scope='local')
