@@ -29,14 +29,14 @@ reference = ["enge", "numpy", "mido"]
 override-dependencies = [
     "reccy @ git+https://github.com/rec/reccy.git@878920fff1339c823a3956f143bcdfa53cb9e416",
     "middy @ git+ssh://git@github.com/rec/middy.git@0125b962207c47741459a82aa1cc8508d33bde6d",
-    "ufor @ git+ssh://git@github.com/rec/ufor.git@ef091892740679fa96a2867a3f1850f4276533be",
+    "ufor @ git+ssh://git@github.com/rec/ufor.git@f5f8df1372bcec34aec641fc9d385a257f4750cc",
     "envelfo @ git+ssh://git@github.com/rec/envelfo.git@1ed5e050d02dcdcf377081570630e077dac527d0",
 ]
 
 [tool.uv.sources]
 reccy = { git = "https://github.com/rec/reccy.git", rev = "878920fff1339c823a3956f143bcdfa53cb9e416" }
-enge = { git = "ssh://git@github.com/rec/enge.git", rev = "e634c26907ea05f721022935220b03c8b5ebd8ff" }
-ufor = { git = "ssh://git@github.com/rec/ufor.git", rev = "ef091892740679fa96a2867a3f1850f4276533be" }
+enge = { git = "ssh://git@github.com/rec/enge.git", rev = "ecfaea196191153f3114cdf4129ae33f8a6bbdec" }
+ufor = { git = "ssh://git@github.com/rec/ufor.git", rev = "f5f8df1372bcec34aec641fc9d385a257f4750cc" }
 envelfo = { git = "ssh://git@github.com/rec/envelfo.git", rev = "1ed5e050d02dcdcf377081570630e077dac527d0" }
 
 [build-system]
