@@ -56,6 +56,7 @@ from .registry import (
     OPCODE_ALIASES,
 )
 from .release import release_stage
+from .spatial import stereo_routes
 
 
 def compile_instrument(
@@ -748,29 +749,6 @@ def _slot(
                     )
         else:
             kwargs['control_conditions'] = conditions
-    if 'width' in values:
-        width = _number(values['width'], 'width')
-        if not -100 <= width <= 100:
-            raise ValueError('width must be between -100 and 100')
-        if metadata.channels == 2 and width == -100:
-            pan = _number(values.get('pan', '0'), 'pan')
-            if pan:
-                _add_unimplemented(
-                    unimplemented,
-                    declarations['width'],
-                    'Stereo channel swap with pan has no exact native mapping',
-                )
-            else:
-                kwargs['channels'] = [
-                    processing.ChannelRoute(input='left', output='right', gain=1),
-                    processing.ChannelRoute(input='right', output='left', gain=1),
-                ]
-        elif metadata.channels == 2 and width != 100:
-            _add_unimplemented(
-                unimplemented,
-                declarations['width'],
-                'Intermediate SFZ stereo width has no exact native gain law',
-            )
     if 'seq_length' in values or 'seq_position' in values:
         if sequence_counter == 'reject' or values.get('trigger') not in (
             None,
@@ -831,6 +809,26 @@ def _slot(
     processing_values = _processing(
         values, declarations, metadata.channels, unimplemented
     )
+    width = _number(values.get('width', '100'), 'width') / 100
+    position = _number(values.get('position', '0'), 'position') / 100
+    for name, value in (('width', width), ('position', position)):
+        if not -1 <= value <= 1:
+            raise ValueError(f'{name} must be between -100 and 100')
+    if metadata.channels == 2 and (width != 1 or position):
+        pan = _number(values.get('pan', '0'), 'pan') / 100
+        if width == 1 and not pan:
+            processing_values['stereo_balance'] = position
+        else:
+            kwargs['channels'] = stereo_routes(width, pan, position)
+            processing_values.pop('stereo_balance', None)
+    elif metadata.channels > 2:
+        for name, active in (('width', width != 1), ('position', bool(position))):
+            if active:
+                _add_unimplemented(
+                    unimplemented,
+                    declarations[name],
+                    'SFZ stereo width and position require a stereo sample',
+                )
     if filters := _filters(
         values, declarations, output_rate, filter_response, unimplemented
     ):

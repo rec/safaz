@@ -18,6 +18,8 @@ Pitch bend requires an explicit MIDI binding and `pitch_bend_response="sfizz_sym
 
 `sw_down` and `sw_up` require a shared consumed switch range; `sw_previous` tracks every prior note-on in the part. Release-region history combinations remain diagnosed. Export preserves the shared switch range, sticky default, held conditions and previous note for representable regions. `on_loccN`/`on_hiccN` import only the explicit one-shot, note-independent subset with a MIDI binding; uncertain combinations remain diagnosed. Controller triggers have no implemented export.
 
+Static stereo `width` and `position` use the mathematical sfizz pan law. Input pan precedes width mixing and output position follows it. Export verifies the reconstructed channel matrix.
+
 | Kind | Name | Version | Classification |
 | --- | --- | --- | --- |
 | Header | `<region>` | SFZ v1 | supported |
@@ -390,7 +392,7 @@ Pitch bend requires an explicit MIDI binding and `pitch_bend_response="sfizz_sym
 | Opcode | `pitchlfo_freq` | SFZ v1 | ambiguous |
 | Opcode | `pkf_2p` | SFZ v2 | new_model |
 | Opcode | `polyphony` | SFZ v2 | ambiguous |
-| Opcode | `position` | SFZ v1 | new_model |
+| Opcode | `position` | SFZ v1 | supported |
 | Opcode | `release_key` | SFZ v2 | new_model |
 | Opcode | `resonance` | SFZ v1 | ambiguous |
 | Opcode | `resonance_curveccN` | SFZ v2 | new_model |

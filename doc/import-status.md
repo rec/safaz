@@ -30,7 +30,8 @@ SFZ `off_by` is translated from its victim-side meaning into native trigger-side
 chokes, including distinct `off_mode` values; export reverses that mapping.
 SFZ `phase=invert` maps to generic polarity inversion independently of pan.
 SFZ `sample_fadeout` maps to a native linear end fade for unlooped single
-playback; `width=-100` swaps stereo channels when no pan is active, and
+playback. Static stereo width and position preserve the ordered input-pan,
+width-mix and output-position gains. Export recognizes the verified matrices.
 `ampeg_start` maps to the native envelope's initial level.
 Positive SFZ `count` values map to native one-shot `play_count` without
 retriggering envelopes; player-dependent `count=0` remains diagnosed.

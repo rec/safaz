@@ -1,3 +1,4 @@
+from math import cos, pi, sin, sqrt
 from typing import Literal
 
 import pytest
@@ -485,17 +486,61 @@ def test_sfz_envelope_start_rejects_out_of_range_level(start: str) -> None:
         _compile(f'<region> sample=sample.wav ampeg_start={start}')
 
 
-@pytest.mark.parametrize('settings', ['width=50', 'width=-100 pan=25'])
-def test_sfz_width_without_exact_channel_mapping_is_diagnosed(settings: str) -> None:
+@pytest.mark.parametrize(
+    ('width', 'pan', 'position', 'exportable'),
+    [
+        (50, 0, 0, True),
+        (-100, 25, 0, True),
+        (0, 30, 50, True),
+        (100, 0, -20, True),
+        (-25, -100, 100, False),
+        (100, -100, 100, True),
+    ],
+)
+def test_sfz_stereo_width_applies_between_pan_and_position(
+    width: int, pan: int, position: int, exportable: bool
+) -> None:
     result = _compile(
-        f'<region> sample=sample.wav {settings}',
+        f'<region> sample=sample.wav width={width} pan={pan} position={position}',
         output_channels=['left', 'right'],
         sample_channels=2,
     )
 
-    assert not result.complete
-    assert result.instrument is not None
-    assert result.unimplemented[0].location.opcode == 'width'
+    assert result.complete and result.instrument is not None
+    slot = result.instrument.body.slots[0]
+    width_angle, pan_angle, position_angle = (
+        (1 + p / 100) * pi / 4 for p in (width, pan, position)
+    )
+    expected = [
+        2 * cos(pan_angle) * sin(width_angle) * cos(position_angle),
+        2 * cos(pan_angle) * cos(width_angle) * sin(position_angle),
+        2 * sin(pan_angle) * cos(width_angle) * cos(position_angle),
+        2 * sin(pan_angle) * sin(width_angle) * sin(position_angle),
+    ]
+    routes = {(r.input, r.output): r.gain for r in slot.channels}
+    pairs = [(i, o) for i in ('left', 'right') for o in ('left', 'right')]
+    balance_angle = (1 + slot.processing.stereo_balance) * pi / 4
+    factors = {
+        'left': sqrt(2) * cos(balance_angle),
+        'right': sqrt(2) * sin(balance_angle),
+    }
+    assert [routes.get(p, 0) * factors[p[1]] for p in pairs] == pytest.approx(expected)
+    exported = exporter.write(result.instrument)
+    if not exportable:
+        assert not exported.complete
+        assert any(
+            i.location.path == 'body.slots[0].channels' for i in exported.unimplemented
+        )
+        return
+    assert exported.complete, exported.unimplemented
+    restored = _compile(
+        exported.contents, output_channels=['left', 'right'], sample_channels=2
+    )
+    assert restored.complete and restored.instrument is not None
+    other = restored.instrument.body.slots[0]
+    assert other.processing.stereo_balance == slot.processing.stereo_balance
+    restored_routes = {(r.input, r.output): r.gain for r in other.channels}
+    assert restored_routes == pytest.approx(routes)
 
 
 @pytest.mark.parametrize(

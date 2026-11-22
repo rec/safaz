@@ -26,6 +26,7 @@ from .model import (
     _channel_routes,
 )
 from .modulators import lfo_values
+from .spatial import stereo_opcodes
 
 
 def write(instrument: SampleInstrumentScore) -> SfzExportResult:
@@ -235,12 +236,16 @@ def _region(
         )
     except ValueError:
         expected_channels = []
-    swapped_channels = [
-        processing.ChannelRoute(input='left', output='right', gain=1),
-        processing.ChannelRoute(input='right', output='left', gain=1),
-    ]
-    swapped = len(asset.audio.channels) == 2 and slot.channels == swapped_channels
-    if slot.channels != expected_channels and not swapped:
+    spatial = None
+    if (
+        slot.channels != expected_channels
+        and len(asset.audio.channels) == 2
+        and expected_channels
+        and document.body.pan_law == processing.PanLaw.sfizz
+        and not (document.body.settings.processing.pan or slot.processing.pan)
+    ):
+        spatial = stereo_opcodes(slot.channels)
+    if slot.channels != expected_channels and spatial is None:
         _issue(
             issues,
             f'{path}.channels',
@@ -261,8 +266,13 @@ def _region(
         return None
 
     opcodes = [Opcode(name='sample', value=sample)]
-    if swapped:
-        opcodes.append(Opcode(name='width', value='-100'))
+    if spatial is not None:
+        width, pan, position = spatial
+        opcodes.append(Opcode(name='width', value=_number_text(100 * width)))
+        if pan:
+            opcodes.append(Opcode(name='pan', value=_number_text(100 * pan)))
+        if position:
+            opcodes.append(Opcode(name='position', value=_number_text(100 * position)))
     if slot.title is not None and _safe_value(slot.title):
         opcodes.insert(0, Opcode(name='region_label', value=slot.title))
     opcodes.extend(_mapping(slot.mapping))
@@ -765,7 +775,12 @@ def _processing_opcodes(
             'One SFZ pan opcode cannot distinguish simultaneous pan and balance',
         )
     elif pan or balance:
-        result.append(Opcode(name='pan', value=_number_text(100 * (pan or balance))))
+        result.append(
+            Opcode(
+                name='pan',
+                value=_number_text(100 * (pan or balance)),
+            )
+        )
     for i, band in enumerate(local.equalizer):
         _issue(
             issues,

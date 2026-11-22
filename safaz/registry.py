@@ -202,6 +202,10 @@ def support_table() -> str:
         'binding; uncertain combinations remain diagnosed. Controller triggers '
         'have no implemented export.',
         '',
+        'Static stereo `width` and `position` use the mathematical sfizz pan '
+        'law. Input pan precedes width mixing and output position follows it. '
+        'Export verifies the reconstructed channel matrix.',
+        '',
         '| Kind | Name | Version | Classification |',
         '| --- | --- | --- | --- |',
     ]
@@ -315,6 +319,7 @@ PARSABLE_OPCODES = {
     'pitch_keytrack',
     'pitch_veltrack',
     'polyphony',
+    'position',
     'region_label',
     'resonance',
     'resonance2',

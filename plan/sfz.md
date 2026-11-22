@@ -19,7 +19,8 @@ spans uFor, enveLFO, enge and safaz. See [the design](../doc/filter-envelope-des
 3. Remaining articulation rules: release-region controller/keyswitch history,
    richer controller-trigger combinations, repeated-note masking and release-tail
    termination. Specify portable rules before importing them.
-4. Intermediate stereo width and channel position with explicit channel semantics.
+4. Export coverage for sparse stereo width and position matrices. Static import
+   and verified matrix export are covered in the conversion contract.
 5. Reproducible random gain, pitch, offset and delay, including snapshot state.
 6. EQ, after bandwidth and resonance transfer functions are specified and tested.
 7. Export gaps for supported import-only features, as listed in the catalog.

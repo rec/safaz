@@ -56,7 +56,18 @@ audited cosine/sine gains and +3/+6 dB compensation once at rendering. Static
 channel routes remain the canonical maps, not baked copies of the pan gain.
 Export diagnoses `pan_law="native"` rather than silently changing its law.
 The convention does not include sfizz's lookup quantization, SIMD differences,
-master volume, width/position controls or client timing.
+master volume, time-varying spatial controls or client timing.
+
+Static stereo `width` and `position` use the same mathematical convention.
+The compiler applies input pan first, then mixes the stereo signals, then
+applies output position. Width -100 swaps the inputs, +100 keeps them
+independent, and 0 sends the same mix to both outputs. Gains come from the
+unquantized equal-power curves. Where necessary the compiler bakes all three
+stages into the channel map, since uFor requires the canonical map when
+using its balance parameter. Mono sources ignore width and position.
+Export reconstructs SFZ controls when it can verify the resulting matrix.
+Some sparse matrices, such as a hard-pan input combined with a hard-position
+output after intermediate width, retain a channel-routing diagnostic.
 SFZ `off_by` identifies the existing voice to stop when a new region in the
 named `group` starts. Import maps this victim-side rule to native trigger-side
 `chokes`; export reverses that mapping and diagnoses graphs SFZ cannot express.
