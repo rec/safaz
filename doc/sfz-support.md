@@ -23,7 +23,7 @@ Live CC crossfades require a shared MIDI binding, explicit 7-bit endpoints, `xf_
 
 Static stereo `width` and `position` use the mathematical sfizz pan law. Input pan precedes width mixing and output position follows it. Export verifies the reconstructed channel matrix.
 
-`variation_response="portable_seeded"` accepts bounded random gain, pitch, offset and delay in ordinary note-on regions. It preserves the variation ranges using independent, deterministic native draws. Unsafe offsets, ambiguous delays and seeded export remain diagnosed.
+`variation_response="portable_seeded"` accepts bounded random gain, pitch, offset and delay in ordinary note-on regions. It preserves the variation ranges using independent, deterministic native draws. Export with the same profile preserves representable distributions. Unsafe offsets, ambiguous delays and seed portability retain diagnostics.
 
 | Kind | Name | Version | Classification |
 | --- | --- | --- | --- |

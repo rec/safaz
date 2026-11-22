@@ -221,7 +221,8 @@ def support_table() -> str:
         '`variation_response="portable_seeded"` accepts bounded random gain, '
         'pitch, offset and delay in ordinary note-on regions. It preserves '
         'the variation ranges using independent, deterministic native draws. '
-        'Unsafe offsets, ambiguous delays and seeded export remain diagnosed.',
+        'Export with the same profile preserves representable distributions. '
+        'Unsafe offsets, ambiguous delays and seed portability retain diagnostics.',
         '',
         '| Kind | Name | Version | Classification |',
         '| --- | --- | --- | --- |',

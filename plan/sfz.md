@@ -22,10 +22,7 @@ spans uFor, enveLFO, enge and safaz. See [the design](../doc/filter-envelope-des
 3. Remaining articulation rules: release-region controller/keyswitch history,
    richer controller-trigger combinations, repeated-note masking and release-tail
    termination. Specify portable rules before importing them.
-4. Design export behavior for native seeded variation. A focused regression
-   now verifies imported delay, offset, gain and pitch across pending and
-   active snapshots on both enge offline backends.
-5. EQ, after bandwidth and resonance transfer functions are specified and tested.
+4. EQ, after bandwidth and resonance transfer functions are specified and tested.
 
 Each feature needs precise defaults, bounds, inheritance, source-located
 diagnostics and focused regressions. A portable concept must be useful outside
@@ -74,11 +71,6 @@ claim support.
   its transfer function against SFZ before selecting a profile. Verify zero
   gain, both signed gains, center gain and both bandwidth edges at several
   rates. Include filter and amplifier ordering in the comparison.
-- **Seeded export.** SFZ cannot store the native seed or stream identities.
-  A future export profile can preserve supported distributions explicitly,
-  with separate verification of reproducibility when re-imported into uFor.
-  It must account for gain and pitch recentering and for delay and offset
-  bounds in the same playback slice.
 
 ## Additional work beyond the prompt
 

@@ -1134,6 +1134,31 @@ def test_sfz_variation_preserves_ranges_and_reproducible_voice_draws() -> None:
     assert 0 <= draw.offset_frames <= 100
     assert -18 <= slot.processing.volume_db + draw.gain_db <= -10
     assert 20 <= slot.processing.tuning_cents + draw.pitch_cents <= 55.5
+    default_export = exporter.write(result.instrument)
+    assert not default_export.complete
+    assert 'offset_random=' not in default_export.contents
+    exported = exporter.write(result.instrument, variation_response='portable_seeded')
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents, variation_response='portable_seeded')
+    assert restored.complete and restored.instrument is not None
+    assert trace.prepare(restored.instrument.body, events, seed=17) == prepared
+
+
+def test_sfz_variation_export_diagnoses_unrepresentable_base_and_offset() -> None:
+    compiled = _compile('<region> sample=sample.wav offset=47999')
+    assert compiled.instrument is not None
+    raw = compiled.instrument.model_dump(mode='json')
+    slot = raw['body']['slots'][0]
+    slot['variation'] = {'offset_frames': 1, 'pitch_cents': 0.125}
+    exported = exporter.write(
+        SampleInstrumentScore.model_validate(raw), variation_response='portable_seeded'
+    )
+    assert 'offset_random=' not in exported.contents
+    assert 'pitch_random=' not in exported.contents
+    assert {i.location.path for i in exported.unimplemented} == {
+        'body.slots[0].variation.offset_frames',
+        'body.slots[0].variation.pitch_cents',
+    }
 
 
 @pytest.mark.parametrize(

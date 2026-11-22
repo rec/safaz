@@ -39,6 +39,7 @@ def write(
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     sequence_counter: Literal['reject', 'all_note_ons'] = 'reject',
     cc_crossfade_response: Literal['diagnose', 'portable_ramp'] = 'diagnose',
+    variation_response: Literal['diagnose', 'portable_seeded'] = 'diagnose',
 ) -> SfzExportResult:
     """Serialize a native instrument without reading or writing sample assets."""
     if polyphony_overflow not in ('diagnose', 'oldest_immediate'):
@@ -47,6 +48,8 @@ def write(
         raise ValueError(f'Unknown SFZ sequence counter rule: {sequence_counter}')
     if cc_crossfade_response not in ('diagnose', 'portable_ramp'):
         raise ValueError(f'Unknown SFZ CC crossfade response: {cc_crossfade_response}')
+    if variation_response not in ('diagnose', 'portable_seeded'):
+        raise ValueError(f'Unknown SFZ variation response: {variation_response}')
     issues: list[UnimplementedFeature] = []
     _instrument_issues(instrument, issues)
     controllers, bend_control, control_lines, global_lines = _midi_export(
@@ -77,8 +80,25 @@ def write(
             controllers,
             bend_control,
             sequence_counter,
+            variation_response == 'portable_seeded',
             issues,
         )
+        written = {o.name for o in opcodes or []}
+        for field, opcode in (
+            ('delay_seconds', 'delay_random'),
+            ('offset_frames', 'offset_random'),
+            ('gain_db', 'amp_random'),
+            ('pitch_cents', 'pitch_random'),
+        ):
+            if (value := getattr(slot.variation, field)) and opcode not in written:
+                _issue(
+                    issues,
+                    f'body.slots[{i}].variation.{field}',
+                    value,
+                    'Pass variation_response=portable_seeded to accept native draws'
+                    if variation_response == 'diagnose'
+                    else 'Variation falls outside the portable SFZ export profile',
+                )
         conditions = _keyswitch_opcodes(slot, articulations, switches, i, issues)
         conditions.extend(_controller_conditions(slot, controllers, i, issues))
         fades = _crossfade_opcodes(
@@ -242,6 +262,7 @@ def _region(
     controllers: dict[str, int],
     bend_control: str | None,
     sequence_counter: Literal['reject', 'all_note_ons'],
+    seeded_variation: bool,
     issues: list[UnimplementedFeature],
 ) -> list[Opcode] | None:
     path = f'body.slots[{index}]'
@@ -341,7 +362,10 @@ def _region(
         opcodes.extend(_trigger_opcodes(slot, path, issues))
     opcodes.extend(_choking(slot, path, groups, victims, issues))
     opcodes.extend(_playback_opcodes(document, slot, path, issues))
-    opcodes.extend(_processing_opcodes(document, slot, path, issues))
+    seeded_variation &= slot.trigger == enums.TriggerKind.start
+    if seeded_variation:
+        opcodes.extend(_playback_variation_opcodes(document, slot, sample_slice))
+    opcodes.extend(_processing_opcodes(document, slot, path, issues, seeded_variation))
     envelopes, envelope_routes = _envelope_opcodes(document, slot, path, issues)
     opcodes.extend(envelopes)
     filters, filter_routes, generators = _filter_opcodes(document, slot, path, issues)
@@ -993,11 +1017,58 @@ def _playback_opcodes(
     return result
 
 
+def _playback_variation_opcodes(
+    document: SampleInstrumentScore, slot: SampleSlot, sample: playback.Slice
+) -> list[Opcode]:
+    defaults = document.body.settings.playback
+    settings = slot.playback
+    result: list[Opcode] = []
+    if (
+        (delay := slot.variation.delay_seconds)
+        and delay + settings.start_delay_seconds <= 100
+        and (settings.mode or defaults.mode) != enums.PlaybackMode.one_shot
+        and settings.play_count is None
+    ):
+        result.append(Opcode(name='delay_random', value=_number_text(delay)))
+    if (
+        0 < (offset := slot.variation.offset_frames) <= 2**31 - 1
+        and sample.start_frame + offset < sample.end_frame
+        and sample.loop is None
+        and (settings.direction or defaults.direction) == enums.Direction.forward
+    ):
+        result.append(Opcode(name='offset_random', value=str(offset)))
+    return result
+
+
+def _variation_base(
+    midpoint: float,
+    half_range: float,
+    minimum: float,
+    maximum: float,
+    max_depth: float,
+    *,
+    integral: bool = False,
+) -> tuple[float, float] | None:
+    if not 0 < 2 * half_range <= max_depth:
+        return None
+    # Either orientation of the SFZ interval produces the same native draw.
+    for half in (half_range, -half_range):
+        for authored in nearby_values(midpoint - half):
+            if (
+                minimum <= authored <= maximum
+                and (not integral or authored == round(authored))
+                and authored + half == midpoint
+            ):
+                return authored, 2 * half
+    return None
+
+
 def _processing_opcodes(
     document: SampleInstrumentScore,
     slot: SampleSlot,
     path: str,
     issues: list[UnimplementedFeature],
+    seeded_variation: bool,
 ) -> list[Opcode]:
     instrument = document.body.settings.processing
     local = slot.processing
@@ -1016,6 +1087,19 @@ def _processing_opcodes(
             'An untracked SFZ region cannot retain a reference pitch as metadata',
         )
     result: list[Opcode] = []
+    if seeded_variation:
+        if (
+            gain := _variation_base(volume, slot.variation.gain_db, -144, 6, 24)
+        ) is not None:
+            volume, depth = gain
+            result.append(Opcode(name='amp_random', value=_number_text(depth)))
+        if (
+            pitch := _variation_base(
+                tuning, slot.variation.pitch_cents, -12800, 12800, 12000, integral=True
+            )
+        ) is not None:
+            tuning, depth = pitch
+            result.append(Opcode(name='pitch_random', value=_number_text(depth)))
     if not -144 <= volume <= 6:
         _issue(
             issues,
@@ -1569,11 +1653,7 @@ def _pitch_modulation_export(
 ) -> tuple[dict[str, str], list[modulation.Route], str | None]:
     target = modulation.Target(name='processing', parameter='tuning_cents')
     routes = [r for r in slot.modulation.routes if r.target == target]
-    if (
-        not routes
-        or document.body.settings.processing.tuning_cents
-        or slot.variation.pitch_cents
-    ):
+    if not routes or document.body.settings.processing.tuning_cents:
         return {}, [], None
     center = _pitch_key(slot.mapping.reference_pitch_hz)
     if slot.mapping.pitch_tracking and (
@@ -1702,7 +1782,6 @@ def _key_gain_export(
         or [p.input for p in route.points] != [0, 127]
         or not _event_source(slot, route, 'key', 127)
         or document.body.settings.processing.volume_db
-        or slot.variation.gain_db
         or sum(r.target == route.target for r in slot.modulation.routes) != 1
     ):
         return None
@@ -1889,14 +1968,6 @@ def _slot_issues(
                 f'{path}.{name}',
                 value,
                 'Linked microphone takes have no exact SFZ conversion',
-            )
-    for name, value in slot.variation.model_dump().items():
-        if value:
-            _issue(
-                issues,
-                f'{path}.variation.{name}',
-                value,
-                'Seeded variation has no exact SFZ conversion',
             )
     if slot.selection:
         _issue(

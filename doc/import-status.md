@@ -43,8 +43,9 @@ SFZ `delay` maps to a native delayed voice start distinct from envelope delay;
 one-shot note-off behavior that varies by player remains diagnosed.
 The explicit `portable_seeded` profile imports bounded random gain, pitch,
 offset and delay using deterministic uFor voice variation. Gain and pitch
-are recentered to preserve their authored ranges. Ambiguous trigger or slice
-behavior and seeded export retain diagnostics.
+are recentered to preserve their authored ranges. Import and export use the
+same explicit profile to preserve the distributions. Ambiguous trigger and
+slice behavior retain diagnostics.
 The NumPy and native offline samplers preserve seeded voice variation when
 restoring pending and active snapshots.
 SFZ round-robin positions can be imported with the explicit `all_note_ons`

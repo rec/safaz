@@ -402,8 +402,16 @@ variation model draws symmetrically around zero. uFor resolves independent
 draws using the caller's seed, part, event identity and slot identity. Native
 playback uses the resulting voice values. The focused reference regression
 checks pending and active sampler snapshot continuation on enge's NumPy
-and native offline backends. The SFZ format carries no seed or
-shared random stream, and export retains a diagnostic for seeded variation.
+and native offline backends.
+
+Export uses the same explicit `variation_response="portable_seeded"` profile.
+It writes representable distributions and chooses authored gain and pitch
+endpoints that reconstruct the exact native midpoints. Either signed interval
+orientation may produce the same midpoint and range. The default writer
+diagnoses nonzero variation, since SFZ carries no seed or shared random
+stream. Re-import with safaz and supply the same seed and event identities
+to reproduce native draws. Out-of-range windows and base values retain
+diagnostics.
 One-shot delayed note-off, release regions and controller triggers are outside
 this profile.
 
