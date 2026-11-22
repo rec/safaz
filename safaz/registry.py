@@ -154,8 +154,8 @@ def support_table() -> str:
         'use a voice-local triangle starting at zero rising after its delay. '
         'Fade scales the signal before cutoff exponentiation. '
         'Nonordinary triggers remain diagnosed. Combined cutoff modulation '
-        'outside bounds retains only the static filter. LFO export '
-        'remain unsupported. '
+        'outside bounds retains only the static filter. Export recognizes the '
+        'verified first-filter triangle, including delay and fade. '
         'First-filter envelopes additionally require '
         '`filter_envelope_response="portable_exponential"`: fixed DAHDSR/start '
         'and signed depth use captured exponential approaches and terminal fades. '
@@ -169,13 +169,15 @@ def support_table() -> str:
         'Pitch LFOs require `pitch_lfo_response="sfizz_parabolic"`. '
         'Fixed frequency (0-20 Hz), signed depth (-1200 to 1200 cents), delay '
         'and fade use the delayed zero-rising parabolic sine approximation. '
-        'Pitch, key and velocity contributions add in cents. Other triggers '
-        'and export remain diagnosed.',
+        'Pitch, key and velocity contributions add in cents. Export recognizes '
+        'the exact shape when the LFO is the sole pitch modulation route. Other '
+        'triggers remain diagnosed.',
         '',
         'Amplitude LFOs require `amplitude_lfo_response="sfizz_parabolic"`. '
         'Signed depth (-10 to 10 dB) becomes multiplicative gain, including '
         'velocity gain. Delay and fade shape the parabolic signal before dB-to-gain '
-        'conversion. Other triggers and export remain diagnosed.',
+        'conversion. Export recognizes the exact shape with or without a '
+        'representable velocity gain route. Other triggers remain diagnosed.',
         '',
         'Pitch bend requires an explicit MIDI binding and '
         '`pitch_bend_response="sfizz_symmetric"`. `bend_up` and `bend_down` '

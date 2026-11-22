@@ -9,7 +9,7 @@ from ufor.interface import ScoreReference
 from ufor.samples.metadata import AudioMetadata
 from ufor.time import Rate, Timebase
 
-from safaz import compiler, parser
+from safaz import compiler, exporter, parser
 from safaz.model import SfzCompileResult, SfzMidiBindingRequest
 
 
@@ -19,9 +19,14 @@ def compile_modulation(
     amplitude: Literal['diagnose', 'sfizz_parabolic'] = 'sfizz_parabolic',
     midi: bool = False,
     bend: Literal['diagnose', 'sfizz_symmetric'] = 'sfizz_symmetric',
+    document: bool = False,
 ) -> SfzCompileResult:
     return compiler.compile_instrument(
-        parser.parse('<region> sample=a.wav key=60 loop_mode=one_shot ' + text),
+        parser.parse(
+            text
+            if document
+            else '<region> sample=a.wav key=60 loop_mode=one_shot ' + text
+        ),
         name='test',
         title='Test',
         assets={
@@ -47,6 +52,24 @@ def compile_modulation(
         if midi
         else None,
     )
+
+
+@pytest.mark.parametrize('velocity', [0, 100])
+def test_pitch_and_amplitude_lfos_export_and_round_trip(velocity: int) -> None:
+    original = compile_modulation(
+        f'pitchlfo_freq=2.00000000000000001 pitchlfo_depth=-333.5 '
+        f'amp_veltrack={velocity} '
+        'amplfo_freq=4 amplfo_depth=-2.2 amplfo_delay=0.00004 amplfo_fade=0.2 tune=17'
+    )
+    assert original.complete and original.instrument is not None
+    exported = exporter.write(original.instrument)
+    assert exported.complete, exported.unimplemented
+    restored = compile_modulation(exported.contents, document=True)
+    assert restored.complete and restored.instrument is not None
+    before, after = original.instrument.body.slots[0], restored.instrument.body.slots[0]
+    assert after.envelfos == before.envelfos
+    assert after.bindings == before.bindings
+    assert after.modulation == before.modulation
 
 
 @pytest.mark.parametrize('depth', [-1200, 333.5, 1200])

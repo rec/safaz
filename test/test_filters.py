@@ -531,6 +531,35 @@ def test_filter_export_round_trips_key_and_velocity_tracking(tracking: str) -> N
     assert after.bindings == before.bindings
 
 
+@pytest.mark.parametrize('rate', [44100, 48000])
+def test_filter_lfo_export_round_trips_with_key_and_velocity_tracking(
+    rate: int,
+) -> None:
+    original = _compile(
+        '<region> sample=audio/glass.wav lokey=60 hikey=62 cutoff=1000 '
+        'fil_keytrack=100 fil_veltrack=-713 fillfo_freq=2.331 '
+        'fillfo_depth=-783.4 fillfo_delay=0.00005 fillfo_fade=0.234',
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+        rate=rate,
+    )
+    assert original.complete and original.instrument is not None
+    exported = exporter.write(original.instrument)
+    assert exported.complete, exported.unimplemented
+    restored = _compile(
+        exported.contents,
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+        rate=rate,
+    )
+    assert restored.complete and restored.instrument is not None
+    before, after = original.instrument.body.slots[0], restored.instrument.body.slots[0]
+    assert after.processing == before.processing
+    assert after.modulation == before.modulation
+    assert after.bindings == before.bindings
+    assert after.envelfos == before.envelfos
+
+
 @pytest.mark.parametrize('change', ['fractional', 'linear', 'bounds'])
 def test_filter_velocity_export_diagnoses_unrepresentable_routes(change: str) -> None:
     result = _compile(
@@ -742,7 +771,27 @@ def test_filter_lfo_starts_zero_rising_and_maps_signed_depth(depth: float) -> No
         )
         assert cutoff == pytest.approx(1000 * 2 ** (depth * triangle / 1200))
     exported = exporter.write(result.instrument)
-    assert not exported.complete
+    assert exported.complete, exported.unimplemented
+    restored = _compile(
+        exported.contents,
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+    )
+    assert restored.complete and restored.instrument is not None
+    assert restored.instrument.body.slots[0].modulation == slot.modulation
+
+
+def test_filter_lfo_export_diagnoses_a_different_oscillator_shape() -> None:
+    original = _compile(
+        '<region> sample=audio/glass.wav cutoff=1000 fillfo_freq=2 fillfo_depth=1200',
+        filter_response='sfizz_rbj',
+        filter_lfo_response='sfizz_triangle',
+    )
+    assert original.instrument is not None
+    raw = original.instrument.model_dump(mode='json')
+    raw['body']['slots'][0]['envelfos']['sfz-filter-lfo']['shape'] = 'sine'
+    exported = exporter.write(SampleInstrumentScore.model_validate(raw))
+    assert not exported.complete and 'fillfo_freq=' not in exported.contents
     assert any(
         f.location.path == 'body.slots[0].envelfos.sfz-filter-lfo'
         for f in exported.unimplemented

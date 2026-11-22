@@ -17,7 +17,7 @@ from ufor.samples.instrument import (
 from ufor.streams import AudioType
 
 from .filter_envelope import filter_envelope_values
-from .filters import FILTER_RESPONSES, cutoff_limit, inverse_value
+from .filters import FILTER_RESPONSES, cutoff_limit, inverse_value, nearby_values
 from .model import (
     InstrumentLocation,
     Opcode,
@@ -25,6 +25,7 @@ from .model import (
     UnimplementedFeature,
     _channel_routes,
 )
+from .modulators import lfo_values
 
 
 def write(instrument: SampleInstrumentScore) -> SfzExportResult:
@@ -269,10 +270,12 @@ def _region(
     opcodes.extend(_processing_opcodes(document, slot, path, issues))
     opcodes.extend(_envelope_opcodes(document, slot, path, issues))
     opcodes.extend(_crossfade_opcodes(slot, path, issues))
-    filters, filter_routes, binding = _filter_opcodes(document, slot, path, issues)
+    filters, filter_routes, generators = _filter_opcodes(document, slot, path, issues)
     opcodes.extend(filters)
-    opcodes.extend(_modulation_opcodes(slot, path, issues, filter_routes))
-    _slot_issues(slot, path, issues, binding)
+    opcodes.extend(
+        _modulation_opcodes(document, slot, path, issues, filter_routes, generators)
+    )
+    _slot_issues(slot, path, issues, generators)
     return opcodes
 
 
@@ -314,9 +317,9 @@ def _diagnose_omitted_slot(
         )
     _envelope_opcodes(document, slot, path, issues)
     _crossfade_opcodes(slot, path, issues)
-    _, filter_routes, binding = _filter_opcodes(document, slot, path, issues)
-    _modulation_opcodes(slot, path, issues, filter_routes)
-    _slot_issues(slot, path, issues, binding)
+    _, filter_routes, generators = _filter_opcodes(document, slot, path, issues)
+    _modulation_opcodes(document, slot, path, issues, filter_routes, generators)
+    _slot_issues(slot, path, issues, generators)
 
 
 def _mapping_eligible(
@@ -734,7 +737,7 @@ def _filter_opcodes(
     slot: SampleSlot,
     path: str,
     issues: list[UnimplementedFeature],
-) -> tuple[list[Opcode], list[modulation.Route], processing.GeneratorBinding | None]:
+) -> tuple[list[Opcode], list[modulation.Route], set[str]]:
     local = slot.processing
     common = document.body.settings.processing
     filters = [
@@ -745,11 +748,8 @@ def _filter_opcodes(
         ),
     ]
     if not filters:
-        return [], [], None
-    output = document.outputs[0].stream
-    assert isinstance(output, AudioType)
-    rate = next(t.rate for t in document.timebases if t.name == output.timebase)
-    output_rate = rate.numerator / rate.denominator
+        return [], [], set()
+    output_rate = _output_rate(document)
     upper = cutoff_limit(output_rate)
     order = local.filter_order if local.filters else common.filter_order
     values: dict[str, str] = {}
@@ -786,23 +786,22 @@ def _filter_opcodes(
         values[f'cutoff{suffix}'] = _number_text(filter.cutoff_hz)
         values[f'resonance{suffix}'] = _number_text(resonance)
     if len(values) != 3 * len(filters):
-        return [], [], None
-    binding = None
+        return [], [], set()
+    generators: set[str] = set()
     exported_routes: list[modulation.Route] = []
     if slot.trigger == enums.TriggerKind.start:
         for index, (filter, _) in enumerate(filters):
             prefix = 'fil2' if index else 'fil'
-            tracking, routes, generator = _filter_cutoff_opcodes(
+            tracking, routes, references = _filter_cutoff_opcodes(
                 slot, filter, prefix, output_rate
             )
             values.update(tracking)
             exported_routes.extend(routes)
-            if generator is not None:
-                binding = generator
+            generators.update(references)
     return (
         [Opcode(name=n, value=v) for n, v in values.items()],
         exported_routes,
-        binding,
+        generators,
     )
 
 
@@ -811,12 +810,12 @@ def _filter_cutoff_opcodes(
     filter: processing.ResonantFilter,
     prefix: str,
     output_rate: float,
-) -> tuple[dict[str, str], list[modulation.Route], processing.GeneratorBinding | None]:
+) -> tuple[dict[str, str], list[modulation.Route], set[str]]:
     target = modulation.Target(name=f'filter-{filter.name}', parameter='cutoff_hz')
     routes = [r for r in slot.modulation.routes if r.target == target]
     if not routes:
-        return {}, [], None
-    binding = None
+        return {}, [], set()
+    generators: set[str] = set()
     values: dict[str, str] = {}
     bounds: dict[str, tuple[float, float]] = {}
     cutoff = filter.cutoff_hz
@@ -826,7 +825,7 @@ def _filter_cutoff_opcodes(
         minimum = min(p.amount for p in route.points)
         maximum = max(p.amount for p in route.points)
         if not 1 <= cutoff * minimum <= cutoff * maximum <= upper:
-            return {}, [], None
+            return {}, [], set()
         if (key := _filter_key_tracking(slot, route)) is not None:
             tracking, center = key
             values[f'{prefix}_keytrack'] = str(tracking)
@@ -839,24 +838,32 @@ def _filter_cutoff_opcodes(
             elif prefix == 'fil':
                 envelope, generator = _filter_envelope_export(slot, route, output_rate)
                 if generator is None:
-                    return {}, [], None
+                    return {}, [], set()
                 values.update(envelope)
-                binding = generator
+                generators.add(generator.reference)
                 kind = 'envelope'
             else:
-                return {}, [], None
+                return {}, [], set()
+        elif (
+            prefix == 'fil'
+            and (lfo := _lfo_export(slot, route, 'fillfo', output_rate)) is not None
+        ):
+            opcodes, reference, _ = lfo
+            values.update(opcodes)
+            generators.add(reference)
+            kind = 'lfo'
         else:
-            return {}, [], None
+            return {}, [], set()
         if kind in bounds:
-            return {}, [], None
+            return {}, [], set()
         bounds[kind] = minimum, maximum
-    for kind in ('key', 'velocity', 'envelope'):
+    for kind in ('key', 'velocity', 'envelope', 'lfo'):
         if kind in bounds:
             minimum, maximum = bounds[kind]
             low *= minimum
             high *= maximum
     if not 1 <= low <= high <= upper:
-        return {}, [], None
+        return {}, [], set()
     parameter = modulation.Parameter(
         target=target,
         unit=modulation.Unit.hz,
@@ -866,8 +873,8 @@ def _filter_cutoff_opcodes(
         default=cutoff,
     )
     if parameter not in slot.modulation.parameters:
-        return {}, [], None
-    return values, routes, binding
+        return {}, [], set()
+    return values, routes, generators
 
 
 def _filter_key_tracking(
@@ -984,27 +991,154 @@ def _filter_envelope_export(
     return values | {'fileg_depth': _number_text(depth)}, binding
 
 
+def _lfo_export(
+    slot: SampleSlot, route: modulation.Route, prefix: str, output_rate: float
+) -> tuple[dict[str, str], str, float] | None:
+    if (
+        slot.trigger != enums.TriggerKind.start
+        or slot.control_trigger is not None
+        or slot.event_connections
+        or sum(r.source == route.source for r in slot.modulation.routes) != 1
+        or [p.input for p in route.points] != [-1, 1]
+    ):
+        return None
+    extent = 1 if prefix == 'fillfo' else 2
+    if (
+        modulation.Source(
+            name=route.source, scope='voice', minimum=-extent, maximum=extent
+        )
+        not in slot.modulation.sources
+    ):
+        return None
+    negative, positive = (p.amount for p in route.points)
+    if prefix == 'pitchlfo':
+        if (
+            route.operation != modulation.Operation.add
+            or route.unit != modulation.Unit.cents
+            or route.interpolation != modulation.Interpolation.linear
+            or negative != -positive
+            or not 0 < abs(positive) <= 1200
+        ):
+            return None
+        depth = positive
+    else:
+        if (
+            route.operation != modulation.Operation.multiply
+            or route.unit != modulation.Unit.ratio
+            or route.interpolation != modulation.Interpolation.exponential
+        ):
+            return None
+        base, scale, limit = (10, 20, 10) if prefix == 'amplfo' else (2, 1200, 1200)
+        logarithm = math.log10 if prefix == 'amplfo' else math.log2
+        estimate = scale * (logarithm(positive) - logarithm(negative)) / 2
+        depth = next(
+            (
+                d
+                for d in nearby_values(estimate)
+                if 0 < abs(d) <= limit
+                and base ** (d / scale) == positive
+                and base ** (-d / scale) == negative
+            ),
+            None,
+        )
+        if depth is None:
+            return None
+    binding = next((b for b in slot.bindings if b.name == route.source), None)
+    if (
+        not isinstance(binding, processing.GeneratorBinding)
+        or binding.release_timing != processing.ReleaseTiming.event
+        or sum(
+            isinstance(b, processing.GeneratorBinding)
+            and b.reference == binding.reference
+            for b in slot.bindings
+        )
+        != 1
+        or any(
+            p.target.name == f'envelfo-{binding.reference}'
+            for p in slot.modulation.parameters
+        )
+    ):
+        return None
+    body = slot.envelfos.get(binding.reference)
+    if body is None or binding.output != (
+        'signal' if isinstance(body, envelfo.Patch) else None
+    ):
+        return None
+    values = lfo_values(body, prefix, output_rate)
+    if values is None:
+        return None
+    return values | {f'{prefix}_depth': _number_text(depth)}, binding.reference, depth
+
+
+def _processing_lfo_export(
+    document: SampleInstrumentScore, slot: SampleSlot, route: modulation.Route
+) -> tuple[dict[str, str], str] | None:
+    if route.target.name != 'processing' or route.target.parameter not in (
+        'amplitude',
+        'tuning_cents',
+    ):
+        return None
+    amplitude = route.target.parameter == 'amplitude'
+    prefix = 'amplfo' if amplitude else 'pitchlfo'
+    if (lfo := _lfo_export(slot, route, prefix, _output_rate(document))) is None:
+        return None
+    values, reference, depth = lfo
+    others = [
+        r for r in slot.modulation.routes if r.target == route.target and r != route
+    ]
+    if amplitude:
+        if len(others) > 1 or any(
+            not _amplitude_velocity_route(slot, r) for r in others
+        ):
+            return None
+        default, minimum, maximum = 1, 0, 10 ** (abs(depth) / 20)
+    else:
+        if others:
+            return None
+        default = slot.processing.tuning_cents
+        minimum, maximum = default - abs(depth), default + abs(depth)
+    parameter = modulation.Parameter(
+        target=route.target,
+        unit=modulation.Unit.ratio if amplitude else modulation.Unit.cents,
+        scope=Scope.voice,
+        minimum=minimum,
+        maximum=maximum,
+        default=default,
+    )
+    return (values, reference) if parameter in slot.modulation.parameters else None
+
+
+def _amplitude_velocity_route(slot: SampleSlot, route: modulation.Route) -> bool:
+    return (
+        route.target == modulation.Target(name='processing', parameter='amplitude')
+        and any(b.name == route.source and b.kind == 'velocity' for b in slot.bindings)
+        and route.operation == modulation.Operation.multiply
+        and route.interpolation == modulation.Interpolation.linear
+        and all(_velocity_number(p.input) is not None for p in route.points)
+        and all(0 <= p.amount <= 1 for p in route.points)
+    )
+
+
 def _modulation_opcodes(
+    document: SampleInstrumentScore,
     slot: SampleSlot,
     path: str,
     issues: list[UnimplementedFeature],
     filter_routes: list[modulation.Route],
+    generators: set[str],
 ) -> list[Opcode]:
     supported: list[modulation.Route] = []
+    result: list[Opcode] = []
     for i, curve in enumerate(slot.modulation.routes):
         if curve in filter_routes:
             continue
-        if (
-            curve.target == modulation.Target(name='processing', parameter='amplitude')
-            and any(
-                b.name == curve.source and b.kind == 'velocity' for b in slot.bindings
-            )
-            and curve.operation == modulation.Operation.multiply
-            and curve.interpolation == modulation.Interpolation.linear
-            and all(_velocity_number(p.input) is not None for p in curve.points)
-            and all(0 <= p.amount <= 1 for p in curve.points)
-        ):
+        if _amplitude_velocity_route(slot, curve):
             supported.append(curve)
+            continue
+        if (lfo := _processing_lfo_export(document, slot, curve)) is not None:
+            values, reference = lfo
+            generators.add(reference)
+            result.extend(Opcode(name=n, value=v) for n, v in values.items())
         else:
             _issue(
                 issues,
@@ -1020,10 +1154,10 @@ def _modulation_opcodes(
                 curve,
                 'Multiple amplitude curves cannot share one SFZ amp_veltrack',
             )
-        return [Opcode(name='amp_veltrack', value='0')]
+        return [*result, Opcode(name='amp_veltrack', value='0')]
     if not supported:
-        return [Opcode(name='amp_veltrack', value='0')]
-    result = [Opcode(name='amp_veltrack', value='100')]
+        return [*result, Opcode(name='amp_veltrack', value='0')]
+    result.append(Opcode(name='amp_veltrack', value='100'))
     for point in supported[0].points:
         velocity = _velocity_number(point.input)
         assert velocity is not None
@@ -1092,7 +1226,7 @@ def _slot_issues(
     slot: SampleSlot,
     path: str,
     issues: list[UnimplementedFeature],
-    filter_envelope: processing.GeneratorBinding | None = None,
+    exported_generators: set[str] | None = None,
 ) -> None:
     for name in ('key_conditions', 'previous_key', 'control_trigger'):
         value = getattr(slot, name)
@@ -1142,7 +1276,7 @@ def _slot_issues(
             'Control conditions require an external SFZ controller binding',
         )
     for name, value in slot.envelfos.items():
-        if filter_envelope is not None and name == filter_envelope.reference:
+        if exported_generators is not None and name in exported_generators:
             continue
         _issue(
             issues,
@@ -1157,6 +1291,12 @@ def _pitch_key(value: float | None) -> int | None:
         return None
     key = round(69 + 12 * math.log2(value / 440))
     return key if 0 <= key <= 127 else None
+
+
+def _output_rate(document: SampleInstrumentScore) -> float:
+    output = next(p.stream for p in document.outputs if isinstance(p.stream, AudioType))
+    rate = next(t.rate for t in document.timebases if t.name == output.timebase)
+    return rate.numerator / rate.denominator
 
 
 def _velocity_number(value: object) -> int | None:

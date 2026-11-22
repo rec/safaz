@@ -117,3 +117,68 @@ def parabolic_lfo(
         },
         outputs={'signal': 'parabolic'},
     )
+
+
+def lfo_values(
+    body: envelfo.EnveLFO, prefix: str, output_rate: float
+) -> dict[str, str] | None:
+    oscillator = (
+        body.envelfos.get('oscillator') if isinstance(body, envelfo.Patch) else body
+    )
+    if not isinstance(oscillator, envelfo.LFO) or not isinstance(
+        oscillator.rate, Fraction
+    ):
+        return None
+    rate = oscillator.rate
+    if not 0 < rate <= 21 or not 0 < float(rate) <= 20:
+        return None
+    frequency = _decimal(rate)
+    if frequency is None:
+        return None
+    values = {f'{prefix}_freq': frequency}
+    if isinstance(body, envelfo.Patch) and 'activation' in body.envelfos:
+        activation = body.envelfos['activation']
+        if (
+            not isinstance(activation, envelfo.Envelope)
+            or len(activation.segments) != 2
+        ):
+            return None
+        first, second = activation.segments
+        if not isinstance(first, segments.Segment) or not isinstance(
+            second, segments.Segment
+        ):
+            return None
+        delay, fade = first.duration, second.duration
+        if (
+            not 0 <= delay <= 100 + 1 / output_rate
+            or not 0 <= fade <= 101
+            or not 0 <= float(fade) <= 100
+        ):
+            return None
+        fade_text = _decimal(fade)
+        if fade_text is None:
+            return None
+        # Any duration rounding up to the same frame rebuilds the same patch.
+        delay_value = min(100.0, float(delay) - 0.5 / output_rate) if delay else 0.0
+        if not 0 <= delay_value <= 100:
+            return None
+        values[f'{prefix}_delay'] = repr(delay_value)
+        values[f'{prefix}_fade'] = fade_text
+    build = triangle_lfo if prefix == 'fillfo' else parabolic_lfo
+    return values if build(values, prefix, output_rate) == body else None
+
+
+def _decimal(value: Fraction) -> str | None:
+    denominator = value.denominator
+    twos = fives = 0
+    while denominator % 2 == 0:
+        denominator //= 2
+        twos += 1
+    while denominator % 5 == 0:
+        denominator //= 5
+        fives += 1
+    if denominator != 1:
+        return None
+    digits = max(twos, fives)
+    scaled = value.numerator * 2 ** (digits - twos) * 5 ** (digits - fives)
+    return f'{scaled}e-{digits}' if digits else str(scaled)

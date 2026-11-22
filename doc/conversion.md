@@ -192,8 +192,10 @@ remains independent. See the [inheritance fixture](../conformance/filter-lfo.sfz
 
 Nonzero `fillfo_delay` and `fillfo_fade` compose a phase-offset oscillator and
 activation envelope, scaling the signal before cents-to-ratio conversion.
-Controller and nonordinary note triggers, SFZ 2 LFOs,
-controller/aftertouch modulation, and export remain diagnosed. Malformed or
+Export preserves this triangle, delay and fade when it can recreate the native
+generator and cutoff routes at the same rate. Re-import with both filter
+profiles enabled. Controller and nonordinary note triggers, SFZ 2 LFOs,
+and controller/aftertouch modulation remain diagnosed. Malformed or
 nonfinite numbers fail explicitly; values outside the verified ranges are
 diagnosed without clamping. This profile asserts mathematical waveform and
 mapping semantics, not bit-identical floating-point playback.
@@ -202,7 +204,7 @@ Unsupported filter modulation retains its source diagnostic alongside any
 accepted static filter. Export writes up to two supported two-pole filters in
 serial order after amplitude. Cutoff and resonance must be representable
 within the same verified profile and output rate. Other responses, additional
-stages and LFO export remain diagnosed. The [SFZ fixture](../conformance/filters.sfz) and
+stages remain diagnosed. The [SFZ fixture](../conformance/filters.sfz) and
 [native filter settings](../conformance/filters.json) demonstrate inheritance
 and the static two-filter mapping without asserting complete playback equivalence.
 The [keyboard tracking fixture](../conformance/filter-key-tracking.sfz) covers

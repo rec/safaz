@@ -99,8 +99,10 @@ native triangle at quarter-cycle phase and an exponential cutoff ratio.
 Combined tracking/LFO bounds diagnose all active cutoff routes on the affected
 filter. Delay and fade now compose an activation envelope with a phase-offset
 triangle: delay is rounded up to an output frame, and fade scales cents before
-cutoff exponentiation. Nonordinary triggers, richer LFOs, and export remain
-diagnosed. Sampler preparation now reuses the existing Patch expansion and
+cutoff exponentiation. Nonordinary triggers and richer LFOs remain diagnosed.
+Export round-trips the verified triangle
+and its delay/fade patch, including supported combinations of cutoff routes.
+Sampler preparation now reuses the existing Patch expansion and
 retains Patch identities in snapshots.
 The pinned SFZ v1/v2 registry classifies 453 opcodes and the standard headers,
 drives unsupported-feature diagnostics, and generates the
@@ -110,10 +112,13 @@ at use sites with recursive and undefined variables rejected. Unsupported
 
 Pitch LFO frequency, signed depth, delay and fade now import with explicit
 `pitch_lfo_response="sfizz_parabolic"`. Existing tuning and key/velocity pitch
-routes add in cents. Nonordinary triggers, richer LFOs and export remain diagnosed.
+routes add in cents. Export recognizes the verified pitch LFO when it is the
+sole pitch route. Nonordinary triggers and richer LFOs remain diagnosed.
 Amplitude LFOs similarly use `amplitude_lfo_response="sfizz_parabolic"`, with
 signed dB depth converted to multiplicative gain after delay/fade shaping.
 Velocity gain and amplitude LFO gain multiply without clamping the LFO peaks.
+Export recognizes the verified amplitude LFO with or without a representable
+velocity gain route.
 Explicit pitch-bend declarations now import through a MIDI binding with
 `pitch_bend_response="sfizz_symmetric"`. The negative endpoint plateau is
 expressed in the route; the generic MIDI converter is unchanged. Unsmoothed
