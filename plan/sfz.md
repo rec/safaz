@@ -68,6 +68,17 @@ claim support.
   The new Rust release planner ports the existing key and sustain decisions.
   Release-region history and controller-trigger combinations still need a
   portable contract with overlapping notes and identical-velocity triggers.
+- **CC crossfade compatibility.** The pinned reference fixtures verify square-root
+  power gains, omitted endpoints, the incoming step, and unity for a degenerate
+  outgoing range. Pinned sfizz defaults incoming bounds to zero and outgoing
+  bounds to 127. Its gain denominator subtracts one MIDI step from the stored
+  range, and explicit upper bounds at or below 126 first receive the fill-gap
+  adjustment. For example, an explicit upper bound of 127 reaches full incoming
+  gain at CC 126. Add portable square-root fades and control steps across uFor
+  and enge, then use an explicit conversion profile for these steady-state
+  semantics. sfizz interpolates event gains within each render block and smooths
+  their product in 16-frame groups. Keep the existing portable 5 ms input ramp
+  explicit and qualify its block and snapshot invariance separately.
 - **Equalizer.** Static peaking EQ has defined resonance, gain and processing
   order. Shelves still need portable response types. Modulated EQ needs
   target preparation and a verified time-varying coefficient and state
