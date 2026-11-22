@@ -286,7 +286,13 @@ def test_filter_key_tracking_conformance_preserves_inheritance_and_shared_key(
                 }
             )
     data_regression.check(rows)
-    assert not exporter.write(result.instrument).complete
+    exported = exporter.write(result.instrument)
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents, filter_response='sfizz_rbj')
+    assert restored.complete and restored.instrument is not None
+    assert [s.modulation for s in restored.instrument.body.slots] == [
+        s.modulation for s in result.instrument.body.slots
+    ]
 
 
 @pytest.mark.parametrize('index', [1, 2])

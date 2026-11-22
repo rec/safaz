@@ -1194,39 +1194,116 @@ def _lfo_export(
 def _processing_lfo_export(
     document: SampleInstrumentScore, slot: SampleSlot, route: modulation.Route
 ) -> tuple[dict[str, str], str] | None:
-    if route.target.name != 'processing' or route.target.parameter not in (
-        'amplitude',
-        'tuning_cents',
-    ):
+    if route.target != modulation.Target(name='processing', parameter='amplitude'):
         return None
-    amplitude = route.target.parameter == 'amplitude'
-    prefix = 'amplfo' if amplitude else 'pitchlfo'
-    if (lfo := _lfo_export(slot, route, prefix, _output_rate(document))) is None:
+    if (lfo := _lfo_export(slot, route, 'amplfo', _output_rate(document))) is None:
         return None
     values, reference, depth = lfo
     others = [
         r for r in slot.modulation.routes if r.target == route.target and r != route
     ]
-    if amplitude:
-        if len(others) > 1 or any(
-            not _amplitude_velocity_route(slot, r) for r in others
-        ):
-            return None
-        default, minimum, maximum = 1, 0, 10 ** (abs(depth) / 20)
-    else:
-        if others:
-            return None
-        default = slot.processing.tuning_cents
-        minimum, maximum = default - abs(depth), default + abs(depth)
+    if len(others) > 1 or any(not _amplitude_velocity_route(slot, r) for r in others):
+        return None
     parameter = modulation.Parameter(
         target=route.target,
-        unit=modulation.Unit.ratio if amplitude else modulation.Unit.cents,
+        unit=modulation.Unit.ratio,
         scope=Scope.voice,
-        minimum=minimum,
-        maximum=maximum,
-        default=default,
+        minimum=0,
+        maximum=10 ** (abs(depth) / 20),
+        default=1,
     )
     return (values, reference) if parameter in slot.modulation.parameters else None
+
+
+def _pitch_modulation_export(
+    document: SampleInstrumentScore, slot: SampleSlot
+) -> tuple[dict[str, str], list[modulation.Route], str | None]:
+    target = modulation.Target(name='processing', parameter='tuning_cents')
+    routes = [r for r in slot.modulation.routes if r.target == target]
+    if (
+        not routes
+        or document.body.settings.processing.tuning_cents
+        or slot.variation.pitch_cents
+    ):
+        return {}, [], None
+    center = _pitch_key(slot.mapping.reference_pitch_hz)
+    if slot.mapping.pitch_tracking and (
+        center is None
+        or slot.mapping.reference_pitch_hz != 440.0 * 2 ** ((center - 69) / 12)
+    ):
+        return {}, [], None
+    values: dict[str, str] = {}
+    generator = None
+    for route in routes:
+        if (
+            route.operation != modulation.Operation.add
+            or route.unit != modulation.Unit.cents
+            or route.interpolation != modulation.Interpolation.linear
+            or len(route.points) != 2
+        ):
+            return {}, [], None
+        start, end = route.points
+        if (
+            (start.input, end.input) == (0, 1)
+            and start.amount == 0
+            and 0 < abs(end.amount) <= 9600
+            and end.amount == round(end.amount)
+            and _event_source(slot, route, 'velocity', 1)
+            and 'pitch_veltrack' not in values
+        ):
+            values['pitch_veltrack'] = _number_text(end.amount)
+        elif (
+            center is not None
+            and slot.mapping.pitch_tracking
+            and (start.input, end.input) == (0, 127)
+            and _event_source(slot, route, 'key', 127)
+            and 'pitch_keytrack' not in values
+        ):
+            if max(abs(start.amount), abs(end.amount)) > 1300 * 127:
+                return {}, [], None
+            delta = round((end.amount - start.amount) / 127)
+            tracking = 100 + delta
+            if (
+                not -1200 <= tracking <= 1200
+                or tracking in (0, 100)
+                or start.amount != -center * delta
+                or end.amount != (127 - center) * delta
+            ):
+                return {}, [], None
+            values['pitch_keytrack'] = str(tracking)
+        elif (
+            generator is None
+            and (lfo := _lfo_export(slot, route, 'pitchlfo', _output_rate(document)))
+            is not None
+        ):
+            opcodes, generator, _ = lfo
+            values.update(opcodes)
+        else:
+            return {}, [], None
+    base = slot.processing.tuning_cents
+    parameter = modulation.Parameter(
+        target=target,
+        unit=modulation.Unit.cents,
+        scope=Scope.voice,
+        minimum=base + sum(min(0, *(p.amount for p in r.points)) for r in routes),
+        maximum=base + sum(max(0, *(p.amount for p in r.points)) for r in routes),
+        default=base,
+    )
+    if parameter not in slot.modulation.parameters:
+        return {}, [], None
+    return values, routes, generator
+
+
+def _event_source(
+    slot: SampleSlot, route: modulation.Route, kind: str, maximum: int
+) -> bool:
+    return (
+        any(b.name == route.source and b.kind == kind for b in slot.bindings)
+        and modulation.Source(
+            name=route.source, scope='voice', minimum=0, maximum=maximum
+        )
+        in slot.modulation.sources
+    )
 
 
 def _amplitude_velocity_route(slot: SampleSlot, route: modulation.Route) -> bool:
@@ -1240,6 +1317,60 @@ def _amplitude_velocity_route(slot: SampleSlot, route: modulation.Route) -> bool
     )
 
 
+def _key_gain_export(
+    document: SampleInstrumentScore, slot: SampleSlot, route: modulation.Route
+) -> tuple[Opcode, Opcode] | None:
+    if (
+        route.target != modulation.Target(name='processing', parameter='volume_db')
+        or route.operation != modulation.Operation.add
+        or route.unit != modulation.Unit.db
+        or route.interpolation != modulation.Interpolation.linear
+        or [p.input for p in route.points] != [0, 127]
+        or not _event_source(slot, route, 'key', 127)
+        or document.body.settings.processing.volume_db
+        or slot.variation.gain_db
+        or sum(r.target == route.target for r in slot.modulation.routes) != 1
+    ):
+        return None
+    left, right = (p.amount for p in route.points)
+    if left == right or max(abs(left), abs(right)) > 96 * 127:
+        return None
+    estimate = (right - left) / 127
+    if estimate == 0:
+        return None
+    pivot = -left / estimate
+    if not -0.5 <= pivot <= 127.5:
+        return None
+    center = round(pivot)
+    if center == 128:
+        return None
+    endpoint = 127 - center if center < 64 else -center
+    amount = right if center < 64 else left
+    depth = next(
+        (
+            n
+            for n in nearby_values(amount / endpoint)
+            if -96 <= n <= 12 and -center * n == left and (127 - center) * n == right
+        ),
+        None,
+    )
+    base = slot.processing.volume_db
+    parameter = modulation.Parameter(
+        target=route.target,
+        unit=modulation.Unit.db,
+        scope=Scope.voice,
+        minimum=base + min(0, left, right),
+        maximum=base + max(0, left, right),
+        default=base,
+    )
+    if depth is None or parameter not in slot.modulation.parameters:
+        return None
+    return (
+        Opcode(name='amp_keycenter', value=str(center)),
+        Opcode(name='amp_keytrack', value=_number_text(depth)),
+    )
+
+
 def _modulation_opcodes(
     document: SampleInstrumentScore,
     slot: SampleSlot,
@@ -1249,12 +1380,18 @@ def _modulation_opcodes(
     generators: set[str],
 ) -> list[Opcode]:
     supported: list[modulation.Route] = []
-    result: list[Opcode] = []
+    pitch, pitch_routes, generator = _pitch_modulation_export(document, slot)
+    if generator is not None:
+        generators.add(generator)
+    result = [Opcode(name=n, value=v) for n, v in pitch.items()]
     for i, curve in enumerate(slot.modulation.routes):
-        if curve in filter_routes:
+        if curve in filter_routes or curve in pitch_routes:
             continue
         if _amplitude_velocity_route(slot, curve):
             supported.append(curve)
+            continue
+        if (gain := _key_gain_export(document, slot, curve)) is not None:
+            result.extend(gain)
             continue
         if (lfo := _processing_lfo_export(document, slot, curve)) is not None:
             values, reference = lfo

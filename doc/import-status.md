@@ -119,8 +119,9 @@ at use sites with recursive and undefined variables rejected. Unsupported
 
 Pitch LFO frequency, signed depth, delay and fade now import with explicit
 `pitch_lfo_response="sfizz_parabolic"`. Existing tuning and key/velocity pitch
-routes add in cents. Export recognizes the verified pitch LFO when it is the
-sole pitch route. Nonordinary triggers and richer LFOs remain diagnosed.
+routes add in cents. Export round-trips the verified pitch LFO together with
+keyboard and velocity pitch tracking. It also recognizes key-dependent
+amplitude. Nonordinary triggers and richer LFOs remain diagnosed.
 Amplitude LFOs similarly use `amplitude_lfo_response="sfizz_parabolic"`, with
 signed dB depth converted to multiplicative gain after delay/fade shaping.
 Velocity gain and amplitude LFO gain multiply without clamping the LFO peaks.

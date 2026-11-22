@@ -58,7 +58,8 @@ def compile_modulation(
 def test_pitch_and_amplitude_lfos_export_and_round_trip(velocity: int) -> None:
     original = compile_modulation(
         f'pitchlfo_freq=2.00000000000000001 pitchlfo_depth=-333.5 '
-        f'amp_veltrack={velocity} '
+        f'amp_veltrack={velocity} pitch_keytrack=-150 pitch_veltrack=1200 '
+        'amp_keytrack=-0.15 amp_keycenter=50 volume=-8 '
         'amplfo_freq=4 amplfo_depth=-2.2 amplfo_delay=0.00004 amplfo_fade=0.2 tune=17'
     )
     assert original.complete and original.instrument is not None

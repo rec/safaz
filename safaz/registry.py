@@ -170,8 +170,8 @@ def support_table() -> str:
         'Fixed frequency (0-20 Hz), signed depth (-1200 to 1200 cents), delay '
         'and fade use the delayed zero-rising parabolic sine approximation. '
         'Pitch, key and velocity contributions add in cents. Export recognizes '
-        'the exact shape when the LFO is the sole pitch modulation route. Other '
-        'triggers remain diagnosed.',
+        'the verified key and velocity routes with or without the pitch LFO. '
+        'Other triggers remain diagnosed for the LFO.',
         '',
         'Amplitude LFOs require `amplitude_lfo_response="sfizz_parabolic"`. '
         'Signed depth (-10 to 10 dB) becomes multiplicative gain, including '
