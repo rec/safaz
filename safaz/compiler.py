@@ -31,7 +31,7 @@ from ufor.streams import AudioType
 from ufor.time import Rate, Timebase
 
 from .filter_envelope import filter_envelope
-from .filters import FILTER_RESPONSES, cutoff_limit
+from .filters import FILTER_RESPONSES, cutoff_limit, eq_resonance
 from .model import (
     ParsedOpcode,
     ParsedRegion,
@@ -55,6 +55,7 @@ from .registry import (
     CONTROLLER_CONDITION,
     CONTROLLER_CROSSFADE,
     CONTROLLER_TRIGGER,
+    EQUALIZER_BAND,
     INITIAL_CONTROLLER,
     OPCODE_ALIASES,
 )
@@ -73,6 +74,7 @@ def compile_instrument(
     sequence_counter: Literal['reject', 'all_note_ons'] = 'reject',
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
+    eq_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
     filter_lfo_response: FilterLfoResponse = 'diagnose',
     filter_envelope_response: Literal['diagnose', 'portable_exponential'] = 'diagnose',
     pitch_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
@@ -89,6 +91,8 @@ def compile_instrument(
         raise ValueError(f'Unknown SFZ polyphony overflow rule: {polyphony_overflow}')
     if filter_response not in ('diagnose', 'sfizz_rbj'):
         raise ValueError(f'Unknown SFZ filter response: {filter_response}')
+    if eq_response not in ('diagnose', 'sfizz_rbj'):
+        raise ValueError(f'Unknown SFZ EQ response: {eq_response}')
     if filter_lfo_response not in ('diagnose', 'sfizz_triangle', 'sfizz_parabolic'):
         raise ValueError(f'Unknown SFZ filter LFO response: {filter_lfo_response}')
     if filter_envelope_response not in ('diagnose', 'portable_exponential'):
@@ -190,6 +194,7 @@ def compile_instrument(
                 articulations,
                 output_timebase.rate.numerator / output_timebase.rate.denominator,
                 filter_response,
+                eq_response,
                 filter_lfo_response,
                 filter_envelope_response,
                 pitch_lfo_response,
@@ -588,6 +593,7 @@ def _slot(
     articulations: selection.Articulations | None,
     output_rate: float,
     filter_response: Literal['diagnose', 'sfizz_rbj'],
+    eq_response: Literal['diagnose', 'sfizz_rbj'],
     filter_lfo_response: FilterLfoResponse,
     filter_envelope_response: Literal['diagnose', 'portable_exponential'],
     pitch_lfo_response: Literal['diagnose', 'sfizz_parabolic'],
@@ -837,6 +843,9 @@ def _slot(
         values, declarations, output_rate, filter_response, unimplemented
     ):
         processing_values['filters'] = filters
+        processing_values['filter_order'] = processing.FilterOrder.after_amplitude
+    if equalizer := _equalizer(declarations, output_rate, eq_response, unimplemented):
+        processing_values['equalizer'] = equalizer
         processing_values['filter_order'] = processing.FilterOrder.after_amplitude
     slot_processing = processing.Processing.model_validate(processing_values)
     if processing_values:
@@ -1404,6 +1413,66 @@ def _variation(
         else:
             result[field] = value
     return Variation.model_validate(result)
+
+
+def _equalizer(
+    declarations: dict[str, ParsedOpcode],
+    rate: float,
+    response: Literal['diagnose', 'sfizz_rbj'],
+    unimplemented: list[UnimplementedFeature],
+) -> list[processing.EqualizerBand]:
+    bands: dict[int, dict[str, ParsedOpcode]] = {}
+    for name, declaration in declarations.items():
+        if match := EQUALIZER_BAND.fullmatch(name):
+            number, field = match.groups()
+            bands.setdefault(int(number), {})[field] = declaration
+    result: list[processing.EqualizerBand] = []
+    fill_default = True
+    for index, default in enumerate((50, 500, 5000), 1):
+        band = bands.pop(index, {})
+        values = {n: d.value for n, d in band.items()}
+        frequency = _number(values.get('freq', '0'), f'eq{index}_freq')
+        if frequency:
+            fill_default = False
+        elif fill_default:
+            frequency = default
+        bandwidth = _number(values.get('bw', '1'), f'eq{index}_bw')
+        gain = _number(values.get('gain', '0'), f'eq{index}_gain')
+        if not band:
+            continue
+        if not all(isfinite(n) for n in (frequency, bandwidth, gain)):
+            raise ValueError(f'eq{index} parameters must be finite')
+        reason = None
+        if response == 'diagnose':
+            reason = 'SFZ equalizer requires eq_response="sfizz_rbj"'
+        elif values.get('type', 'peak') != 'peak':
+            reason = 'SFZ shelf EQ has no native peaking-band equivalent'
+        elif not -96 <= gain <= 96 or not 0.001 <= bandwidth <= 4:
+            reason = 'SFZ equalizer gain or bandwidth is outside the verified range'
+        elif not gain:
+            continue
+        elif not 1 <= frequency <= cutoff_limit(rate):
+            reason = 'SFZ equalizer frequency is outside the verified output-rate range'
+        elif not (resonance := eq_resonance(frequency, bandwidth, rate)):
+            reason = 'SFZ equalizer bandwidth does not yield a positive finite Q'
+        else:
+            result.append(
+                processing.EqualizerBand(
+                    name=f'sfz-eq-{index}',
+                    frequency_hz=frequency,
+                    gain_db=gain,
+                    resonance=resonance,
+                )
+            )
+        if reason is not None:
+            for declaration in band.values():
+                _add_unimplemented(unimplemented, declaration, reason)
+    for band in bands.values():
+        for declaration in band.values():
+            _add_unimplemented(
+                unimplemented, declaration, 'SFZ EQ supports bands 1 to 3'
+            )
+    return result
 
 
 def _filters(

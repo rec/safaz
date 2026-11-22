@@ -1,5 +1,6 @@
 import json
 from fractions import Fraction
+from math import log, sin, sinh, tau
 from pathlib import Path
 from typing import Literal
 
@@ -17,6 +18,58 @@ from ufor.time import Rate, Timebase
 from safaz import compiler, exporter, parser, registry
 from safaz.model import SfzCompileResult, SfzLocation
 from safaz.modulators import FilterLfoResponse
+
+
+@pytest.mark.parametrize('rate', [44100, 48000, 96000])
+def test_static_equalizer_uses_digital_bandwidth_and_round_trips(rate: int) -> None:
+    original = _compile(
+        '<global> eq1_gain=-12 eq2_bw=1.5 eq2_gain=6 '
+        '<region> sample=audio/glass.wav eq1_bw=0.5 eq2_freq=2500 '
+        'eq3_freq=5500 eq3_gain=9',
+        eq_response='sfizz_rbj',
+        rate=rate,
+    )
+    assert original.complete and original.instrument is not None
+    settings = original.instrument.body.slots[0].processing
+    assert settings.filter_order == processing.FilterOrder.after_amplitude
+    for band, frequency, gain, width in zip(
+        settings.equalizer, [50, 2500, 5500], [-12, 6, 9], [0.5, 1.5, 1], strict=True
+    ):
+        omega = tau * frequency / rate
+        assert band.frequency_hz == frequency
+        assert band.gain_db == gain
+        assert band.resonance == pytest.approx(
+            1 / (2 * sinh(0.5 * log(2) * width * omega / sin(omega)))
+        )
+    exported = exporter.write(original.instrument)
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents, eq_response='sfizz_rbj', rate=rate)
+    assert restored.complete and restored.instrument is not None
+    assert restored.instrument.body.slots[0].processing == settings
+
+
+@pytest.mark.parametrize(
+    ('settings', 'response', 'message'),
+    [
+        ('eq1_gain=4', 'diagnose', 'eq_response'),
+        ('eq1_gain=4 eq1_type=lshelf', 'sfizz_rbj', 'peaking-band'),
+        ('eq1_gain=4 eq1_bw=0', 'sfizz_rbj', 'bandwidth'),
+        ('eq1_freq=1500 eq2_gain=4', 'sfizz_rbj', 'frequency'),
+        ('eq4_gain=4', 'sfizz_rbj', 'bands 1 to 3'),
+    ],
+)
+def test_unverified_eq_retains_located_diagnostics(
+    settings: str, response: Literal['diagnose', 'sfizz_rbj'], message: str
+) -> None:
+    result = _compile(
+        f'<global> {settings}\n<region> sample=audio/glass.wav',
+        eq_response=response,
+    )
+    assert result.instrument is not None and not result.complete
+    assert not result.instrument.body.slots[0].processing.equalizer
+    assert all(
+        i.location.line == 1 and message in i.reason for i in result.unimplemented
+    )
 
 
 @pytest.mark.parametrize(
@@ -1086,6 +1139,7 @@ def _compile(
     filter_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
     rate: int = 48_000,
     filter_lfo_response: FilterLfoResponse = 'diagnose',
+    eq_response: Literal['diagnose', 'sfizz_rbj'] = 'diagnose',
 ) -> SfzCompileResult:
     return compiler.compile_instrument(
         parser.parse(text),
@@ -1106,4 +1160,5 @@ def _compile(
         output_channels=['left', 'right'],
         filter_response=filter_response,
         filter_lfo_response=filter_lfo_response,
+        eq_response=eq_response,
     )

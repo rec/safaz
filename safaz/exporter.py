@@ -19,7 +19,13 @@ from ufor.samples.instrument import (
 from ufor.streams import AudioType
 
 from .filter_envelope import filter_envelope_values
-from .filters import FILTER_RESPONSES, cutoff_limit, inverse_value, nearby_values
+from .filters import (
+    FILTER_RESPONSES,
+    cutoff_limit,
+    eq_bandwidth,
+    inverse_value,
+    nearby_values,
+)
 from .model import (
     InstrumentLocation,
     Opcode,
@@ -230,13 +236,6 @@ def _sound_issues(
     path: str,
     issues: list[UnimplementedFeature],
 ) -> None:
-    for i, value in enumerate(settings.processing.equalizer):
-        _issue(
-            issues,
-            f'{path}.processing.equalizer[{i}]',
-            value,
-            'Instrument equalizer bands have no implemented SFZ conversion',
-        )
     for name, value in settings.envelfos.items():
         _issue(
             issues,
@@ -370,6 +369,7 @@ def _region(
     opcodes.extend(envelopes)
     filters, filter_routes, generators = _filter_opcodes(document, slot, path, issues)
     opcodes.extend(filters)
+    opcodes.extend(_eq_opcodes(document, slot, path, issues))
     opcodes.extend(
         _modulation_opcodes(
             document,
@@ -415,13 +415,7 @@ def _diagnose_omitted_slot(
             local,
             'One SFZ pan opcode cannot distinguish simultaneous pan and balance',
         )
-    for i, band in enumerate(local.equalizer):
-        _issue(
-            issues,
-            f'{path}.processing.equalizer[{i}]',
-            band,
-            'Instrument equalizer bands have no implemented SFZ conversion',
-        )
+    _eq_opcodes(document, slot, path, issues)
     _, envelope_routes = _envelope_opcodes(document, slot, path, issues)
     _, filter_routes, generators = _filter_opcodes(document, slot, path, issues)
     _modulation_opcodes(
@@ -1150,13 +1144,6 @@ def _processing_opcodes(
                 value=_number_text(100 * (pan or balance)),
             )
         )
-    for i, band in enumerate(local.equalizer):
-        _issue(
-            issues,
-            f'{path}.processing.equalizer[{i}]',
-            band,
-            'Instrument equalizer bands have no implemented SFZ conversion',
-        )
     return result
 
 
@@ -1280,6 +1267,59 @@ def _envelope_velocity_route(
     return route if parameter in slot.modulation.parameters else None
 
 
+def _eq_opcodes(
+    document: SampleInstrumentScore,
+    slot: SampleSlot,
+    path: str,
+    issues: list[UnimplementedFeature],
+) -> list[Opcode]:
+    local = slot.processing
+    common = document.body.settings.processing
+    bands = [
+        *(
+            (b, f'{path}.processing.equalizer[{i}]')
+            for i, b in enumerate(local.equalizer)
+        ),
+        *(
+            (b, f'body.settings.processing.equalizer[{i}]')
+            for i, b in enumerate(common.equalizer)
+        ),
+    ]
+    if not bands:
+        return []
+    rate = _output_rate(document)
+    order = (
+        local.filter_order if local.filters or local.equalizer else common.filter_order
+    )
+    result: list[Opcode] = []
+    for index, (band, location) in enumerate(bands, 1):
+        bandwidth = None
+        if 1 <= band.frequency_hz <= cutoff_limit(rate):
+            bandwidth = eq_bandwidth(band.frequency_hz, band.resonance, rate)
+        if (
+            index > 3
+            or order != processing.FilterOrder.after_amplitude
+            or bandwidth is None
+            or not -96 <= band.gain_db <= 96
+        ):
+            _issue(
+                issues,
+                location,
+                band,
+                'SFZ requires up to three in-range peaking EQ bands after amplitude',
+            )
+            continue
+        result.extend(
+            Opcode(name=f'eq{index}_{field}', value=_number_text(value))
+            for field, value in (
+                ('freq', band.frequency_hz),
+                ('bw', bandwidth),
+                ('gain', band.gain_db),
+            )
+        )
+    return result
+
+
 def _filter_opcodes(
     document: SampleInstrumentScore,
     slot: SampleSlot,
@@ -1299,7 +1339,9 @@ def _filter_opcodes(
         return [], [], set()
     output_rate = _output_rate(document)
     upper = cutoff_limit(output_rate)
-    order = local.filter_order if local.filters else common.filter_order
+    order = (
+        local.filter_order if local.filters or local.equalizer else common.filter_order
+    )
     values: dict[str, str] = {}
     for index, (filter, location) in enumerate(filters):
         response = next(

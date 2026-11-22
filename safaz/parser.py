@@ -21,6 +21,7 @@ from .registry import (
     CONTROLLER_CONDITION,
     CONTROLLER_CROSSFADE,
     CONTROLLER_TRIGGER,
+    EQUALIZER_BAND,
     INITIAL_CONTROLLER,
     OPCODE_ALIASES,
     PARSABLE_OPCODES,
@@ -259,6 +260,9 @@ def _parse(
             or CONTROLLER_CONDITION.fullmatch(canonical)
             or CONTROLLER_TRIGGER.fullmatch(canonical)
             or CONTROLLER_CROSSFADE.fullmatch(canonical)
+            or (
+                EQUALIZER_BAND.fullmatch(canonical) and not canonical.startswith('eqN_')
+            )
         )
         if current == 'control':
             if INITIAL_CONTROLLER.fullmatch(name):

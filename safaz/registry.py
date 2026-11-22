@@ -32,12 +32,13 @@ def opcode_support(name: str) -> tuple[Support, str | None, str | None]:
         or CONTROLLER_CONDITION.fullmatch(canonical)
         or CONTROLLER_TRIGGER.fullmatch(canonical)
         or CONTROLLER_CROSSFADE.fullmatch(canonical)
+        or EQUALIZER_BAND.fullmatch(canonical)
         or name == 'amp_velcurve_N'
         or AMP_VELOCITY_CURVE.fullmatch(canonical)
     ):
         if canonical in ASSET_OPCODES:
             return Support.asset_metadata, version, category
-        if canonical in AMBIGUOUS_OPCODES:
+        if canonical in AMBIGUOUS_OPCODES or EQUALIZER_BAND.fullmatch(canonical):
             return Support.ambiguous, version, category
         if (
             canonical in CONDITIONAL_BINDING_OPCODES
@@ -153,6 +154,10 @@ def support_table() -> str:
         'remain diagnosed. Accepted static responses use native '
         '`filter_order=after_amplitude` to match the sfizz voice pipeline. '
         'Export writes up to two supported static filters in this order. '
+        'Static peaking EQ requires `eq_response="sfizz_rbj"`. Up to three '
+        'ordered bands use digital octave-bandwidth correction and run after '
+        'the amplitude envelope and resonant filters. Shelves and EQ modulation '
+        'remain diagnosed. Export recovers representable widths at the same rate. '
         'Basic first-filter LFOs additionally require '
         '`filter_lfo_response="sfizz_parabolic"` or `"sfizz_triangle"`. Fixed '
         'frequency and signed depth use a voice-local waveform starting at zero '
@@ -455,6 +460,7 @@ CONTROLLER_CONDITION = re.compile(r'(lo|hi)cc(\d+)')
 CONTROLLER_TRIGGER = re.compile(r'(on_lo|on_hi)cc(\d+)')
 CONTROLLER_CROSSFADE = re.compile(r'(xf(?:in|out)_(?:lo|hi))cc(\d+)')
 INITIAL_CONTROLLER = re.compile(r'set_cc(\d+)')
+EQUALIZER_BAND = re.compile(r'eq(\d+|N)_(freq|bw|gain|type)')
 STANDARD_OPCODES: dict[str, tuple[str, str]] = {
     '#define': ('SFZ v2', 'Instrument Settings'),
     'amp_attack': ('SFZ v2', 'Modulation/Envelope Generators'),

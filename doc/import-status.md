@@ -98,6 +98,11 @@ amplitude, resolving the former ordering diagnostic. Export writes up to two
 supported static filters and the bounded first-filter envelope when they can
 round-trip at the same profile and rate. Zero cutoff, out-of-range settings,
 unsupported types, and other filter modulation remain diagnosed.
+Static peaking EQ imports with `eq_response="sfizz_rbj"`. Up to three
+bands round-trip at the same output rate. enge applies them after the
+resonant cascade. A pinned sfizz render checks boost, cut, and unity gain
+at the center and both digital bandwidth edges. EQ shelves and dynamic
+modifiers remain diagnosed.
 Keyboard tracking now imports `fil_keytrack`/`fil_keycenter` and their
 second-filter counterparts through the existing integer-key modulation model.
 The explicit `sfizz_rbj` choice remains required. Tracking is verified over

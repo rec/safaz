@@ -22,7 +22,8 @@ spans uFor, enveLFO, enge and safaz. See [the design](../doc/filter-envelope-des
 3. Remaining articulation rules: release-region controller/keyswitch history,
    richer controller-trigger combinations, repeated-note masking and release-tail
    termination. Specify portable rules before importing them.
-4. EQ, after bandwidth and resonance transfer functions are specified and tested.
+4. EQ shelves and note- or controller-driven EQ modulation. The static
+   peaking profile now has a verified digital bandwidth mapping.
 
 Each feature needs precise defaults, bounds, inheritance, source-located
 diagnostics and focused regressions. A portable concept must be useful outside
@@ -67,11 +68,10 @@ claim support.
   The new Rust release planner ports the existing key and sustain decisions.
   Release-region history and controller-trigger combinations still need a
   portable contract with overlapping notes and identical-velocity triggers.
-- **Equalizer.** uFor can describe frequency, gain and bandwidth, but the
-  pinned enge sampler has no EQ processing. Implement that stage and compare
-  its transfer function against SFZ before selecting a profile. Verify zero
-  gain, both signed gains, center gain and both bandwidth edges at several
-  rates. Include filter and amplifier ordering in the comparison.
+- **Equalizer.** Static peaking EQ has defined resonance, gain and processing
+  order. Shelves still need portable response types. Modulated EQ needs
+  target preparation and a verified time-varying coefficient and state
+  contract.
 
 ## Additional work beyond the prompt
 

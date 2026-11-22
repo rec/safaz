@@ -225,6 +225,22 @@ and the static two-filter mapping without asserting complete playback equivalenc
 The [keyboard tracking fixture](../conformance/filter-key-tracking.sfz) covers
 inherited tracking, independent centers, and a per-region zero override.
 
+## Static peaking EQ
+
+Select `eq_response="sfizz_rbj"` on import. The profile covers EQ bands 1
+through 3 with `eqN_type=peak` (the default), gain from -96 to 96 dB,
+bandwidth from 0.001 to 4 octaves (default 1), and an in-range center
+frequency. A zero-gain band leaves the signal unchanged.
+Pinned sfizz fills a leading run of zero or omitted frequencies with
+50, 500, and 5,000 Hz. A subsequent active band with no positive frequency
+retains a diagnostic.
+
+The compiler maps octave bandwidth to the digital Q at the declared output
+rate. The peaking stage follows amplitude and the resonant filter cascade.
+Export writes explicit frequencies and recovers bandwidth from the native Q
+at the same rate. Shelves, note and CC modulation, and native pre-amplitude
+EQ retain diagnostics.
+
 ## Amplifier envelope velocity
 
 The `ampeg_vel2delay`, `ampeg_vel2attack`, `ampeg_vel2hold`,
