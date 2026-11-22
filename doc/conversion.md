@@ -342,6 +342,28 @@ eligible. It is not a claim that all SFZ players count
 identically. SFZ export writes the corresponding opcodes but reports that the
 player-dependent counter rule cannot be guaranteed by the file.
 
+## Seeded variation
+
+`read` and `compile_instrument` accept
+`variation_response="portable_seeded"` for ordinary note-on regions.
+Omitted or zero depths are inactive. Without the explicit profile, nonzero
+declarations retain source diagnostics.
+
+| Opcode | Bounds | Native behavior |
+| --- | --- | --- |
+| `amp_random` | -24 to 24 dB | Uniform gain in dB over the interval from zero to the declared value. |
+| `pitch_random` | -12000 to 12000 cents | Uniform tuning shift over the interval from zero to the declared value. |
+| `offset_random` | 0 to 2147483647 frames | Inclusive integer offset for forward, unlooped playback that stays inside the slice. |
+| `delay_random` | 0 to 100 seconds | Uniform added delay when the maximum total delay is at most 100 seconds and the note-off rule is verified. |
+
+The compiler recenters gain and pitch in the native base settings because the
+variation model draws symmetrically around zero. uFor resolves independent
+draws using the caller's seed, part, event identity and slot identity. Native
+playback uses the resulting voice values. The SFZ format carries no seed or
+shared random stream, and export retains a diagnostic for seeded variation.
+One-shot delayed note-off, release regions and controller triggers are outside
+this profile.
+
 ## Changes to authored documents
 
 Use the [conversion instructions](https://github.com/rec/ufor/blob/main/doc/instrument-format.md#updating-old-declarations).

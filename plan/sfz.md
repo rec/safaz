@@ -21,7 +21,8 @@ spans uFor, enveLFO, enge and safaz. See [the design](../doc/filter-envelope-des
    termination. Specify portable rules before importing them.
 4. Export coverage for sparse stereo width and position matrices. Static import
    and verified matrix export are covered in the conversion contract.
-5. Reproducible random gain, pitch, offset and delay, including snapshot state.
+5. Qualify runtime snapshot continuation for the imported seeded-variation
+   profile and design export behavior for native seeded variation.
 6. EQ, after bandwidth and resonance transfer functions are specified and tested.
 7. Export gaps for supported import-only features, as listed in the catalog.
 

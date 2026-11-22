@@ -26,6 +26,7 @@ from ufor.samples.instrument import (
     SampleSlot,
 )
 from ufor.samples.metadata import AudioMetadata
+from ufor.samples.variation import Variation
 from ufor.streams import AudioType
 from ufor.time import Rate, Timebase
 
@@ -75,6 +76,7 @@ def compile_instrument(
     pitch_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
     amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'] = 'diagnose',
     pitch_bend_response: Literal['diagnose', 'sfizz_symmetric'] = 'diagnose',
+    variation_response: Literal['diagnose', 'portable_seeded'] = 'diagnose',
     midi_binding: SfzMidiBindingRequest | None = None,
 ) -> SfzCompileResult:
     """Build a native document from parsed text and caller-supplied asset facts."""
@@ -98,6 +100,8 @@ def compile_instrument(
         )
     if pitch_bend_response not in ('diagnose', 'sfizz_symmetric'):
         raise ValueError(f'Unknown SFZ pitch bend response: {pitch_bend_response}')
+    if variation_response not in ('diagnose', 'portable_seeded'):
+        raise ValueError(f'Unknown SFZ variation response: {variation_response}')
     paths = sample_paths(source)
     if missing := [p for p in paths if p not in assets]:
         raise ValueError(f'Missing audio metadata for SFZ samples: {missing}')
@@ -186,6 +190,7 @@ def compile_instrument(
                 amplitude_lfo_response,
                 binding is not None,
                 pitch_bend_response,
+                variation_response,
             )
         ) is not None:
             slot, sample_slice = result
@@ -603,6 +608,7 @@ def _slot(
     amplitude_lfo_response: Literal['diagnose', 'sfizz_parabolic'],
     midi_available: bool,
     pitch_bend_response: Literal['diagnose', 'sfizz_symmetric'],
+    variation_response: Literal['diagnose', 'portable_seeded'],
 ) -> tuple[SampleSlot, playback.Slice] | None:
     control_trigger = None
     if any(CONTROLLER_TRIGGER.fullmatch(o.opcode) for o in region.opcodes):
@@ -805,7 +811,8 @@ def _slot(
             loop=result.pop('loop', None),
         )
     )
-    kwargs['playback'] = playback.SlotPlayback.model_validate(result)
+    slot_playback = playback.SlotPlayback.model_validate(result)
+    kwargs['playback'] = slot_playback
     processing_values = _processing(
         values, declarations, metadata.channels, unimplemented
     )
@@ -829,6 +836,16 @@ def _slot(
                     declarations[name],
                     'SFZ stereo width and position require a stereo sample',
                 )
+    kwargs['variation'] = _variation(
+        values,
+        declarations,
+        slot_playback,
+        sample_slice,
+        processing_values,
+        variation_response,
+        control_trigger is not None,
+        unimplemented,
+    )
     if filters := _filters(
         values, declarations, output_rate, filter_response, unimplemented
     ):
@@ -1326,6 +1343,68 @@ def _processing(
                 'Panning multichannel samples is not implemented',
             )
     return result
+
+
+def _variation(
+    values: dict[str, str],
+    declarations: dict[str, ParsedOpcode],
+    slot_playback: playback.SlotPlayback,
+    sample: playback.Slice,
+    processing_values: dict[str, object],
+    response: Literal['diagnose', 'portable_seeded'],
+    control_triggered: bool,
+    unimplemented: list[UnimplementedFeature],
+) -> Variation:
+    offset = _integer(
+        values.get('offset_random', '0'), 'offset_random', minimum=0, maximum=2**31 - 1
+    )
+    delay = _number(values.get('delay_random', '0'), 'delay_random')
+    gain = _number(values.get('amp_random', '0'), 'amp_random')
+    pitch = _number(values.get('pitch_random', '0'), 'pitch_random')
+    result: dict[str, float | int] = {}
+    for opcode, field, value, lower, upper in (
+        ('offset_random', 'offset_frames', offset, 0, 2**31 - 1),
+        ('delay_random', 'delay_seconds', delay, 0, 100),
+        ('amp_random', 'gain_db', gain, -24, 24),
+        ('pitch_random', 'pitch_cents', pitch, -12000, 12000),
+    ):
+        if not lower <= value <= upper:
+            raise ValueError(f'{opcode} must be between {lower} and {upper}')
+        if not value:
+            continue
+        reason = None
+        if response == 'diagnose':
+            reason = 'SFZ variation requires variation_response="portable_seeded"'
+        elif control_triggered or values.get('trigger', 'attack') != 'attack':
+            reason = (
+                'Seeded SFZ variation is verified only for ordinary note-on regions'
+            )
+        elif opcode == 'offset_random' and (
+            slot_playback.direction == enums.Direction.backward
+            or sample.loop is not None
+            or sample.end_frame is None
+            or sample.start_frame + offset >= sample.end_frame
+        ):
+            reason = 'Random offset requires forward unlooped playback within the slice'
+        elif opcode == 'delay_random' and (
+            slot_playback.mode == enums.PlaybackMode.one_shot
+            or delay + (slot_playback.start_delay_seconds or 0) > 100
+        ):
+            reason = (
+                'Random delay requires verified note-off behavior '
+                'and a total of at most 100 seconds'
+            )
+        if reason is not None:
+            _add_unimplemented(unimplemented, declarations[opcode], reason)
+        elif opcode in ('amp_random', 'pitch_random'):
+            target = 'volume_db' if opcode == 'amp_random' else 'tuning_cents'
+            base = processing_values.get(target, 0)
+            assert isinstance(base, (int, float))
+            processing_values[target] = base + value / 2
+            result[field] = abs(value) / 2
+        else:
+            result[field] = value
+    return Variation.model_validate(result)
 
 
 def _filters(

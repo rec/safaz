@@ -1081,6 +1081,59 @@ def test_cc_trigger_rejects_invalid_numbers_and_ranges(range_values: str) -> Non
         )
 
 
+def test_sfz_variation_preserves_ranges_and_reproducible_voice_draws() -> None:
+    source = (
+        '<global> delay_random=0.25 offset_random=100 amp_random=-8 pitch_random=35.5 '
+        '<region> sample=sample.wav offset=100 volume=-10 tune=20'
+    )
+    rejected = _compile(source)
+    assert {i.location.opcode for i in rejected.unimplemented} == {
+        'delay_random',
+        'offset_random',
+        'amp_random',
+        'pitch_random',
+    }
+    result = _compile(source, variation_response='portable_seeded')
+    assert result.complete and result.instrument is not None
+    body = result.instrument.body
+    slot = body.slots[0]
+    assert slot.processing.volume_db == -14
+    assert slot.processing.tuning_cents == 37.75
+    assert slot.variation.gain_db == 4
+    assert slot.variation.pitch_cents == 17.75
+    events = [Trigger(tick=0, ordinal=0, part='main', trigger_id='note', key=60)]
+    prepared = trace.prepare(body, events, seed=17)
+    assert trace.prepare(body, events, seed=17) == prepared
+    assert trace.prepare(body, events, seed=18).actions != prepared.actions
+    draw = next(
+        a.variation for a in prepared.actions if isinstance(a, trace.VoiceStart)
+    )
+    assert 0 <= draw.delay_seconds <= 0.25
+    assert 0 <= draw.offset_frames <= 100
+    assert -18 <= slot.processing.volume_db + draw.gain_db <= -10
+    assert 20 <= slot.processing.tuning_cents + draw.pitch_cents <= 55.5
+
+
+@pytest.mark.parametrize(
+    ('settings', 'opcode'),
+    [
+        ('offset=47999 offset_random=1', 'offset_random'),
+        ('direction=reverse offset_random=1', 'offset_random'),
+        ('loop_mode=one_shot delay_random=0.1', 'delay_random'),
+        ('delay=90 delay_random=11', 'delay_random'),
+        ('trigger=release amp_random=2', 'amp_random'),
+    ],
+)
+def test_sfz_variation_diagnoses_unverified_playback_combinations(
+    settings: str, opcode: str
+) -> None:
+    result = _compile(
+        f'<region> sample=sample.wav {settings}', variation_response='portable_seeded'
+    )
+    assert result.instrument is not None
+    assert [i.location.opcode for i in result.unimplemented] == [opcode]
+
+
 def _compile(
     text: str,
     output_channels: list[str] | None = None,
@@ -1088,6 +1141,7 @@ def _compile(
     polyphony_overflow: Literal['diagnose', 'oldest_immediate'] = 'diagnose',
     sample_channels: int = 1,
     midi_binding: SfzMidiBindingRequest | None = None,
+    variation_response: Literal['diagnose', 'portable_seeded'] = 'diagnose',
 ) -> SfzCompileResult:
     return compiler.compile_instrument(
         parser.parse(text),
@@ -1109,4 +1163,5 @@ def _compile(
         sequence_counter=sequence_counter,
         polyphony_overflow=polyphony_overflow,
         midi_binding=midi_binding,
+        variation_response=variation_response,
     )

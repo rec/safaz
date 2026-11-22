@@ -20,6 +20,8 @@ Pitch bend requires an explicit MIDI binding and `pitch_bend_response="sfizz_sym
 
 Static stereo `width` and `position` use the mathematical sfizz pan law. Input pan precedes width mixing and output position follows it. Export verifies the reconstructed channel matrix.
 
+`variation_response="portable_seeded"` accepts bounded random gain, pitch, offset and delay in ordinary note-on regions. It preserves the variation ranges using independent, deterministic native draws. Unsafe offsets, ambiguous delays and seeded export remain diagnosed.
+
 | Kind | Name | Version | Classification |
 | --- | --- | --- | --- |
 | Header | `<region>` | SFZ v1 | supported |
@@ -36,7 +38,7 @@ Static stereo `width` and `position` use the mathematical sfizz pan law. Input p
 | Opcode | `amp_hold` | SFZ v2 | supported |
 | Opcode | `amp_keycenter` | SFZ v1 | supported |
 | Opcode | `amp_keytrack` | SFZ v1 | supported |
-| Opcode | `amp_random` | SFZ v1 | new_model |
+| Opcode | `amp_random` | SFZ v1 | ambiguous |
 | Opcode | `amp_release` | SFZ v2 | supported |
 | Opcode | `amp_sustain` | SFZ v2 | supported |
 | Opcode | `amp_vel2attack` | SFZ v2 | supported |
@@ -122,7 +124,7 @@ Static stereo `width` and `position` use the mathematical sfizz pan law. Input p
 | Opcode | `delay_panc` | SFZ v2 | new_model |
 | Opcode | `delay_panl` | SFZ v2 | new_model |
 | Opcode | `delay_panr` | SFZ v2 | new_model |
-| Opcode | `delay_random` | SFZ v1 | new_model |
+| Opcode | `delay_random` | SFZ v1 | ambiguous |
 | Opcode | `delay_resonance` | SFZ v2 | new_model |
 | Opcode | `delay_samples` | SFZ v2 | new_model |
 | Opcode | `delay_spread` | SFZ v2 | new_model |
@@ -326,7 +328,7 @@ Static stereo `width` and `position` use the mathematical sfizz pan law. Input p
 | Opcode | `off_mode` | SFZ v1 | supported |
 | Opcode | `offset` | SFZ v1 | asset_metadata |
 | Opcode | `offset_onccN` | SFZ v2 | controller_binding |
-| Opcode | `offset_random` | SFZ v1 | new_model |
+| Opcode | `offset_random` | SFZ v1 | ambiguous |
 | Opcode | `on_hiccN` | SFZ v1 | controller_binding |
 | Opcode | `on_loccN` | SFZ v1 | controller_binding |
 | Opcode | `oscillator` | SFZ v2 | new_model |
@@ -364,7 +366,7 @@ Static stereo `width` and `position` use the mathematical sfizz pan law. Input p
 | Opcode | `pitch_keycenter` | SFZ v1 | supported |
 | Opcode | `pitch_keytrack` | SFZ v1 | supported |
 | Opcode | `pitch_onccN` | SFZ v2 | controller_binding |
-| Opcode | `pitch_random` | SFZ v1 | new_model |
+| Opcode | `pitch_random` | SFZ v1 | ambiguous |
 | Opcode | `pitch_release` | SFZ v2 | new_model |
 | Opcode | `pitch_smoothccN` | SFZ v2 | controller_binding |
 | Opcode | `pitch_stepccN` | SFZ v2 | controller_binding |

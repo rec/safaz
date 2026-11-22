@@ -39,6 +39,10 @@ SFZ `loop_type` now preserves a loop's direction independently of whole-sample
 `direction`, including backward and alternating loops.
 SFZ `delay` maps to a native delayed voice start distinct from envelope delay;
 one-shot note-off behavior that varies by player remains diagnosed.
+The explicit `portable_seeded` profile imports bounded random gain, pitch,
+offset and delay using deterministic uFor voice variation. Gain and pitch
+are recentered to preserve their authored ranges. Ambiguous trigger or slice
+behavior and seeded export retain diagnostics.
 SFZ round-robin positions can be imported with the explicit `all_note_ons`
 counter rule; the default reports them as unsupported because SFZ players
 disagree on counter behavior.

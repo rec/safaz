@@ -206,6 +206,11 @@ def support_table() -> str:
         'law. Input pan precedes width mixing and output position follows it. '
         'Export verifies the reconstructed channel matrix.',
         '',
+        '`variation_response="portable_seeded"` accepts bounded random gain, '
+        'pitch, offset and delay in ordinary note-on regions. It preserves '
+        'the variation ranges using independent, deterministic native draws. '
+        'Unsafe offsets, ambiguous delays and seeded export remain diagnosed.',
+        '',
         '| Kind | Name | Version | Classification |',
         '| --- | --- | --- | --- |',
     ]
@@ -261,10 +266,12 @@ PARSABLE_OPCODES = {
     'amp_veltrack',
     'amp_keycenter',
     'amp_keytrack',
+    'amp_random',
     'count',
     'cutoff',
     'cutoff2',
     'delay',
+    'delay_random',
     'direction',
     'end',
     'fil_type',
@@ -313,10 +320,12 @@ PARSABLE_OPCODES = {
     'off_by',
     'off_mode',
     'offset',
+    'offset_random',
     'pan',
     'phase',
     'pitch_keycenter',
     'pitch_keytrack',
+    'pitch_random',
     'pitch_veltrack',
     'polyphony',
     'position',
@@ -377,6 +386,10 @@ ASSET_OPCODES = {
     'md5',
 }
 AMBIGUOUS_OPCODES = {
+    'amp_random',
+    'delay_random',
+    'offset_random',
+    'pitch_random',
     'fileg_delay',
     'fileg_attack',
     'fileg_hold',
