@@ -65,7 +65,9 @@ Held `sw_down`/`sw_up` conditions now use physical presses by trigger identity,
 with a shared consumed switch range. Independent held conditions combine with
 sticky selection. `sw_previous` uses part-local history of every note-on, checked
 before updating and retained through releases and silence. Release-region
-history conditions remain diagnosed. `on_loccN`/`on_hiccN` now imports explicit
+history conditions remain diagnosed. Export preserves the shared consumed
+range, sticky default, held conditions and previous-note conditions for the
+verified profile. `on_loccN`/`on_hiccN` now imports explicit
 one-shot note-independent regions with one controller and an explicit MIDI
 binding. Repeated matching messages trigger separate voices without changing
 note history. Ambiguous combinations, note-dependent processing, and sustained

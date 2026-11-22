@@ -195,9 +195,11 @@ def support_table() -> str:
         '',
         '`sw_down` and `sw_up` require a shared consumed switch range; '
         '`sw_previous` tracks every prior note-on in the part. Release-region '
-        'history combinations remain diagnosed. `on_loccN`/`on_hiccN` import '
+        'history combinations remain diagnosed. Export preserves the shared '
+        'switch range, sticky default, held conditions and previous note for '
+        'representable regions. `on_loccN`/`on_hiccN` import '
         'only the explicit one-shot, note-independent subset with a MIDI '
-        'binding; uncertain combinations remain diagnosed. These features '
+        'binding; uncertain combinations remain diagnosed. Controller triggers '
         'have no implemented export.',
         '',
         '| Kind | Name | Version | Classification |',

@@ -33,6 +33,10 @@ def write(instrument: SampleInstrumentScore) -> SfzExportResult:
     issues: list[UnimplementedFeature] = []
     _instrument_issues(instrument, issues)
     groups, victims = _choke_groups(instrument, issues)
+    articulations = instrument.body.settings.articulations
+    switches = _keyswitch_map(articulations)
+    emitted_switches: set[int] = set()
+    has_switch_condition = False
     regions: list[list[str]] = []
     slot_groups = {g.name: g for g in instrument.body.groups}
     for i, slot in enumerate(instrument.body.slots):
@@ -44,8 +48,12 @@ def write(instrument: SampleInstrumentScore) -> SfzExportResult:
                 | {'group': None, 'selection': effective_selection(slot, group)}
             )
         opcodes = _region(instrument, slot, i, groups, victims, issues)
+        conditions = _keyswitch_opcodes(slot, articulations, switches, i, issues)
         if opcodes is None:
             continue
+        emitted_switches.update(int(o.value) for o in conditions if o.name == 'sw_last')
+        has_switch_condition |= any(o.name != 'sw_previous' for o in conditions)
+        opcodes.extend(conditions)
         metadata = '// recs:slot ' + _json(
             {
                 'name': slot.name,
@@ -77,6 +85,29 @@ def write(instrument: SampleInstrumentScore) -> SfzExportResult:
             }
         ),
     ]
+    if articulations is not None:
+        if (
+            switches is None
+            or not has_switch_condition
+            or emitted_switches != set(switches.values())
+        ):
+            _issue(
+                issues,
+                'body.settings.articulations',
+                articulations,
+                'SFZ requires a contiguous consumed switch range '
+                'and a region for each sticky switch',
+            )
+        if switches is not None and has_switch_condition:
+            keys = [k.key for k in articulations.keys]
+            lines.extend(
+                ['', '<global>', f'sw_lokey={min(keys)}', f'sw_hikey={max(keys)}']
+            )
+            if (
+                articulations.default is not None
+                and (key := switches[articulations.default]) in emitted_switches
+            ):
+                lines.append(f'sw_default={key}')
     for region in regions:
         lines.extend(['', *region])
     return SfzExportResult(contents='\n'.join(lines) + '\n', unimplemented=issues)
@@ -122,13 +153,6 @@ def _instrument_issues(
                 value,
                 'SFZ alternate-selection behavior is not represented',
             )
-    if instrument.articulations is not None:
-        _issue(
-            issues,
-            'body.settings.articulations',
-            instrument.articulations,
-            'Instrument articulation declarations require an external input binding',
-        )
     canonical_sustain = selection.Sustain(control='sustain')
     canonical_controls = {'sustain': controls.ControlDeclaration()}
     if instrument.sustain != canonical_sustain:
@@ -406,6 +430,88 @@ def _trigger_opcodes(
         'Sustain-transition triggers require an external SFZ input binding',
     )
     return []
+
+
+def _keyswitch_map(
+    articulations: selection.Articulations | None,
+) -> dict[str, int] | None:
+    if articulations is None or articulations.controls or not articulations.keys:
+        return None
+    keys = sorted(k.key for k in articulations.keys)
+    if keys != list(range(keys[0], keys[-1] + 1)) or any(
+        not k.consume or k.behavior != enums.KeyBehavior.latched
+        for k in articulations.keys
+    ):
+        return None
+    switches = {
+        k.articulation: k.key for k in articulations.keys if k.articulation is not None
+    }
+    if switches.keys() != set(articulations.ids) or len(switches) != sum(
+        k.articulation is not None for k in articulations.keys
+    ):
+        return None
+    return switches
+
+
+def _keyswitch_opcodes(
+    slot: SampleSlot,
+    articulations: selection.Articulations | None,
+    switches: dict[str, int] | None,
+    index: int,
+    issues: list[UnimplementedFeature],
+) -> list[Opcode]:
+    path = f'body.slots[{index}]'
+    result: list[Opcode] = []
+    if slot.articulations:
+        if (
+            switches is not None
+            and len(slot.articulations) == 1
+            and slot.articulations[0] in switches
+        ):
+            result.append(
+                Opcode(name='sw_last', value=str(switches[slot.articulations[0]]))
+            )
+        else:
+            _issue(
+                issues,
+                f'{path}.articulations',
+                slot.articulations,
+                'SFZ requires one sticky keyswitch per region',
+            )
+    if slot.key_conditions:
+        keys = (
+            {k.key for k in articulations.keys} if articulations is not None else set()
+        )
+        if (
+            slot.trigger == enums.TriggerKind.start
+            and switches is not None
+            and all(k.key in keys for k in slot.key_conditions)
+            and len({k.pressed for k in slot.key_conditions})
+            == len(slot.key_conditions)
+        ):
+            result.extend(
+                Opcode(name='sw_down' if k.pressed else 'sw_up', value=str(k.key))
+                for k in slot.key_conditions
+            )
+        else:
+            _issue(
+                issues,
+                f'{path}.key_conditions',
+                slot.key_conditions,
+                'SFZ needs a shared consumed switch range '
+                'and at most one condition of each kind',
+            )
+    if slot.previous_key is not None:
+        if slot.trigger == enums.TriggerKind.start:
+            result.append(Opcode(name='sw_previous', value=str(slot.previous_key)))
+        else:
+            _issue(
+                issues,
+                f'{path}.previous_key',
+                slot.previous_key,
+                'SFZ previous-key history is verified only for note-on regions',
+            )
+    return result
 
 
 def _choke_groups(
@@ -1228,16 +1334,13 @@ def _slot_issues(
     issues: list[UnimplementedFeature],
     exported_generators: set[str] | None = None,
 ) -> None:
-    for name in ('key_conditions', 'previous_key', 'control_trigger'):
-        value = getattr(slot, name)
-        if value is not None and value != []:
-            _issue(
-                issues,
-                f'{path}.{name}',
-                value,
-                'Selection conditions and control triggers '
-                'have no implemented SFZ export',
-            )
+    if slot.control_trigger is not None:
+        _issue(
+            issues,
+            f'{path}.control_trigger',
+            slot.control_trigger,
+            'Control triggers have no implemented SFZ export',
+        )
     for name in ('take', 'microphone', 'alignment_frames'):
         if value := getattr(slot, name):
             _issue(
@@ -1260,13 +1363,6 @@ def _slot_issues(
             f'{path}.selection',
             slot.selection,
             'SFZ alternate-selection behavior is not represented',
-        )
-    for i, articulation in enumerate(slot.articulations):
-        _issue(
-            issues,
-            f'{path}.articulations[{i}]',
-            articulation,
-            'Instrument articulations require an external SFZ input binding',
         )
     for i, condition in enumerate(slot.control_conditions):
         _issue(

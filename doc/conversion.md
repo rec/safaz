@@ -295,7 +295,10 @@ before selection and changing a switch does not alter existing voices.
 switches and unmatched notes. Selection precedes the history update. History
 starts empty and survives note releases and silence. Held and previous-note
 conditions on `release`/`release_key` regions remain diagnosed until their SFZ
-history rules have a verified equivalent. Export remains diagnosed.
+history rules have a verified equivalent. Export writes one shared contiguous
+range for consumed latched switches. Each sticky articulation must have one
+switch key and appear in an exported region. A note-on region can export one
+pressed condition, one released condition and one previous key.
 
 ## Controller-triggered regions
 

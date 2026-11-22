@@ -312,6 +312,23 @@ def test_sfz_keyswitch_without_range_remains_diagnosed() -> None:
     assert [i.location.opcode for i in result.unimplemented] == ['sw_last']
 
 
+def test_sfz_export_diagnoses_noncontiguous_keyswitches() -> None:
+    result = _compile(
+        '<global> sw_lokey=24 sw_hikey=26 '
+        '<region> sample=sample.wav sw_last=24 '
+        '<region> sample=sample.wav sw_last=26'
+    )
+    assert result.instrument is not None
+    raw = result.instrument.model_dump(mode='json')
+    del raw['body']['settings']['articulations']['keys'][1]
+    exported = exporter.write(SampleInstrumentScore.model_validate(raw))
+    assert not exported.complete
+    assert 'sw_last=' not in exported.contents
+    assert any(
+        i.location.path == 'body.settings.articulations' for i in exported.unimplemented
+    )
+
+
 def test_sfz_controller_condition_without_binding_remains_diagnosed() -> None:
     result = _compile('<region> sample=sample.wav locc74=64')
 
@@ -781,7 +798,12 @@ def test_held_switches_combine_with_sticky_selection_and_count_overlaps(
             if isinstance(a, trace.VoiceStart)
         ]
     )
-    assert not exporter.write(result.instrument).complete
+    exported = exporter.write(result.instrument)
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents)
+    assert restored.complete and restored.instrument is not None
+    assert restored.instrument.body.settings == result.instrument.body.settings
+    assert restored.instrument.body.slots == result.instrument.body.slots
 
 
 def test_previous_note_tracks_consumed_keyswitches_and_survives_release(
@@ -812,6 +834,12 @@ def test_previous_note_tracks_consumed_keyswitches_and_survives_release(
             if isinstance(a, trace.VoiceStart)
         ]
     )
+    exported = exporter.write(result.instrument)
+    assert exported.complete, exported.unimplemented
+    restored = _compile(exported.contents)
+    assert restored.complete and restored.instrument is not None
+    assert restored.instrument.body.settings == result.instrument.body.settings
+    assert restored.instrument.body.slots == result.instrument.body.slots
 
 
 def test_held_switches_do_not_guess_a_sticky_default() -> None:
